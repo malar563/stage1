@@ -4,8 +4,8 @@ import numpy as np
 # import scikit
 
 
-def load_file(file_number=10):
-    return dicom.dcmread(f"DICOM_0{file_number}\COW_Angio_0.6_Hv36_3")
+def load_file():
+    return dicom.dcmread(r"DICOM_010\COW_Angio_0.6_Hv36_3")
 
 image = load_file()
 
