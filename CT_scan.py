@@ -1,7 +1,5 @@
 import matplotlib.pyplot as plt
 import numpy as np
-# import scikit
-# import nibabel as nib
 
 
 class Segmentation:
@@ -75,15 +73,18 @@ class Segmentation:
 
     def keep_largest_island(self, ct_scan):
         from scipy.ndimage import label, generate_binary_structure
+
+        s = np.where(generate_binary_structure(3,3), 1, 0) # Define the connection between elements
+        labeled_array, num_of_structures = label(ct_scan, s) # Associate a number to an island
+        counts = np.bincount(labeled_array.ravel()) # Count the number of elements associated with each island (ascending number) 
+        counts[0] = 0 # background count set to zero
+        largest_label = np.argmax(counts) # Index of the maximum count = number given by np.label
+        self.masked_array = labeled_array == largest_label
+        
+        return self.masked_array
+
     
-        s = np.where(generate_binary_structure(3,3), 1, 0)
-
-        labeled_array, num_of_structures = label(ct_scan, s)
-        print(labeled_array, num_of_structures)
-        return labeled_array, num_of_structures, s
-    
-
-
+# Segmentation
 ct_scan = Segmentation()
 print(ct_scan.resolution)
 ct_scan.cut()
@@ -95,4 +96,9 @@ ct_scan.apply_threshold(-200)
 ct_scan.show(ct_scan.masked_array, 100, "x")
 
 ct_scan.keep_largest_island(ct_scan.masked_array)
+
+# ya une ligne qui touche où le nez qui ne s'en va pas (sur 3D slicer non plus)
+ct_scan.show(ct_scan.masked_array, 300, "y")
+
+# Il faut que je fasse une fonction pour trouver un moyen de séparer le bout de métal qui touche au nez
 
