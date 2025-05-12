@@ -118,26 +118,25 @@ class Segmentation:
         x_center, y_center, z_center = int(np.mean(ix)), int(np.mean(iy)), int(np.mean(iz))
         print(x_center, y_center, z_center) # Le centre en z est inutile : pas à la hauteur du nez.
 
-
+    # À finir
     def save_to_dicom(self):
         import pydicom as dicom
         dcms = []
-        for i in range(4, 605):
-            path = r"DICOM_010\COW_Angio_0.6_Hv36_3" + f"\I{i}.dcm"
-            dcm_file = dicom.dcmread(path)
+        # Mettre chemin adaptable + un range qui se modifie automatique
+        for i in range(0, len(self.skull[:,1,1])-1):
+            path = r"DICOM_010\COW_Angio_0.6_Hv36_3\I15.dcm"
+            dcm_file_head = dicom.dcmread(path)
+            dcm_file_skull = dicom.dcmread(path)
 
-            # dcms.append(dcm_file.pixel_array)
+            # Je dois mettre la slice en z pour avoir une array 2D
+            dcm_file_head.PixelData = self.skull[i,:,:].tobytes()
+            dcm_file_skull.PixelData = self.head[i,:,:].tobytes()
 
-            image = dcm_file.pixel_array.astype(np.int16)
-            intercept = float(dcm_file.RescaleIntercept)
-            slope = float(dcm_file.RescaleSlope)
-            dcms.append(image * slope + intercept)
-            dcm_file.save_as('out.dcm')
+            # Est-ce que ya juste l'array qui change d'un fichier dicom à l'autre?
+            dcm_file_head.save_as(f"head{i}.dcm")
+            dcm_file_skull.save_as(f'skull{i}.dcm')
         
 
-        self.array = np.array(dcms)
-        
-        pass
 
 
     def wrap_solidify(self, max_gap_mm=30):
@@ -176,6 +175,9 @@ ct_scan.show(ct_scan.skull, 256, "y")
 ct_scan.show(ct_scan.head, 270, "y")
 ct_scan.show(ct_scan.head, 131, "z")
 
+# ct_scan.save_to_dicom()
+
 # Il faut que je fasse une fonction pour trouver un moyen de séparer le bout de métal qui touche au nez
 ct_scan.find_nose()
+
 
