@@ -7,6 +7,7 @@ class Segmentation:
     def __init__(self):
         self.array = None
         self.resolution = None
+        self.px_spacing = None
         self.load_file()
         self.masked_array = None
         self.head = None
@@ -29,13 +30,16 @@ class Segmentation:
             slope = float(dcm_file.RescaleSlope)
             dcms.append(image * slope + intercept)
         
-        # print(dcm_file)
+            
         # (0018,0050) Slice Thickness                     DS: '0.6'
+        print(dcm_file)
         resolution = dcm_file[0x0018, 0x0050].value
+        px_spacing = dcm_file[0x0028, 0x0030].value
 
         self.array = np.array(dcms)
         self.resolution = resolution
-        return self.array, self.resolution
+        self.px_spacing = px_spacing
+        return self.array, self.resolution, self.px_spacing
 
 
     def cut(self):
@@ -98,6 +102,13 @@ class Segmentation:
         return self.head, self.skull
     
 
+    def fill_holes(self):
+        from scipy.ndimage import binary_fill_holes
+
+        self.skull = binary_fill_holes(self.skull)
+        return self.skull
+
+
     def find_nose(self):
         for slice in range(0, len(self.skull[:,1,1])):
             pass
@@ -107,11 +118,38 @@ class Segmentation:
         x_center, y_center, z_center = int(np.mean(ix)), int(np.mean(iy)), int(np.mean(iz))
         print(x_center, y_center, z_center) # Le centre en z est inutile : pas à la hauteur du nez.
 
-    def fill_holes(self):
-        from scipy.ndimage import binary_fill_holes
 
-        self.skull = binary_fill_holes(self.skull)
+    def save_to_dicom(self):
+        import pydicom as dicom
+        dcms = []
+        for i in range(4, 605):
+            path = r"DICOM_010\COW_Angio_0.6_Hv36_3" + f"\I{i}.dcm"
+            dcm_file = dicom.dcmread(path)
+
+            # dcms.append(dcm_file.pixel_array)
+
+            image = dcm_file.pixel_array.astype(np.int16)
+            intercept = float(dcm_file.RescaleIntercept)
+            slope = float(dcm_file.RescaleSlope)
+            dcms.append(image * slope + intercept)
+            dcm_file.save_as('out.dcm')
+        
+
+        self.array = np.array(dcms)
+        
+        pass
+
+
+    def wrap_solidify(self, max_gap_mm=30):
+        from scipy.ndimage import binary_dilation, binary_erosion
+        allo = binary_dilation(self.skull, iterations=10)
+        allo2 = binary_erosion(allo, iterations=10)
+        self.skull = allo2
+
         return self.skull
+
+
+
 
 
 
@@ -119,17 +157,19 @@ class Segmentation:
     
 # Segmentation
 ct_scan = Segmentation()
-print("Resolution", ct_scan.resolution)
+print("Resolution", ct_scan.resolution, ct_scan.px_spacing)
 ct_scan.cut()
 print("Volume shape", ct_scan.array.shape)
 
 ct_scan.apply_threshold()
 ct_scan.keep_largest_island()
 
-# ya une ligne qui touche où le nez qui ne s'en va pas (sur 3D slicer non plus)
-ct_scan.show(ct_scan.skull, 300, "y")
+# ya une ligne qui touche où le nez pour ct_scan.head qui ne s'en va pas (sur 3D slicer non plus)
+ct_scan.show(ct_scan.skull, 256, "y")
 ct_scan.fill_holes()
-ct_scan.show(ct_scan.skull, 300, "y")
+ct_scan.show(ct_scan.skull, 256, "y")
+ct_scan.wrap_solidify()
+ct_scan.show(ct_scan.skull, 256, "y")
 # ct_scan.show(ct_scan.skull, 268, "y")
 
 # ct_scan.show(ct_scan.head, 232, "x")
