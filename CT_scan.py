@@ -108,21 +108,13 @@ class Segmentation:
         print(x_center, y_center, z_center) # Le centre en z est inutile : pas à la hauteur du nez.
 
     def fill_holes(self):
-        from scipy.ndimage import binary_fill_holes, binary_closing
-        # # self.skull = self.skull > 0
-        self.skull = binary_fill_holes(self.skull)
-        
-    
-        # print("Running fill_holes()")
-        # from scipy.ndimage import binary_fill_holes
-        # filled = binary_fill_holes(self.skull > 0)
-        # print("Pixels changed by fill:", np.sum(filled != self.skull))
-        # self.skull = filled
+        from scipy.ndimage import binary_fill_holes
 
+        self.skull = binary_fill_holes(self.skull)
         return self.skull
 
 
-        
+
 
     
 # Segmentation
