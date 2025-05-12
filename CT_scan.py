@@ -9,6 +9,8 @@ class Segmentation:
         self.resolution = None
         self.load_file()
         self.masked_array = None
+        self.head = None
+        self.skull = None
         # Trouver un moyen de mettre le nom de fichier automatique
 
 
@@ -61,44 +63,87 @@ class Segmentation:
         plt.show()
 
 
-    def apply_threshold(self, threshold=-200):
+    def apply_threshold(self, threshold_head=-200, threshold_skull=300):
         # Array with "True" where it is, and "False" where it is not
-        thresholded_scan = self.array >= threshold
+        thresholded_head = self.array >= threshold_head
+        thresholded_skull = self.array >= threshold_skull
         # # Put the value of the threshold if True, and -1000 if False
         # mask = np.where(thresholded_scan, threshold, -1000)
         # Put the value 1 if True, and 0 if False
-        self.masked_array = np.where(thresholded_scan, 1, 0)
-        return self.masked_array
+        self.head = np.where(thresholded_head, 1, 0)
+        self.skull = np.where(thresholded_skull, 1, 0)
+        return self.head, self.skull
     
-
-    def keep_largest_island(self, ct_scan):
+    
+# Mettre ça mieux pour que ça se répète pas
+    def keep_largest_island(self):
         from scipy.ndimage import label, generate_binary_structure
 
         s = np.where(generate_binary_structure(3,3), 1, 0) # Define the connection between elements
-        labeled_array, num_of_structures = label(ct_scan, s) # Associate a number to an island
-        counts = np.bincount(labeled_array.ravel()) # Count the number of elements associated with each island (ascending number) 
+
+        labeled_array_head, num_of_structures_head = label(self.head, s) # Associate a number to an island
+        counts = np.bincount(labeled_array_head.ravel()) # Count the number of elements associated with each island (ascending number) 
         counts[0] = 0 # background count set to zero
-        largest_label = np.argmax(counts) # Index of the maximum count = number given by np.label
-        self.masked_array = labeled_array == largest_label
+        largest_label_head = np.argmax(counts) # Index of the maximum count = number given by np.label
+        self.head = labeled_array_head == largest_label_head
         
-        return self.masked_array
+        labeled_array_skull, num_of_structures_head = label(self.skull, s) # Associate a number to an island
+        # plt.imshow(labeled_array_skull[:,:,230], cmap="viridis", origin="lower")
+        # plt.show()
+        counts = np.bincount(labeled_array_skull.ravel()) # Count the number of elements associated with each island (ascending number) 
+        counts[0] = 0 # background count set to zero
+        largest_label_skull = np.argmax(counts) # Index of the maximum count = number given by np.label
+        self.skull = labeled_array_skull == largest_label_skull
+
+        return self.head, self.skull
+    
+
+    def find_nose(self):
+        for slice in range(0, len(self.skull[:,1,1])):
+            pass
+
+
+        iz, ix, iy = np.where(self.skull)
+        x_center, y_center, z_center = int(np.mean(ix)), int(np.mean(iy)), int(np.mean(iz))
+        print(x_center, y_center, z_center) # Le centre en z est inutile : pas à la hauteur du nez.
+
+    def fill_holes(self):
+        from scipy.ndimage import binary_fill_holes, binary_closing
+        # # self.skull = self.skull > 0
+        self.skull = binary_fill_holes(self.skull)
+        
+    
+        # print("Running fill_holes()")
+        # from scipy.ndimage import binary_fill_holes
+        # filled = binary_fill_holes(self.skull > 0)
+        # print("Pixels changed by fill:", np.sum(filled != self.skull))
+        # self.skull = filled
+
+        return self.skull
+
+
+        
 
     
 # Segmentation
 ct_scan = Segmentation()
-print(ct_scan.resolution)
+print("Resolution", ct_scan.resolution)
 ct_scan.cut()
 print("Volume shape", ct_scan.array.shape)
 
-ct_scan.show(ct_scan.array, 100, "z")
-
-ct_scan.apply_threshold(-200)
-ct_scan.show(ct_scan.masked_array, 100, "x")
-
-ct_scan.keep_largest_island(ct_scan.masked_array)
+ct_scan.apply_threshold()
+ct_scan.keep_largest_island()
 
 # ya une ligne qui touche où le nez qui ne s'en va pas (sur 3D slicer non plus)
-ct_scan.show(ct_scan.masked_array, 300, "y")
+ct_scan.show(ct_scan.skull, 300, "y")
+ct_scan.fill_holes()
+ct_scan.show(ct_scan.skull, 300, "y")
+# ct_scan.show(ct_scan.skull, 268, "y")
+
+# ct_scan.show(ct_scan.head, 232, "x")
+ct_scan.show(ct_scan.head, 270, "y")
+ct_scan.show(ct_scan.head, 131, "z")
 
 # Il faut que je fasse une fonction pour trouver un moyen de séparer le bout de métal qui touche au nez
+ct_scan.find_nose()
 
