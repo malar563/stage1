@@ -32,7 +32,7 @@ class Segmentation:
         
             
         # (0018,0050) Slice Thickness                     DS: '0.6'
-        print(dcm_file)
+        # print(dcm_file.RescaleIntercept, dcm_file.RescaleSlope)
         resolution = dcm_file[0x0018, 0x0050].value
         px_spacing = dcm_file[0x0028, 0x0030].value
 
@@ -69,11 +69,11 @@ class Segmentation:
 
 
 # Mettre ça mieux pour que ça se répète pas
-    def apply_threshold(self, threshold_head=-200, threshold_skull=250):
+    def apply_threshold(self, threshold_head=-200, threshold_skull=200):
         # Array with "True" where it is, and "False" where it is not
         thresholded_head = self.array >= threshold_head
         thresholded_skull = self.array >= threshold_skull
-        thresholded = np.logical_and(self.array >= threshold_head, self.array <= threshold_skull)
+        thresholded = np.logical_and(self.array >= threshold_head, self.array <= threshold_skull) #self.array <= threshold_skull
         # Put the value 1 if True, and 0 if False
         self.head = np.where(thresholded_head, 1, 0)
         self.skull = np.where(thresholded_skull, 1, 0)
@@ -145,18 +145,47 @@ class Segmentation:
             dcm_file_skull.save_as(f'skull{i}.dcm')
         
 
-    def binary_closing(self, iterations=2):
-        from scipy.ndimage import binary_dilation, binary_erosion, binary_closing
-        # allo = binary_dilation(self.masked_array, iterations=iterations)
-        # allo2 = binary_erosion(allo, iterations=iterations)
-        self.skull = self.skull != 1
-        self.skull = np.where(self.skull, 1, 0)
-        self.skull = binary_closing(self.skull, iterations=iterations)
-        self.skull = self.skull != 1
-        self.skull = np.where(self.skull, 1, 0)
+    def binary_closing(self, iterations=3):
+        from scipy.ndimage import binary_dilation, binary_erosion, binary_closing, generate_binary_structure, iterate_structure, label
+        
+        # self.skull = self.skull != 1
+        # self.skull = np.where(self.skull, 1, 0)
+        # self.skull = binary_closing(self.skull, iterations=iterations)
+        # self.skull = self.skull != 1
+        # self.skull = np.where(self.skull, 1, 0)
+
+        allo = binary_erosion(self.skull, iterations=iterations)
+        self.skull = binary_dilation(allo, iterations=iterations)
+
+        # radius = 5
+        # volume = self.skull
+        # struct = generate_binary_structure(3, 1)  # 3D connectivity
+        # struct = iterate_structure(struct, radius)
+        # # Apply morphological closing
+        # closed = binary_closing(volume, structure=struct)
+        # self.skull = closed
+
+
+        # min_size = 500
+        # volume = self.skull
+        # labeled, num = label(volume)
+        # output = np.zeros_like(volume)
+        # for i in range(1, num + 1):
+        #     component = (labeled == i)
+        #     if component.sum() >= min_size:
+        #         output[component] = 1
+        # self.skull = output
 
         return self.skull
     
+
+    def test(self):
+        from scipy.ndimage import binary_dilation, binary_erosion, binary_closing
+        self.masked_array = binary_erosion(self.masked_array, iterations=2)
+
+
+        return self.masked_array
+
 
     def animation(self):
         import plotly.express as px
@@ -182,14 +211,20 @@ print("Volume shape", ct_scan.array.shape)
 ct_scan.apply_threshold()
 ct_scan.keep_largest_island()
 
-# ya une ligne qui touche où le nez pour ct_scan.head qui ne s'en va pas (sur 3D slicer non plus)
-ct_scan.show(ct_scan.skull, 256, "y")
-ct_scan.fill_holes()
-ct_scan.animation()
-ct_scan.show(ct_scan.skull, 256, "y")
-ct_scan.binary_closing()
+ct_scan.test()
 ct_scan.keep_largest_island()
-ct_scan.show(ct_scan.skull, 256, "y")
+ct_scan.show(ct_scan.masked_array, 256, "y")
+
+
+
+# ya une ligne qui touche où le nez pour ct_scan.head qui ne s'en va pas (sur 3D slicer non plus)
+ct_scan.show(ct_scan.skull, 156, "z")
+ct_scan.fill_holes()
+# ct_scan.animation()
+ct_scan.show(ct_scan.skull, 156, "z")
+ct_scan.binary_closing()
+# ct_scan.keep_largest_island()
+ct_scan.show(ct_scan.skull, 156, "z")
 ct_scan.animation()
 
 
