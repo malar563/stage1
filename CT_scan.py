@@ -51,6 +51,7 @@ class Segmentation:
         return self.array
 
 
+# Mettre ça mieux pour que ça se répète pas
     def show(self, array, slice, axis):
         # # Si l'axe x passe à travers le nasion et règle de la main droite
         if axis == "z":
@@ -63,20 +64,21 @@ class Segmentation:
             # # Plan coronal : Valeur fixe de y
             plt.imshow(array[:,:,slice], cmap='gist_gray', origin="lower")
         else:
-            raise TypeError("Must be x, y or z axis")
+            raise TypeError("Must be x, y or z")
         plt.show()
 
 
-    def apply_threshold(self, threshold_head=-200, threshold_skull=300):
+# Mettre ça mieux pour que ça se répète pas
+    def apply_threshold(self, threshold_head=-200, threshold_skull=250):
         # Array with "True" where it is, and "False" where it is not
         thresholded_head = self.array >= threshold_head
         thresholded_skull = self.array >= threshold_skull
-        # # Put the value of the threshold if True, and -1000 if False
-        # mask = np.where(thresholded_scan, threshold, -1000)
+        thresholded = np.logical_and(self.array >= threshold_head, self.array <= threshold_skull)
         # Put the value 1 if True, and 0 if False
         self.head = np.where(thresholded_head, 1, 0)
         self.skull = np.where(thresholded_skull, 1, 0)
-        return self.head, self.skull
+        self.masked_array = np.where(thresholded, 1, 0)
+        return self.head, self.skull, self.masked_array
     
     
 # Mettre ça mieux pour que ça se répète pas
@@ -91,7 +93,7 @@ class Segmentation:
         largest_label_head = np.argmax(counts) # Index of the maximum count = number given by np.label
         self.head = labeled_array_head == largest_label_head
         
-        labeled_array_skull, num_of_structures_head = label(self.skull, s) # Associate a number to an island
+        labeled_array_skull, num_of_structures_skull = label(self.skull, s) # Associate a number to an island
         # plt.imshow(labeled_array_skull[:,:,230], cmap="viridis", origin="lower")
         # plt.show()
         counts = np.bincount(labeled_array_skull.ravel()) # Count the number of elements associated with each island (ascending number) 
@@ -99,7 +101,13 @@ class Segmentation:
         largest_label_skull = np.argmax(counts) # Index of the maximum count = number given by np.label
         self.skull = labeled_array_skull == largest_label_skull
 
-        return self.head, self.skull
+        labeled_array, num_of_structures = label(self.masked_array, s) # Associate a number to an island
+        counts = np.bincount(labeled_array.ravel()) # Count the number of elements associated with each island (ascending number) 
+        counts[0] = 0 # background count set to zero
+        largest_label = np.argmax(counts) # Index of the maximum count = number given by np.label
+        self.masked_array = labeled_array == largest_label
+
+        return self.head, self.skull, self.masked_array
     
 
     def fill_holes(self):
@@ -113,10 +121,10 @@ class Segmentation:
         for slice in range(0, len(self.skull[:,1,1])):
             pass
 
-
         iz, ix, iy = np.where(self.skull)
         x_center, y_center, z_center = int(np.mean(ix)), int(np.mean(iy)), int(np.mean(iz))
         print(x_center, y_center, z_center) # Le centre en z est inutile : pas à la hauteur du nez.
+
 
     # À finir
     def save_to_dicom(self):
@@ -137,16 +145,26 @@ class Segmentation:
             dcm_file_skull.save_as(f'skull{i}.dcm')
         
 
-
-
-    def wrap_solidify(self, max_gap_mm=30):
-        from scipy.ndimage import binary_dilation, binary_erosion
-        allo = binary_dilation(self.skull, iterations=10)
-        allo2 = binary_erosion(allo, iterations=10)
-        self.skull = allo2
+    def binary_closing(self, iterations=2):
+        from scipy.ndimage import binary_dilation, binary_erosion, binary_closing
+        # allo = binary_dilation(self.masked_array, iterations=iterations)
+        # allo2 = binary_erosion(allo, iterations=iterations)
+        self.skull = self.skull != 1
+        self.skull = np.where(self.skull, 1, 0)
+        self.skull = binary_closing(self.skull, iterations=iterations)
+        self.skull = self.skull != 1
+        self.skull = np.where(self.skull, 1, 0)
 
         return self.skull
+    
 
+    def animation(self):
+        import plotly.express as px
+        img = ct_scan.skull
+        fig = px.imshow(img, animation_frame=0, binary_string=True, labels=dict(animation_frame="slice"))
+        fig.show()
+    
+    
 
 
 
@@ -160,24 +178,20 @@ print("Resolution", ct_scan.resolution, ct_scan.px_spacing)
 ct_scan.cut()
 print("Volume shape", ct_scan.array.shape)
 
+
 ct_scan.apply_threshold()
 ct_scan.keep_largest_island()
 
 # ya une ligne qui touche où le nez pour ct_scan.head qui ne s'en va pas (sur 3D slicer non plus)
 ct_scan.show(ct_scan.skull, 256, "y")
 ct_scan.fill_holes()
+ct_scan.animation()
 ct_scan.show(ct_scan.skull, 256, "y")
-ct_scan.wrap_solidify()
+ct_scan.binary_closing()
+ct_scan.keep_largest_island()
 ct_scan.show(ct_scan.skull, 256, "y")
-# ct_scan.show(ct_scan.skull, 268, "y")
+ct_scan.animation()
 
-# ct_scan.show(ct_scan.head, 232, "x")
-ct_scan.show(ct_scan.head, 270, "y")
-ct_scan.show(ct_scan.head, 131, "z")
 
-# ct_scan.save_to_dicom()
-
-# Il faut que je fasse une fonction pour trouver un moyen de séparer le bout de métal qui touche au nez
-ct_scan.find_nose()
 
 
