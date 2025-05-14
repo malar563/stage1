@@ -12,6 +12,7 @@ class Segmentation:
         self.masked_array = None
         self.head = None
         self.skull = None
+        self.air = None
         # Trouver un moyen de mettre le nom de fichier automatique
 
 
@@ -72,13 +73,15 @@ class Segmentation:
     def apply_threshold(self, threshold_head=-200, threshold_skull=200):
         # Array with "True" where it is, and "False" where it is not
         thresholded_head = self.array >= threshold_head
+        thresholded_air = self.array <= threshold_head
         thresholded_skull = self.array >= threshold_skull
         thresholded = np.logical_and(self.array >= threshold_head, self.array <= threshold_skull) #self.array <= threshold_skull
         # Put the value 1 if True, and 0 if False
         self.head = np.where(thresholded_head, 1, 0)
+        self.air = np.where(thresholded_air, 1, 0)
         self.skull = np.where(thresholded_skull, 1, 0)
         self.masked_array = np.where(thresholded, 1, 0)
-        return self.head, self.skull, self.masked_array
+        return self.head, self.skull, self.masked_array, self.air
     
     
 # Mettre ça mieux pour que ça se répète pas
@@ -145,17 +148,40 @@ class Segmentation:
             dcm_file_skull.save_as(f'skull{i}.dcm')
         
 
-    def binary_closing(self, iterations=3):
-        from scipy.ndimage import binary_dilation, binary_erosion, binary_closing, generate_binary_structure, iterate_structure, label
-        
+    def binary_closing(self, iterations=2):
+        from scipy.ndimage import binary_dilation, binary_erosion, binary_closing, generate_binary_structure, iterate_structure#, label
+        from skimage.morphology import ball, erosion, dilation
+        from skimage.measure import label
+
         # self.skull = self.skull != 1
         # self.skull = np.where(self.skull, 1, 0)
         # self.skull = binary_closing(self.skull, iterations=iterations)
         # self.skull = self.skull != 1
         # self.skull = np.where(self.skull, 1, 0)
 
-        allo = binary_erosion(self.skull, iterations=iterations)
-        self.skull = binary_dilation(allo, iterations=iterations)
+
+        r2 = ball(2)
+        r3 = ball(3)
+
+        # erosion = binary_erosion(self.skull, structure=r2)
+        # erosion = np.where(erosion, 1, 0)
+        # print(erosion.shape)
+
+        # labeled_array, num_of_structures = label(erosion, r2) # Associate a number to an island
+        
+        # dilation = binary_dilation(labeled_array, structure=r3)
+        labeled_skull = erosion(self.skull, r2)[0]
+        labeled_skull = np.where(labeled_skull, 1, 0)
+        print(labeled_skull)
+
+        labeled_array, num_of_structures = label(labeled_skull, r2) # Associate a number to an island
+        
+        
+        labeled_skull = dilation(labeled_array, r3)
+
+
+        self.skull = labeled_skull
+        self.skull = np.where(self.skull, 1, 0)
 
         # radius = 5
         # volume = self.skull
@@ -181,7 +207,10 @@ class Segmentation:
 
     def test(self):
         from scipy.ndimage import binary_dilation, binary_erosion, binary_closing
-        self.masked_array = binary_erosion(self.masked_array, iterations=2)
+        iter = 13
+        self.masked_array = binary_erosion(self.masked_array, iterations=iter)
+        self.masked_array = binary_dilation(self.masked_array, iterations=iter+2)
+        self.masked_array = binary_erosion(self.masked_array, iterations=3)
 
 
         return self.masked_array
@@ -211,9 +240,11 @@ print("Volume shape", ct_scan.array.shape)
 ct_scan.apply_threshold()
 ct_scan.keep_largest_island()
 
-ct_scan.test()
-ct_scan.keep_largest_island()
-ct_scan.show(ct_scan.masked_array, 256, "y")
+ct_scan.show(ct_scan.air, 256, "y")
+
+# ct_scan.test()
+# ct_scan.keep_largest_island()
+# ct_scan.show(ct_scan.masked_array, 256, "x")
 
 
 
@@ -221,7 +252,7 @@ ct_scan.show(ct_scan.masked_array, 256, "y")
 ct_scan.show(ct_scan.skull, 156, "z")
 ct_scan.fill_holes()
 # ct_scan.animation()
-ct_scan.show(ct_scan.skull, 156, "z")
+ct_scan.show(ct_scan.skull, 256, "y")
 ct_scan.binary_closing()
 # ct_scan.keep_largest_island()
 ct_scan.show(ct_scan.skull, 156, "z")

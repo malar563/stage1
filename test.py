@@ -50,5 +50,18 @@ b = np.array([[[1, 1, 1, 1, 1],
        [1, 1, 1, 1, 1],
        [1, 1, 1, 1, 1]]])
 # print(binary_fill_holes(b))
-print(binary_closing(b))
+# print(binary_closing(b))
+
+from scipy.ndimage import generate_binary_structure
+from skimage.morphology import ball
+balle = ball(2)
+struct = generate_binary_structure(3, 1)
+print(balle)
+print(struct)
+
+
+c = np.array([[1,2,3],[4,5,6],[7,8,9]])
+c_flat = np.ravel(c)
+print(c_flat)
+
 
