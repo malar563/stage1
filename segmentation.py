@@ -8,15 +8,15 @@ class Segmentation:
         self.array = None
         self.resolution = None
         self.px_spacing = None
+        self.folder_path = folder_path
         self.load_file()
         self.masked_array = None
         self.head = None
         self.skull = None
-        self.air = None
-        self.folder_path = folder_path
+        self.air = None    
 
 
-    def load_file(self, max_files=1000):
+    def load_file(self, max_files=2000):
         import pydicom as dicom
         import os
 
@@ -106,13 +106,26 @@ class Segmentation:
         return self.skull
 
 
+    def remove_arteries(self, max_distance = 5):
+        from scipy.ndimage import distance_transform_edt
+
+        self.masked_array = self.masked_array != 1
+        distance = distance_transform_edt(self.masked_array)
+        close_to_bone = distance < max_distance
+        self.skull = self.skull & close_to_bone
+
+        return self.skull
+    
+
     # À finir
     def save_to_dicom(self):
         import pydicom as dicom
+        import os
         dcms = []
-        # Mettre chemin adaptable + un range qui se modifie automatique
         for i in range(0, len(self.skull[:,1,1])-1):
-            path = r"DICOM_010\COW_Angio_0.6_Hv36_3\I15.dcm"
+            filename = f"I100.dcm" # Doesn't matter which one
+            path = os.path.join(self.folder_path, filename)
+            path = self.folder_path
             dcm_file_head = dicom.dcmread(path)
             dcm_file_skull = dicom.dcmread(path)
 
@@ -123,20 +136,8 @@ class Segmentation:
             # Est-ce que ya juste l'array qui change d'un fichier dicom à l'autre?
             dcm_file_head.save_as(f"head{i}.dcm")
             dcm_file_skull.save_as(f'skull{i}.dcm')
-        
 
-
-    def remove_arteries(self, max_distance = 5):
-        from scipy.ndimage import distance_transform_edt
-
-        self.masked_array = self.masked_array != 1
-        distance = distance_transform_edt(self.masked_array)
-        close_to_bone = distance < max_distance
-        self.skull = self.skull & close_to_bone
-
-        return self.skull
-
-
+    # Marche mal
     def animation(self):
         import plotly.express as px
         img = ct_scan.skull
@@ -147,8 +148,8 @@ class Segmentation:
 
     
 # Segmentation
-# ct_scan = Segmentation()
-ct_scan = Segmentation(folder_path="DICOM_003/Carotid_Angio_0.625mm")
+ct_scan = Segmentation()
+# ct_scan = Segmentation(folder_path="DICOM_003/Carotid_Angio_0.625mm")
 print("Resolution", ct_scan.resolution, ct_scan.px_spacing)
 ct_scan.cut()
 print("Volume shape", ct_scan.array.shape)
@@ -160,6 +161,7 @@ ct_scan.keep_largest_island()
 ct_scan.show(ct_scan.skull, 256, "y")
 ct_scan.fill_holes()
 ct_scan.show(ct_scan.skull, 256, "y")
+ct_scan.animation()
 ct_scan.remove_arteries()
 ct_scan.fill_holes()
 ct_scan.show(ct_scan.skull, 256, "y")
