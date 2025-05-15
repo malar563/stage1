@@ -68,7 +68,7 @@ class Segmentation:
         plt.show()
 
 
-    def apply_threshold(self, threshold_head=-200, threshold_skull=300, threshold_no_arteries = 550):
+    def apply_threshold(self, threshold_head=-200, threshold_skull=200, threshold_no_arteries = 550):
         # Array with "True" where it is, and "False" where it is not
         thresholded_head = self.array >= threshold_head
         thresholded_air = self.array <= threshold_head
@@ -106,13 +106,14 @@ class Segmentation:
         return self.skull
 
 
-    def remove_arteries(self, max_distance = 5):
-        from scipy.ndimage import distance_transform_edt
+    def remove_arteries(self, max_distance = 3): # Pour cow mettre 3 et seuil 300. Pour carotid mettre 5 et seuil 200
+        from scipy.ndimage import distance_transform_edt, binary_dilation, generate_binary_structure
 
         self.masked_array = self.masked_array != 1
         distance = distance_transform_edt(self.masked_array)
         close_to_bone = distance < max_distance
         self.skull = self.skull & close_to_bone
+        self.skull = binary_dilation(self.skull, generate_binary_structure(3, 1))
 
         return self.skull
     
@@ -137,13 +138,13 @@ class Segmentation:
             dcm_file_head.save_as(f"head{i}.dcm")
             dcm_file_skull.save_as(f'skull{i}.dcm')
 
+
     # Marche mal
     def animation(self):
         import plotly.express as px
         img = ct_scan.skull
         fig = px.imshow(img, animation_frame=0, binary_string=True, labels=dict(animation_frame="slice"))
-        fig.show()
-    
+        fig.show() 
     
 
     
@@ -161,7 +162,7 @@ ct_scan.keep_largest_island()
 ct_scan.show(ct_scan.skull, 256, "y")
 ct_scan.fill_holes()
 ct_scan.show(ct_scan.skull, 256, "y")
-ct_scan.animation()
+# ct_scan.animation()
 ct_scan.remove_arteries()
 ct_scan.fill_holes()
 ct_scan.show(ct_scan.skull, 256, "y")
