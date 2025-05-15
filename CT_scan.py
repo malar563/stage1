@@ -4,7 +4,7 @@ import numpy as np
 
 class Segmentation:
     
-    def __init__(self):
+    def __init__(self, folder_path="DICOM_010/COW_Angio_0.6_Hv36_3"):
         self.array = None
         self.resolution = None
         self.px_spacing = None
@@ -13,26 +13,26 @@ class Segmentation:
         self.head = None
         self.skull = None
         self.air = None
-        # Trouver un moyen de mettre le nom de fichier automatique
+        self.folder_path = folder_path
 
 
-    # Trouver un moyen de mettre le range automatique selon ce que le fichier contient (mettre des try/except)
-    def load_file(self):
+    def load_file(self, max_files=1000):
         import pydicom as dicom
+        import os
+
         dcms = []
-        for i in range(4, 605):
-            path = r"DICOM_010\COW_Angio_0.6_Hv36_3" + f"\I{i}.dcm"
-            dcm_file = dicom.dcmread(path)
-
-            # dcms.append(dcm_file.pixel_array)
-
-            image = dcm_file.pixel_array.astype(np.int16)
-            intercept = float(dcm_file.RescaleIntercept)
-            slope = float(dcm_file.RescaleSlope)
-            dcms.append(image * slope + intercept)
-        
-            
-        # (0018,0050) Slice Thickness                     DS: '0.6'
+        for i in range(1, max_files):
+            filename = f"I{i}.dcm"
+            path = os.path.join(self.folder_path, filename)
+            try:
+                dcm_file = dicom.dcmread(path)
+                # dcms.append(dcm_file.pixel_array)
+                image = dcm_file.pixel_array.astype(np.int16)
+                intercept = float(dcm_file.RescaleIntercept)
+                slope = float(dcm_file.RescaleSlope)
+                dcms.append(image * slope + intercept)
+            except:
+                continue
         # print(dcm_file.RescaleIntercept, dcm_file.RescaleSlope)
         resolution = dcm_file[0x0018, 0x0050].value
         px_spacing = dcm_file[0x0028, 0x0030].value
@@ -52,30 +52,28 @@ class Segmentation:
         return self.array
 
 
-# Mettre ça mieux pour que ça se répète pas
     def show(self, array, slice, axis):
         # # Si l'axe x passe à travers le nasion et règle de la main droite
         if axis == "z":
             # # Plan axial : Valeur fixe de z
-            plt.imshow(array[slice,:,:], cmap='viridis', origin="lower")
+            plt.imshow(array[slice,:,:], cmap='gist_gray', origin="lower")
         elif axis == "x":
             # # Plan coronal : Valeur fixe de x
             plt.imshow(array[:,slice,:], cmap='gist_gray', origin="lower")
         elif axis == "y":
             # # Plan coronal : Valeur fixe de y
-            plt.imshow(array[:,:,slice], cmap='viridis', origin="lower")
+            plt.imshow(array[:,:,slice], cmap='gist_gray', origin="lower")
         else:
             raise TypeError("Must be x, y or z")
         plt.show()
 
 
-# Mettre ça mieux pour que ça se répète pas
-    def apply_threshold(self, threshold_head=-200, threshold_skull=200):
+    def apply_threshold(self, threshold_head=-200, threshold_skull=300, threshold_no_arteries = 550):
         # Array with "True" where it is, and "False" where it is not
         thresholded_head = self.array >= threshold_head
         thresholded_air = self.array <= threshold_head
         thresholded_skull = self.array >= threshold_skull
-        thresholded = self.array >= 550#np.logical_and(self.array >= threshold_head, self.array <= threshold_skull) #self.array <= threshold_skull
+        thresholded = self.array >= threshold_no_arteries
         # Put the value 1 if True, and 0 if False
         self.head = np.where(thresholded_head, 1, 0)
         self.air = np.where(thresholded_air, 1, 0)
@@ -84,31 +82,19 @@ class Segmentation:
         return self.head, self.skull, self.masked_array, self.air
     
     
-# Mettre ça mieux pour que ça se répète pas
     def keep_largest_island(self):
         from scipy.ndimage import label, generate_binary_structure
 
-        s = np.where(generate_binary_structure(3,3), 1, 0) # Define the connection between elements
+        def largest_connected_island(mask):
+            s = generate_binary_structure(3, 3)
+            labeled, _ = label(mask, s) # Associate a number to an island
+            counts = np.bincount(labeled.ravel())
+            counts[0] = 0  # ignore background
+            return labeled == np.argmax(counts) # Index of the maximum count = number given by np.label
 
-        labeled_array_head, num_of_structures_head = label(self.head, s) # Associate a number to an island
-        counts = np.bincount(labeled_array_head.ravel()) # Count the number of elements associated with each island (ascending number) 
-        counts[0] = 0 # background count set to zero
-        largest_label_head = np.argmax(counts) # Index of the maximum count = number given by np.label
-        self.head = labeled_array_head == largest_label_head
-        
-        labeled_array_skull, num_of_structures_skull = label(self.skull, s) # Associate a number to an island
-        # plt.imshow(labeled_array_skull[:,:,230], cmap="viridis", origin="lower")
-        # plt.show()
-        counts = np.bincount(labeled_array_skull.ravel()) # Count the number of elements associated with each island (ascending number) 
-        counts[0] = 0 # background count set to zero
-        largest_label_skull = np.argmax(counts) # Index of the maximum count = number given by np.label
-        self.skull = labeled_array_skull == largest_label_skull
-
-        labeled_array, num_of_structures = label(self.masked_array, s) # Associate a number to an island
-        counts = np.bincount(labeled_array.ravel()) # Count the number of elements associated with each island (ascending number) 
-        counts[0] = 0 # background count set to zero
-        largest_label = np.argmax(counts) # Index of the maximum count = number given by np.label
-        self.masked_array = labeled_array == largest_label
+        self.head = largest_connected_island(self.head)
+        self.skull = largest_connected_island(self.skull)
+        self.masked_array = largest_connected_island(self.masked_array)
 
         return self.head, self.skull, self.masked_array
     
@@ -118,7 +104,6 @@ class Segmentation:
 
         self.skull = binary_fill_holes(self.skull)
         return self.skull
-
 
 
     # À finir
@@ -148,7 +133,6 @@ class Segmentation:
         distance = distance_transform_edt(self.masked_array)
         close_to_bone = distance < max_distance
         self.skull = self.skull & close_to_bone
-        # self.skull = self.skull != 1
 
         return self.skull
 
@@ -161,15 +145,13 @@ class Segmentation:
     
     
 
-
-
     
 # Segmentation
-ct_scan = Segmentation()
+# ct_scan = Segmentation()
+ct_scan = Segmentation(folder_path="DICOM_003/Carotid_Angio_0.625mm")
 print("Resolution", ct_scan.resolution, ct_scan.px_spacing)
 ct_scan.cut()
 print("Volume shape", ct_scan.array.shape)
-
 
 ct_scan.apply_threshold()
 ct_scan.keep_largest_island()
@@ -179,6 +161,7 @@ ct_scan.show(ct_scan.skull, 256, "y")
 ct_scan.fill_holes()
 ct_scan.show(ct_scan.skull, 256, "y")
 ct_scan.remove_arteries()
+ct_scan.fill_holes()
 ct_scan.show(ct_scan.skull, 256, "y")
 ct_scan.animation()
 
