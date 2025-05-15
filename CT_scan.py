@@ -57,13 +57,13 @@ class Segmentation:
         # # Si l'axe x passe à travers le nasion et règle de la main droite
         if axis == "z":
             # # Plan axial : Valeur fixe de z
-            plt.imshow(array[slice,:,:], cmap='gist_gray', origin="lower")
+            plt.imshow(array[slice,:,:], cmap='viridis', origin="lower")
         elif axis == "x":
             # # Plan coronal : Valeur fixe de x
             plt.imshow(array[:,slice,:], cmap='gist_gray', origin="lower")
         elif axis == "y":
             # # Plan coronal : Valeur fixe de y
-            plt.imshow(array[:,:,slice], cmap='gist_gray', origin="lower")
+            plt.imshow(array[:,:,slice], cmap='viridis', origin="lower")
         else:
             raise TypeError("Must be x, y or z")
         plt.show()
@@ -75,7 +75,7 @@ class Segmentation:
         thresholded_head = self.array >= threshold_head
         thresholded_air = self.array <= threshold_head
         thresholded_skull = self.array >= threshold_skull
-        thresholded = np.logical_and(self.array >= threshold_head, self.array <= threshold_skull) #self.array <= threshold_skull
+        thresholded = self.array >= 550#np.logical_and(self.array >= threshold_head, self.array <= threshold_skull) #self.array <= threshold_skull
         # Put the value 1 if True, and 0 if False
         self.head = np.where(thresholded_head, 1, 0)
         self.air = np.where(thresholded_air, 1, 0)
@@ -120,14 +120,6 @@ class Segmentation:
         return self.skull
 
 
-    def find_nose(self):
-        for slice in range(0, len(self.skull[:,1,1])):
-            pass
-
-        iz, ix, iy = np.where(self.skull)
-        x_center, y_center, z_center = int(np.mean(ix)), int(np.mean(iy)), int(np.mean(iz))
-        print(x_center, y_center, z_center) # Le centre en z est inutile : pas à la hauteur du nez.
-
 
     # À finir
     def save_to_dicom(self):
@@ -148,72 +140,17 @@ class Segmentation:
             dcm_file_skull.save_as(f'skull{i}.dcm')
         
 
-    def binary_closing(self, iterations=2):
-        from scipy.ndimage import binary_dilation, binary_erosion, binary_closing, generate_binary_structure, iterate_structure#, label
-        from skimage.morphology import ball, erosion, dilation
-        from skimage.measure import label
 
+    def remove_arteries(self, max_distance = 5):
+        from scipy.ndimage import distance_transform_edt
+
+        self.masked_array = self.masked_array != 1
+        distance = distance_transform_edt(self.masked_array)
+        close_to_bone = distance < max_distance
+        self.skull = self.skull & close_to_bone
         # self.skull = self.skull != 1
-        # self.skull = np.where(self.skull, 1, 0)
-        # self.skull = binary_closing(self.skull, iterations=iterations)
-        # self.skull = self.skull != 1
-        # self.skull = np.where(self.skull, 1, 0)
-
-
-        r2 = ball(2)
-        r3 = ball(3)
-
-        # erosion = binary_erosion(self.skull, structure=r2)
-        # erosion = np.where(erosion, 1, 0)
-        # print(erosion.shape)
-
-        # labeled_array, num_of_structures = label(erosion, r2) # Associate a number to an island
-        
-        # dilation = binary_dilation(labeled_array, structure=r3)
-        labeled_skull = erosion(self.skull, r2)[0]
-        labeled_skull = np.where(labeled_skull, 1, 0)
-        print(labeled_skull)
-
-        labeled_array, num_of_structures = label(labeled_skull, r2) # Associate a number to an island
-        
-        
-        labeled_skull = dilation(labeled_array, r3)
-
-
-        self.skull = labeled_skull
-        self.skull = np.where(self.skull, 1, 0)
-
-        # radius = 5
-        # volume = self.skull
-        # struct = generate_binary_structure(3, 1)  # 3D connectivity
-        # struct = iterate_structure(struct, radius)
-        # # Apply morphological closing
-        # closed = binary_closing(volume, structure=struct)
-        # self.skull = closed
-
-
-        # min_size = 500
-        # volume = self.skull
-        # labeled, num = label(volume)
-        # output = np.zeros_like(volume)
-        # for i in range(1, num + 1):
-        #     component = (labeled == i)
-        #     if component.sum() >= min_size:
-        #         output[component] = 1
-        # self.skull = output
 
         return self.skull
-    
-
-    def test(self):
-        from scipy.ndimage import binary_dilation, binary_erosion, binary_closing
-        iter = 13
-        self.masked_array = binary_erosion(self.masked_array, iterations=iter)
-        self.masked_array = binary_dilation(self.masked_array, iterations=iter+2)
-        self.masked_array = binary_erosion(self.masked_array, iterations=3)
-
-
-        return self.masked_array
 
 
     def animation(self):
@@ -223,9 +160,6 @@ class Segmentation:
         fig.show()
     
     
-
-
-
 
 
 
@@ -240,22 +174,12 @@ print("Volume shape", ct_scan.array.shape)
 ct_scan.apply_threshold()
 ct_scan.keep_largest_island()
 
-ct_scan.show(ct_scan.air, 256, "y")
-
-# ct_scan.test()
-# ct_scan.keep_largest_island()
-# ct_scan.show(ct_scan.masked_array, 256, "x")
-
-
-
 # ya une ligne qui touche où le nez pour ct_scan.head qui ne s'en va pas (sur 3D slicer non plus)
-ct_scan.show(ct_scan.skull, 156, "z")
-ct_scan.fill_holes()
-# ct_scan.animation()
 ct_scan.show(ct_scan.skull, 256, "y")
-ct_scan.binary_closing()
-# ct_scan.keep_largest_island()
-ct_scan.show(ct_scan.skull, 156, "z")
+ct_scan.fill_holes()
+ct_scan.show(ct_scan.skull, 256, "y")
+ct_scan.remove_arteries()
+ct_scan.show(ct_scan.skull, 256, "y")
 ct_scan.animation()
 
 
