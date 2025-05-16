@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import os
 
 
 class Segmentation:
@@ -18,7 +19,6 @@ class Segmentation:
 
     def load_file(self, max_files=2000):
         import pydicom as dicom
-        import os
 
         dcms = []
         for i in range(1, max_files):
@@ -121,7 +121,6 @@ class Segmentation:
     # À finir
     def save_to_dicom(self):
         import pydicom as dicom
-        import os
         dcms = []
         for i in range(0, len(self.skull[:,1,1])-1):
             filename = f"I100.dcm" # Doesn't matter which one
@@ -142,32 +141,23 @@ class Segmentation:
     # Marche mal
     def animation(self):
         import plotly.express as px
-        img = ct_scan.skull
+        img = self.skull
         fig = px.imshow(img, animation_frame=0, binary_string=True, labels=dict(animation_frame="slice"))
-        fig.show() 
-    
+        fig.show()
+
+
+    def save_to_pickle(self, object=None, file_name = "head"):
+        import pickle
+        if object is None:
+            object = self.head
+        with open(file_name+".pickle", "wb") as f:  # "wb" = write binary
+            pickle.dump(object, f)
+
+
+    def open_pickle(self, file_name="head"):
+        import pickle
+        with open(file_name+".pickle", "rb") as f:
+            self.head = pickle.load(f) # Faudrait que self.head ait un nom modifiable
+            self.head = np.where(self.head, 1, 0)
 
     
-# Segmentation
-ct_scan = Segmentation()
-# ct_scan = Segmentation(folder_path="DICOM_003/Carotid_Angio_0.625mm")
-print("Resolution", ct_scan.resolution, ct_scan.px_spacing)
-ct_scan.cut()
-print("Volume shape", ct_scan.array.shape)
-
-ct_scan.apply_threshold()
-ct_scan.keep_largest_island()
-
-# ya une ligne qui touche où le nez pour ct_scan.head qui ne s'en va pas (sur 3D slicer non plus)
-ct_scan.show(ct_scan.skull, 256, "y")
-ct_scan.fill_holes()
-ct_scan.show(ct_scan.skull, 256, "y")
-# ct_scan.animation()
-ct_scan.remove_arteries()
-ct_scan.fill_holes()
-ct_scan.show(ct_scan.skull, 256, "y")
-ct_scan.animation()
-
-
-
-
