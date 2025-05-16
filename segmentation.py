@@ -68,7 +68,7 @@ class Segmentation:
         plt.show()
 
 
-    def apply_threshold(self, threshold_head=-200, threshold_skull=200, threshold_no_arteries = 550):
+    def apply_threshold(self, threshold_head=-200, threshold_skull=200, threshold_no_arteries = 500):
         # Array with "True" where it is, and "False" where it is not
         thresholded_head = self.array >= threshold_head
         thresholded_air = self.array <= threshold_head
@@ -106,7 +106,7 @@ class Segmentation:
         return self.skull
 
 
-    def remove_arteries(self, max_distance = 3): # Pour cow mettre 3 et seuil 300. Pour carotid mettre 5 et seuil 200
+    def remove_arteries(self, max_distance = 3): # Mettre 200 et 500 comme seuil avec cette distance
         from scipy.ndimage import distance_transform_edt, binary_dilation, generate_binary_structure
 
         self.masked_array = self.masked_array != 1
