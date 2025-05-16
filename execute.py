@@ -16,11 +16,11 @@ ct_scan.keep_largest_island()
 # ct_scan.show(ct_scan.skull, 256, "y")
 ct_scan.fill_holes()
 # ct_scan.show(ct_scan.skull, 256, "y")
-# ct_scan.animation()
+# ct_scan.animation(ct_scan.skull)
 ct_scan.remove_arteries()
 ct_scan.fill_holes()
 # ct_scan.show(ct_scan.skull, 256, "y")
-# ct_scan.animation()
+# ct_scan.animation(ct_scan.skull)
 
 
 # Trouver un moyen de ne pas toujours avoir besoin de re-rouler "segmentation" pour avoir "head"

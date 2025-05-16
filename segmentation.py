@@ -41,17 +41,28 @@ class Segmentation:
         self.resolution = resolution
         self.px_spacing = px_spacing
         return self.array, self.resolution, self.px_spacing
+    
 
+        # À finir
+    def save_to_dicom(self):
+        import pydicom as dicom
+        dcms = []
+        for i in range(0, len(self.skull[:,1,1])-1):
+            filename = f"I100.dcm" # Doesn't matter which one
+            path = os.path.join(self.folder_path, filename)
+            path = self.folder_path
+            dcm_file_head = dicom.dcmread(path)
+            dcm_file_skull = dicom.dcmread(path)
 
-    def cut(self):
-        # Cut from the top of the CT scan depending on the resolution
-        if self.resolution == 0.6:
-            self.array = self.array[-256:,:,:]
-        else :
-            self.array = self.array[-512:,:,:]
-        return self.array
+            # Je dois mettre la slice en z pour avoir une array 2D
+            dcm_file_head.PixelData = self.skull[i,:,:].tobytes()
+            dcm_file_skull.PixelData = self.head[i,:,:].tobytes()
 
+            # Est-ce que ya juste l'array qui change d'un fichier dicom à l'autre?
+            dcm_file_head.save_as(f"head{i}.dcm")
+            dcm_file_skull.save_as(f'skull{i}.dcm')
 
+        
     def show(self, array, slice, axis):
         # # Si l'axe x passe à travers le nasion et règle de la main droite
         if axis == "z":
@@ -66,6 +77,37 @@ class Segmentation:
         else:
             raise TypeError("Must be x, y or z")
         plt.show()
+
+
+    # Marche mal
+    def animation(self, img):
+        import plotly.express as px
+        fig = px.imshow(img, animation_frame=0, binary_string=True, labels=dict(animation_frame="slice"))
+        fig.show()
+
+
+    def save_to_pickle(self, object=None, file_name = "head"):
+        import pickle
+        if object is None:
+            object = self.head
+        with open(file_name+".pickle", "wb") as f:  # "wb" = write binary
+            pickle.dump(object, f)
+
+
+    def open_pickle(self, file_name="head"):
+        import pickle
+        with open(file_name+".pickle", "rb") as f:
+            self.head = pickle.load(f) # Faudrait que self.head ait un nom modifiable
+            self.head = np.where(self.head, 1, 0)
+
+
+    def cut(self):
+        # Cut from the top of the CT scan depending on the resolution
+        if self.resolution == 0.6:
+            self.array = self.array[-256:,:,:]
+        else :
+            self.array = self.array[-512:,:,:]
+        return self.array
 
 
     def apply_threshold(self, threshold_head=-200, threshold_skull=200, threshold_no_arteries = 500):
@@ -118,46 +160,8 @@ class Segmentation:
         return self.skull
     
 
-    # À finir
-    def save_to_dicom(self):
-        import pydicom as dicom
-        dcms = []
-        for i in range(0, len(self.skull[:,1,1])-1):
-            filename = f"I100.dcm" # Doesn't matter which one
-            path = os.path.join(self.folder_path, filename)
-            path = self.folder_path
-            dcm_file_head = dicom.dcmread(path)
-            dcm_file_skull = dicom.dcmread(path)
-
-            # Je dois mettre la slice en z pour avoir une array 2D
-            dcm_file_head.PixelData = self.skull[i,:,:].tobytes()
-            dcm_file_skull.PixelData = self.head[i,:,:].tobytes()
-
-            # Est-ce que ya juste l'array qui change d'un fichier dicom à l'autre?
-            dcm_file_head.save_as(f"head{i}.dcm")
-            dcm_file_skull.save_as(f'skull{i}.dcm')
 
 
-    # Marche mal
-    def animation(self):
-        import plotly.express as px
-        img = self.skull
-        fig = px.imshow(img, animation_frame=0, binary_string=True, labels=dict(animation_frame="slice"))
-        fig.show()
 
-
-    def save_to_pickle(self, object=None, file_name = "head"):
-        import pickle
-        if object is None:
-            object = self.head
-        with open(file_name+".pickle", "wb") as f:  # "wb" = write binary
-            pickle.dump(object, f)
-
-
-    def open_pickle(self, file_name="head"):
-        import pickle
-        with open(file_name+".pickle", "rb") as f:
-            self.head = pickle.load(f) # Faudrait que self.head ait un nom modifiable
-            self.head = np.where(self.head, 1, 0)
 
     
