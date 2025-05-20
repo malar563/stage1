@@ -81,7 +81,7 @@ class Identification(Segmentation):
         # Approximation : nose's y position = nasion's y position 
         nasion_x = counts_x[nasion_y, nose_x + np.argmin(derive)]
         half_head_nasion_x = x_half_head[nasion_y,:,nasion_x]
-        nasion_x = np.nonzero(half_head_nasion_x)[0][0]
+        nasion_x = np.nonzero(half_head_nasion_x)[0][0]-1 # RAJOUT DU 1 POUR POGNER L'EXTÉRIEUR?
         print(nasion_x)
         
         nasion_z = nasion_y
