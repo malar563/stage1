@@ -72,7 +72,7 @@ class Segmentation:
             # # Plan coronal : Valeur fixe de x
             plt.imshow(array[:,slice,:], cmap='gist_gray', origin="lower")
         elif axis == "y":
-            # # Plan coronal : Valeur fixe de y
+            # # Plan sagittal : Valeur fixe de y
             plt.imshow(array[:,:,slice], cmap='gist_gray', origin="lower")
         else:
             raise TypeError("Must be x, y or z")

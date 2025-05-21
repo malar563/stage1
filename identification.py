@@ -33,63 +33,55 @@ class Identification(Segmentation):
         # Sum up one values of the binary mask on the x axis (3D array -> 2D array)
         counts_x = np.sum(x_half_head, axis = 1) # axis=2 donne somme en y, axis=0 donne somme en z
 
-        # Index of the maximal values for each axis (new coordinate system)
-        argmax_x = np.argmax(counts_x, axis=0) # En x
-        argmax_y = np.argmax(counts_x, axis=1) # En y
-        # print(np.mean(argmax_y))
+        # Index of the maximal values for y axis
+        argmax_y = np.argmax(counts_x, axis=0)
 
-        # Finding x, y coordinate of the nose
+        # Finding y, z coordinate of the nose
         from scipy.ndimage import gaussian_filter1d
-        argmax_x_filtered = gaussian_filter1d(argmax_x, sigma=3)
-        derive = np.gradient(argmax_x_filtered)
+        argmax_y_filtered = gaussian_filter1d(argmax_y, sigma=3)
+        derive = np.gradient(argmax_y_filtered)
         
-        # Keep the middle part of the scan and find the y position of the tip of the nose
+        # Keep the middle part of the scan and find the z position of the tip of the nose
         nose_section = counts_x[:,np.argmin(derive):np.argmax(derive)]
-        nose_y = int(np.mean(argmax_x[np.argmin(derive):np.argmax(derive)]))
-        # print(nose_y)
-        # # Au lieu de faire une moyenne pour le nez en x, fiter une gaussienne? Mais est-ce que le nez a une forme gaussienne??
-        # nose_x = int((np.argmin(derive)+np.argmax(derive))//2) - np.argmin(derive)
+        nose_z = int(np.mean(argmax_y[np.argmin(derive):np.argmax(derive)]))
+        # print(nose_z)
+        # # Au lieu de faire une moyenne pour le nez en y, fiter une gaussienne? Mais est-ce que le nez a une forme gaussienne??
+        # nose_y = int((np.argmin(derive)+np.argmax(derive))//2) - np.argmin(derive)
 
         # Fit the x position of the nose tip
         from scipy.optimize import curve_fit
         def gaussian(x, height, position, std, offset):
             return height*np.exp(-((x-position)**2)/(2*std**2))+offset
-        x = np.arange(0, len(counts_x[nose_y,:]))
-        params, _ = curve_fit(gaussian, x, counts_x[nose_y,:])
-        height, nose_x, std, offset = params
-        # print(nose_x)
-        nose_x = int(nose_x)
+        x = np.arange(0, len(counts_x[nose_z,:]))
+        params, _ = curve_fit(gaussian, x, counts_x[nose_z,:])
+        height, nose_y, std, offset = params
+        # print(nose_y)
+        nose_y = int(nose_y)
         
         plt.imshow(nose_section, origin="lower")
-        plt.scatter([nose_x], [nose_y], c="b")
+        plt.scatter([nose_y], [nose_z], c="b")
         plt.show()
 
-
+        # Find the peak of the nasion
         from scipy.signal import find_peaks
-        central_axis = nose_section[:,nose_x]
-        nasion_y = find_peaks(-1*central_axis, prominence=5)[0][-1] # prominence = 4 : métal du nez disparaît, prominence = 6 : plus grande valeur possible
+        central_axis = nose_section[:,nose_y]
+        nasion_z = find_peaks(-1*central_axis, prominence=5)[0][-1] # prominence = 4 : métal du nez disparaît, prominence = 6 : plus grande valeur possible
         # print(nasion_y)
         plt.plot(-1*central_axis)
         plt.show()
 
         plt.imshow(nose_section, origin="lower")
-        plt.scatter([nose_x], [nose_y], c="b")
-        plt.scatter([nose_x], [nasion_y], c="r")
+        plt.scatter([nose_y], [nose_z], c="b")
+        plt.scatter([nose_y], [nasion_z], c="r")
         plt.show()
     
-        # ATTENTION!! Back to the previous coordinate system (z, x, y)
-        # Approximation : nose's y position = nasion's y position 
-        nasion_x = counts_x[nasion_y, nose_x + np.argmin(derive)]
-        half_head_nasion_x = x_half_head[nasion_y,:,nasion_x]
-        nasion_x = np.nonzero(half_head_nasion_x)[0][0]-1 # RAJOUT DU 1 POUR POGNER L'EXTÉRIEUR?
-        print(nasion_x)
-        
-        nasion_z = nasion_y
-        nasion_y = nose_x +  np.argmin(derive)
+        # Approximation : nose's y position = nasion's y position
+        nasion_y = nose_y +  np.argmin(derive) 
+        nasion_x = counts_x[nasion_z, nasion_y]
+        nasion_x = np.nonzero(self.head[nasion_z,:,nasion_y])[0][0]
         
         # Nasion en (x, y, z)
-        self.nasion = nasion_x, nasion_y, nasion_z # (x, y, z)
-        # NASION_X EST ISHH BON : ÇA DEVRAIT DONNER ENVIRON 51 MAIS ÇA DONNE 56
+        self.nasion = nasion_x, nasion_y, nasion_z
         return self.nasion
     
 
@@ -103,10 +95,14 @@ class Identification(Segmentation):
         plt.imshow(self.head[:,self.nasion[0],:], origin="lower")
         plt.scatter([self.nasion[1]], [self.nasion[2]], c="r")
         plt.show()
-        # # Plan coronal : Valeur fixe de y
+        # # Plan sagittal : Valeur fixe de y
         plt.imshow(self.head[:,:,self.nasion[1]], origin="lower")
         plt.scatter([self.nasion[0]], [self.nasion[2]], c="r")
         plt.show()
+
+    
+    def find_lpa_rpa(self):
+        pass
 
 
     
