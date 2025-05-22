@@ -1,10 +1,11 @@
 import dicom2nifti
 import nibabel as nib
 import os
-import ants
+# import ants
 
 
-def dcm_to_nifti(dicom_directory = r'C:\Users\maryl\Documents\Universite\Stage\ete2025\stage1\DICOM_003\Carotid_Angio_0.625mm', output_directory = r'C:\Users\maryl\Documents\Universite\Stage\ete2025\nifti_test'):
+# def dcm_to_nifti(dicom_directory = "DICOM_003/Carotid_Angio_0.625mm", output_directory = "nifti"):
+def dcm_to_nifti(dicom_directory = "DICOM_010/COW_Angio_0.6_Hv36_3", output_directory = "nifti"):
     
     # Crée le fichier demandé
     os.makedirs(output_directory, exist_ok=True)
@@ -33,5 +34,4 @@ def dcm_to_nifti(dicom_directory = r'C:\Users\maryl\Documents\Universite\Stage\e
     return data
  
 
-
-print(dcm_to_nifti())
+# print(dcm_to_nifti())

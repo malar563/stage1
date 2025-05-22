@@ -27,3 +27,9 @@ head = ct_scan.head
 ct_scan.save_to_pickle(file_name="head")
 
 # ct_scan.show(head, 256, "y")
+
+
+
+# Si avec ants :
+# 1 - Convertir tous les fichiers dicom en .nii avec nifti.py
+# 2 - 
