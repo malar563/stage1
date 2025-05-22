@@ -4,14 +4,14 @@ import os
 # import ants
 
 
-# def dcm_to_nifti(dicom_directory = "DICOM_003/Carotid_Angio_0.625mm", output_directory = "nifti"):
-def dcm_to_nifti(dicom_directory = "DICOM_010/COW_Angio_0.6_Hv36_3", output_directory = "nifti"):
+def dcm_to_nifti(dicom_directory = "DICOM_003/Carotid_Angio_0.625mm", output_directory = "nifti"):
+# def dcm_to_nifti(dicom_directory = "DICOM_010/COW_Angio_0.6_Hv36_3", output_directory = "nifti"):
     
     # Crée le fichier demandé
     os.makedirs(output_directory, exist_ok=True)
 
     # Convertit les fichiers DICOM vers NIfTI (compression=False -> .nii au lieu de .nii.gz)
-    dicom2nifti.convert_directory(dicom_directory, output_directory, compression=False)
+    dicom2nifti.convert_directory(dicom_directory, output_directory, compression=True)
 
     # Trouve le fichier généré dans le dossier de sortie
     nifti_files = [f for f in os.listdir(output_directory) if f.endswith('.nii')]
@@ -34,4 +34,4 @@ def dcm_to_nifti(dicom_directory = "DICOM_010/COW_Angio_0.6_Hv36_3", output_dire
     return data
  
 
-# print(dcm_to_nifti())
+print(dcm_to_nifti())
