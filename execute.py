@@ -1,4 +1,3 @@
-
 from segmentation import Segmentation
 
 
@@ -25,6 +24,6 @@ ct_scan.fill_holes()
 
 # Trouver un moyen de ne pas toujours avoir besoin de re-rouler "segmentation" pour avoir "head"
 head = ct_scan.head
-ct_scan.save_to_pickle()
+ct_scan.save_to_pickle(file_name="head")
 
 # ct_scan.show(head, 256, "y")
