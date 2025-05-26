@@ -14,7 +14,8 @@ class Segmentation:
         self.masked_array = None
         self.head = None
         self.skull = None
-        self.air = None    
+        self.air = None
+        self.test = None    
 
 
     def load_file(self, max_files=2000):
@@ -116,12 +117,14 @@ class Segmentation:
         thresholded_air = self.array <= threshold_head
         thresholded_skull = self.array >= threshold_skull
         thresholded = self.array >= threshold_no_arteries
+        test = (self.array <= threshold_skull) & (self.array >= threshold_head)
         # Put the value 1 if True, and 0 if False
         self.head = np.where(thresholded_head, 1, 0)
         self.air = np.where(thresholded_air, 1, 0)
         self.skull = np.where(thresholded_skull, 1, 0)
         self.masked_array = np.where(thresholded, 1, 0)
-        return self.head, self.skull, self.masked_array, self.air
+        self.test = np.where(test, 1, 0)
+        return self.head, self.skull, self.masked_array, self.air, self.test
     
     
     def keep_largest_island(self):
@@ -137,8 +140,9 @@ class Segmentation:
         self.head = largest_connected_island(self.head)
         self.skull = largest_connected_island(self.skull)
         self.masked_array = largest_connected_island(self.masked_array)
+        self.test = largest_connected_island(self.test)
 
-        return self.head, self.skull, self.masked_array
+        return self.head, self.skull, self.masked_array, self.test
     
 
     def fill_holes(self):
@@ -160,4 +164,15 @@ class Segmentation:
         return self.skull
     
 
+# Segmentation
+ct_scan = Segmentation()
+# ct_scan = Segmentation(folder_path="DICOM_003/Carotid_Angio_0.625mm")
+print("Resolution", ct_scan.resolution, ct_scan.px_spacing)
+ct_scan.cut()
+print("Volume shape", ct_scan.array.shape)
 
+ct_scan.apply_threshold()
+ct_scan.keep_largest_island()
+
+ct_scan.fill_holes()
+ct_scan.show(ct_scan.test, 256, "y")
