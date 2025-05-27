@@ -17,12 +17,14 @@ def open_pickle(file_name="head"):
 # À faire : resampling
 
 # Read with SimpleITK
-moving_image = sitk.ReadImage('nifti/6_cow_angio__06__hv36__3.nii.gz', sitk.sitkFloat64)[:,:,-256:] #[-256:,:,:] # Marche pas
+# moving_image = sitk.ReadImage('nifti/6_cow_angio__06__hv36__3.nii.gz', sitk.sitkFloat64)[:,:,-256:] #[-256:,:,:] # Marche pas
 fixed_image = sitk.ReadImage('nifti/301_carotid_angio_0625mm.nii.gz', sitk.sitkFloat64)[:,:,-256:]
 
+moving_image = sitk.ReadImage('nifti/segm.nii', sitk.sitkFloat64)[:,:,-256:]
 
 
-plt.imshow(sitk.GetArrayViewFromImage(moving_image)[2])
+
+plt.imshow(sitk.GetArrayViewFromImage(moving_image)[125])
 plt.show()
 
 # numpy -> SimpleITK

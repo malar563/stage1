@@ -140,9 +140,11 @@ class Segmentation:
         self.head = largest_connected_island(self.head)
         self.skull = largest_connected_island(self.skull)
         self.masked_array = largest_connected_island(self.masked_array)
+        self.air = largest_connected_island(self.air != 1)
+        self.air = np.where(self.air, 0, 1)
         self.test = largest_connected_island(self.test)
 
-        return self.head, self.skull, self.masked_array, self.test
+        return self.head, self.skull, self.masked_array, self.test, self.air
     
 
     def fill_holes(self):
@@ -163,6 +165,17 @@ class Segmentation:
 
         return self.skull
     
+    def tests(self):
+        from scipy.ndimage import binary_dilation, binary_erosion, binary_fill_holes
+        # self.skull = binary_dilation(self.skull, iterations=10)
+        # self.skull = binary_erosion(self.skull, iterations=10)
+        # self.skull = binary_fill_holes(self.skull, iterations=10)
+        # return self.skull
+        self.air = self.skull + self.air
+        self.air = binary_dilation(self.air, iterations=10)
+        self.air = binary_erosion(self.air, iterations=10)
+        return self.air
+    
 
 # Segmentation
 ct_scan = Segmentation()
@@ -175,4 +188,8 @@ ct_scan.apply_threshold()
 ct_scan.keep_largest_island()
 
 ct_scan.fill_holes()
-ct_scan.show(ct_scan.test, 256, "y")
+ct_scan.tests()
+# ct_scan.show(ct_scan.skull, 256, "y")
+ct_scan.show(ct_scan.air, 256, "y")
+ct_scan.show(ct_scan.air, 245, "y")
+ct_scan.show(ct_scan.air, 230, "y")
