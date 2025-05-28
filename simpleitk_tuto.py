@@ -1,36 +1,28 @@
 import SimpleITK as sitk
-# import registration_gui as rgui
 
 import numpy as np
 import os
 import matplotlib.pyplot as plt
+import nibabel as nib
 
-
-
-def open_pickle(file_name="head"):
-    import pickle
-    with open(file_name+".pickle", "rb") as f:
-        head = pickle.load(f)
-        head = np.where(head, 1, 0)
-    return head
-
-# À faire : resampling
 
 # Read with SimpleITK
-# moving_image = sitk.ReadImage('nifti/6_cow_angio__06__hv36__3.nii.gz', sitk.sitkFloat64)[:,:,-256:] #[-256:,:,:] # Marche pas
-fixed_image = sitk.ReadImage('nifti/301_carotid_angio_0625mm.nii.gz', sitk.sitkFloat64)[:,:,-256:]
+moving_image = sitk.ReadImage('nifti/2/brain2.nii', sitk.sitkFloat64)
+# moving_image = sitk.ReadImage('nifti/1/brain1.nii', sitk.sitkFloat64)
 
-moving_image = sitk.ReadImage('nifti/segm.nii', sitk.sitkFloat64)[:,:,-256:]
+# Reference image
+fixed_image = sitk.ReadImage('nifti/miplab-ncct_sym_brain.nii.gz', sitk.sitkFloat64)
 
 
-
-plt.imshow(sitk.GetArrayViewFromImage(moving_image)[125])
+# plt.imshow(sitk.GetArrayViewFromImage(moving_image)[256], origin="lower")
+plt.imshow(sitk.GetArrayViewFromImage(moving_image)[123], origin="lower")
+plt.show()
+plt.imshow(sitk.GetArrayViewFromImage(fixed_image)[100], origin="lower")
 plt.show()
 
-# numpy -> SimpleITK
-head = open_pickle()
+
 # Must be same type + same size
-print(head.shape)
+print(sitk.GetArrayViewFromImage(fixed_image).shape)
 print(sitk.GetArrayViewFromImage(moving_image).shape)
 # fixed_image = sitk.GetImageFromArray(head.astype(float))
 
