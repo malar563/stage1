@@ -4,7 +4,6 @@ import os
 from totalsegmentator.python_api import totalsegmentator
 
 
-
 def dcm_to_nifti(dicom_directory = "DICOM_003/Carotid_Angio_0.625mm", output_directory = "nifti", crop="ouioui"):
 
     # Create the output_directory file
@@ -51,12 +50,11 @@ def dcm_to_nifti(dicom_directory = "DICOM_003/Carotid_Angio_0.625mm", output_dir
         # print("Entête :", header)
         # print("Eaffine :", affine)
         # print("data :", data)
+        return "cropped_"+nifti_files[0]
 
-# Rendre plus automatique : si je ne mets pas nifti/1 et /2, ils s'overwritent
-dcm_to_nifti(dicom_directory = "DICOM_003/Carotid_Angio_0.625mm", output_directory = "nifti/1")
-dcm_to_nifti(dicom_directory = "DICOM_010/COW_Angio_0.6_Hv36_3", output_directory = "nifti/2")
-
-
+# # Rendre plus automatique : si je ne mets pas nifti/1 et /2, ils s'overwritent
+# dcm_to_nifti(dicom_directory = "DICOM_003/Carotid_Angio_0.625mm", output_directory = "nifti/1")
+# dcm_to_nifti(dicom_directory = "DICOM_010/COW_Angio_0.6_Hv36_3", output_directory = "nifti/2")
 
 
 def segment(input_path="nifti/2/cropped_6_cow_angio__06__hv36__3.nii.gz", output_path="test", fast=False, only_brain=False):
@@ -72,4 +70,22 @@ def segment(input_path="nifti/2/cropped_6_cow_angio__06__hv36__3.nii.gz", output
         # Skull is labeled with the number 91
         
 # segment(input_path="nifti/2/cropped_6_cow_angio__06__hv36__3.nii.gz", output_path="nifti/2/totalsegmentator2")
-segment(input_path="nifti/1/cropped_301_carotid_angio_0625mm.nii.gz", output_path="nifti/1/totalsegmentator1")
+# segment(input_path="nifti/1/cropped_301_carotid_angio_0625mm.nii.gz", output_path="nifti/1/totalsegmentator1")
+
+
+
+# TROUVER LE MOYEN DE FAIRE MARCHER ÇA AUTOMATIQUE
+dicoms_list = ["DICOM_003/Carotid_Angio_0.625mm", "DICOM_010/COW_Angio_0.6_Hv36_3"]
+
+def automatic(dicoms_list = dicoms_list, filename4niftis = "testtii"):
+    for i, file_path in enumerate(dicoms_list):
+        file = dcm_to_nifti(dicom_directory = file_path, output_directory = filename4niftis + f"/{i+1}")
+        segment(input_path = filename4niftis+f"/{i+1}/"+file, output_path = filename4niftis+f"/{i+1}/"+"totalsegmented"+f"{i+1}")
+
+# automatic()
+
+segm_img = nib.load("nifti/2/totalsegmentator2.nii")
+# print(segm_img.shape)
+
+
+
