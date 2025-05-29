@@ -3,71 +3,69 @@ import matplotlib.pyplot as plt
 import SimpleITK as sitk
 import numpy as np
 
-# A path to a T1-weighted brain .nii image:
-t1_fn = 'nifti/6_cow_angio__06__hv36__3.nii.gz'
-
-# Read the .nii image containing the volume with SimpleITK:
-sitk_t1 = sitk.ReadImage(t1_fn)
-print(sitk_t1)
-
-# and access the numpy array:
-t1 = sitk.GetArrayFromImage(sitk_t1)
-print(t1)
-
-
-
-
-# TUTORIEL : https://github.com/ANTsX/ANTsPy/blob/master/tutorials/10minTutorial.ipynb
-# You can read also convert numpy arrays to ANTsImage types.. Here's an example of an fMRI image (an image with "components")
-
-# arr_4d = np.random.randn(70,70,70,10).astype('float32')
-# img_fmri = ants.from_numpy(arr_4d, has_components=True)
-# print(img_fmri)
-
-# # Segmentation (je vois pas en quoi c'est mieux que ce que j'ai fait... À explorer)
-# img = ants.image_read(ants.get_ants_data('r16'))
-# print(img)
-# img = ants.resample_image(img, (64,64), 1, 0)
-# mask = ants.get_mask(img)
-# img_seg = ants.atropos(a=img, m='[0.2,1x1]', c='[2,0]', 
-#                        i='kmeans[3]', x=mask)
-# print(img_seg.keys())
-# ants.plot(img_seg['segmentation'])
-
-
-# img = ants.image_read( ants.get_ants_data('r16') ,2)
-# mask = ants.get_mask( img ).threshold_image( 1, 2 )
-# segs=ants.atropos( a = img, m = '[0.2,1x1]', c = '[2,0]',  i = 'kmeans[3]', x = mask )
-# thickimg = ants.kelly_kapowski(s=segs['segmentation'], g=segs['probabilityimages'][1],
-#                             w=segs['probabilityimages'][2], its=45, 
-#                             r=0.5, m=1)
-# print(thickimg)
-# img.plot(overlay=thickimg, overlay_cmap='jet')
-
-# # Registration (ce que moi j'ai besoin : réorienter)
-# fixed = ants.image_read( ants.get_ants_data('r16') ).resample_image((64,64),1,0)
-# moving = ants.image_read( ants.get_ants_data('r64') ).resample_image((64,64),1,0)
-# fixed.plot(overlay=moving, title='Before Registration')
-# mytx = ants.registration(fixed=fixed , moving=moving, type_of_transform='SyN' )
-# print(mytx)
-# warped_moving = mytx['warpedmovout']
-# fixed.plot(overlay=warped_moving,
-#            title='After Registration')
-
-
-# Move to & from nibabel images with ants.to_nibabel() and ants.from_nibabel() # Utile pour moi?
-
-
-
 
 
 # TUTORIEL FINI
-img = ants.image_read('nifti/6_cow_angio__06__hv36__3.nii.gz')
-img2 = ants.image_read('nifti/301_carotid_angio_0625mm.nii.gz').numpy()
+# img = ants.image_read('nifti/6_cow_angio__06__hv36__3.nii.gz')
+# img2 = ants.image_read('nifti/301_carotid_angio_0625mm.nii.gz').numpy()
+# template = ants.image_read("MNI152_T1_1mm.nii.gz")
+# print(template)
 
-template = ants.image_read("MNI152_T1_1mm.nii.gz")
 
-print(template)
+# Début tutoo
+import matplotlib.pyplot as plt
+from matplotlib.widgets import Slider
+import numpy as np
+
+def explore_3D_array(arr):
+    
+    fig, ax = plt.subplots()
+    plt.subplots_adjust(bottom=0.25)
+
+    # Initial slice index
+    index = arr.shape[0] // 2
+    img = ax.imshow(arr[index, :, :], cmap="gray", origin="lower")
+
+    # Slider setup
+    ax_slider = plt.axes([0.2, 0.1, 0.65, 0.03])
+    slice_slider = Slider(ax_slider, 'Slice', 0, arr.shape[0] - 1, valinit=index, valstep=1)
+
+    def update(val):
+        img.set_data(arr[int(slice_slider.val), :, :])
+        fig.canvas.draw_idle()
+
+    slice_slider.on_changed(update)
+    plt.show()
+
+
+
+
+
+raw_img_ants = ants.image_read('nifti/2/brain2.nii', reorient='IAL')
+explore_3D_array(arr=raw_img_ants.numpy())
+
+template_img_ants = ants.image_read('nifti/miplab-ncct_sym_brain.nii.gz', reorient='IAL')
+explore_3D_array(arr = template_img_ants.numpy())
+
+# Image properties
+print('\t\tRAW IMG')
+print(raw_img_ants)
+print('\t\tTEMPLATE IMG')
+print(template_img_ants)
+
+transformation = ants.registration(
+    fixed=template_img_ants,
+    moving=raw_img_ants, 
+    type_of_transform='SyN',
+    verbose=True
+)
+
+print(transformation)
+
+registered_img_ants = transformation['warpedmovout']
+explore_3D_array(arr=registered_img_ants.numpy())
+
+
 
 
 # ants.plot(img, overlay = img > img.mean())
@@ -88,11 +86,11 @@ print(template)
 # plt.imshow(img[:,:,700], origin="lower")
 # plt.show()
 
-print(img2)
+# print(img2)
 
-plt.imshow(img2[250,:,:], origin="lower")
-plt.show()
-plt.imshow(img2[:,250,:], origin="lower")
-plt.show()
-plt.imshow(img2[:,:,700], origin="lower")
-plt.show()
+# plt.imshow(img2[250,:,:], origin="lower")
+# plt.show()
+# plt.imshow(img2[:,250,:], origin="lower")
+# plt.show()
+# plt.imshow(img2[:,:,700], origin="lower")
+# plt.show()

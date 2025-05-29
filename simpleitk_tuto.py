@@ -63,7 +63,7 @@ registration_method.SetOptimizerAsGradientDescent(
     convergenceMinimumValue=1e-6,
     convergenceWindowSize=10,
 )
-registration_method.SetOptimizerScalesFromPhysicalShift()
+# registration_method.SetOptimizerScalesFromPhysicalShift()
 
 # Setup for the multi-resolution framework.
 # registration_method.SetShrinkFactorsPerLevel(shrinkFactors = [4,2,1])
@@ -104,4 +104,69 @@ print(
     )
 )
 # print(initial_transform)
-# print(final_transform)
+print(final_transform)
+
+
+# MARCHE PAS
+fixed_index = (100, 300, 300)  # Just an example
+
+# Convert index to physical point
+fixed_point_phys = fixed_image.TransformIndexToPhysicalPoint(fixed_index)
+
+# Apply the transformation
+transformed_point = final_transform.TransformPoint(fixed_point_phys)
+
+# Optional: Convert the physical point back to index in moving image
+moving_index = moving_image.TransformPhysicalPointToIndex(transformed_point)
+
+print(f"Fixed image index: {fixed_index}")
+print(f"Mapped physical point on moving image: {transformed_point}")
+print(f"Corresponding index on moving image: {moving_index}")
+
+ax1 = plt.subplot(121)
+ax1.imshow(sitk.GetArrayViewFromImage(moving_image)[fixed_index[0]], origin="lower") # (z, y, x)
+ax1.scatter([fixed_index[1]], [fixed_index[2]], c="r")
+
+ax2 = plt.subplot(122)
+ax2.imshow(sitk.GetArrayViewFromImage(fixed_image)[moving_index[0]], origin="lower") # (z, y, x)
+ax2.scatter([moving_index[1]], [moving_index[2]], c="r")
+
+plt.show()
+
+
+
+
+
+# # Assuming you have fixed_image, moving_image, and transform from registration
+
+# resampler = sitk.ResampleImageFilter()
+# resampler.SetReferenceImage(fixed_image)
+# resampler.SetInterpolator(sitk.sitkLinear)  # Or sitk.sitkNearestNeighbor
+# resampler.SetDefaultPixelValue(100)  # Set a default value for pixels outside the image
+# resampler.SetTransform(final_transform)
+
+# out_image = resampler.Execute(moving_image)
+
+# import matplotlib.pyplot as plt
+# import numpy as np
+
+# def display_images(fixed_image, moving_image, out_image):
+#     # Convert SimpleITK images to NumPy arrays
+#     fixed_array = sitk.GetArrayFromImage(fixed_image)
+#     moving_array = sitk.GetArrayFromImage(moving_image)
+#     out_array = sitk.GetArrayFromImage(out_image)
+
+#     # Display the images using matplotlib
+#     plt.figure(figsize=(10, 5))
+#     plt.subplot(1, 3, 1)
+#     plt.imshow(fixed_array, cmap='gray')
+#     plt.title('Fixed Image')
+#     plt.subplot(1, 3, 2)
+#     plt.imshow(moving_array, cmap='gray')
+#     plt.title('Moving Image')
+#     plt.subplot(1, 3, 3)
+#     plt.imshow(out_array, cmap='gray')
+#     plt.title('Registered Image')
+#     plt.show()
+
+# display_images(fixed_image, moving_image, out_image)

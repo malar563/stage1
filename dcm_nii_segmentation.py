@@ -89,18 +89,19 @@ def automatic(dicoms_list = dicoms_list, filename4niftis = "testtii"):
 
 def to_brain(rien="allo"):
     # Brain mask into brain
-    # segm_img = nib.load("nifti/2/totalsegmentator2.nii")
-    segm_img = nib.load("nifti/1/totalsegmentator1.nii")
+    segm_img = nib.load("nifti/2/totalsegmentator2.nii")
+    # segm_img = nib.load("nifti/1/totalsegmentator1.nii")
     segm_array = segm_img.get_fdata()
 
     # Keeping the brain
     segm_array = segm_array == 90.0
     segm_array = np.where(segm_array, 1, 0)
 
-    # head_img =  nib.load("nifti/2/cropped_6_cow_angio__06__hv36__3.nii.gz")
-    head_img =  nib.load("nifti/1/cropped_301_carotid_angio_0625mm.nii.gz")
+    head_img =  nib.load("nifti/2/cropped_6_cow_angio__06__hv36__3.nii.gz")
+    # head_img =  nib.load("nifti/1/cropped_301_carotid_angio_0625mm.nii.gz")
     head_array = head_img.get_fdata()
-    brain = head_array*segm_array
+    brain = np.where(segm_array == 1, head_array, -1000) # Put -1000 where the mask is 0
+    # brain = head_array*segm_array
 
     plt.imshow(brain[:,:,200], origin="lower", cmap="gist_gray") # y, x, z
     plt.show()
@@ -109,8 +110,8 @@ def to_brain(rien="allo"):
     brain_image = nib.Nifti1Image(brain, head_img.affine, head_img.header)
 
     # Save the new NIfTI image under the same path 
-    # nifti_path = "nifti/2/brain2"
-    nifti_path = "nifti/1/brain1"
+    nifti_path = "nifti/2/brain2"
+    # nifti_path = "nifti/1/brain1"
     nib.save(brain_image, nifti_path)
     print(f"NIfTI generated : {nifti_path}")
 
