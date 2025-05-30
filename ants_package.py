@@ -9,8 +9,6 @@ from matplotlib.widgets import Slider
 
 
 
-
-
 def explore_3D_array(arr):
     
     fig, ax = plt.subplots()
@@ -38,6 +36,27 @@ moving_img_path = 'nifti/2/brain2.nii'
 moving_img = ants.image_read('nifti/2/brain2.nii', reorient='IAL')
 explore_3D_array(arr=moving_img.numpy())
 
+
+
+
+# Convert index to physical coordinates IMPORTANT RECOMMENCER ICI LUNDIII
+voxel_index = np.array([0, 0, 0])
+origin = np.array(moving_img.origin)
+spacing = np.array(moving_img.spacing)
+direction = np.array(moving_img.direction)
+# Convert voxel index to physical point
+physical_point = origin + direction @ (voxel_index * spacing)
+voxel_index = np.linalg.inv(direction) @ ((physical_point - origin) / spacing)
+voxel_index = np.round(voxel_index).astype(int)
+
+print("Voxel index:", voxel_index)
+print("Physical point:", physical_point)
+print(moving_img.dimension, moving_img.origin, moving_img.pixeltype, moving_img.spacing)
+
+
+
+
+
 fixed_img = ants.image_read('nifti/miplab-ncct_sym_brain.nii.gz', reorient='IAL')
 explore_3D_array(arr = fixed_img.numpy())
 
@@ -51,39 +70,56 @@ transformation = ants.registration(
     fixed=fixed_img,
     moving=moving_img, 
     type_of_transform='SyN',
-    verbose=True
-)
+    verbose=True)
+print("TRANSFORMATION : ", transformation)
 
-print(transformation)
 
-registered_img = transformation['warpedmovout']
+registered_img = transformation['warpedmovout'] # Moving_image déformée
 explore_3D_array(arr=registered_img.numpy())
-
-# Ceci ne fonctionne pas je crois 
-import os
-out_folder = "nifti/2"
-os.makedirs(out_folder, exist_ok=True) # create folder if not exists
-
-out_filename = "registered2"
-out_path = os.path.join(out_folder, out_filename)
-
-registered_img.to_file(out_path)
-
-# Move raw mask to native space
-
-mask_img_path = "nifti/2/maskdejsp"
-mask_img_ants = ants.image_read(mask_img_path, reorient='IAL')
+explore_3D_array(arr=transformation['warpedfixout'].numpy())
 
 
-
-registered_mask_img_ants = ants.apply_transforms(
-    moving=mask_img_ants,
+full_head = ants.image_read('nifti/2/cropped_6_cow_angio__06__hv36__3.nii.gz', reorient='IAL')
+registered_full_head = ants.apply_transforms(
+    moving=full_head,
     fixed=transformation['warpedmovout'],
     transformlist=transformation['fwdtransforms'],
-    verbose=True
-)
-# Mettre un pt dans la array de explore3Darray
-# explore_3D_array_with_mask_contour(
-#     arr=registered_img_ants.numpy(),
-#     mask=registered_mask_img_ants.numpy()
-# )
+    verbose=True)
+explore_3D_array(arr=full_head.numpy()) # Patient's head
+explore_3D_array(arr=registered_full_head.numpy()) # Patient's head in the normalized space
+
+
+
+fwd_df_transform = ants.read_transform(transformation['fwdtransforms'][0]) # .nii.gz -> deformation field (df) fwd_df_transform != inv_df_transform
+fwd_a_transform = ants.read_transform(transformation['fwdtransforms'][1]) # .mat -> affine transform (a) fwd_a_transform = inv_a_transform 
+inv_a_transform = ants.read_transform(transformation['invtransforms'][0]) # .mat -> affine transform (a) 
+inv_df_transform = ants.read_transform(transformation['invtransforms'][1]) # .nii.gz -> deformation field (df)
+
+
+# point to native space
+point = (25, 25, 25)
+
+
+a_point = ants.apply_ants_transform_to_point(fwd_a_transform, point) # forward transforms
+transformed_point = ants.apply_ants_transform_to_point(fwd_df_transform, a_point)
+
+print("Transformed point:", transformed_point)
+
+# Apply inverse transform (from fixed to moving space)
+df_point = ants.apply_ants_transform_to_point(inv_df_transform, transformed_point)
+original_point = ants.apply_ants_transform_to_point(inv_a_transform, df_point)
+
+print("Inverse transformed point:", original_point)
+
+
+
+
+# # Ceci ne fonctionne pas 
+# import os
+# out_folder = "nifti/2"
+# os.makedirs(out_folder, exist_ok=True) # create folder if not exists
+
+# out_filename = "registered2"
+# out_path = os.path.join(out_folder, out_filename)
+
+# registered_img.to_file(out_path)
