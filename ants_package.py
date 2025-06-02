@@ -5,9 +5,6 @@ import numpy as np
 from matplotlib.widgets import Slider
 
 
-# Début tutoo
-
-
 
 def explore_3D_array(arr):
     
@@ -38,22 +35,30 @@ explore_3D_array(arr=moving_img.numpy())
 
 
 # Convert to world (LPS+) coordinate
+voxel_index = np.array([100, 225, 256])
 
-voxel_index = np.array([25, 28, 100, 1])
+def voxpoint_to_worldpoint(voxel_index, ants_img=moving_img):
+    " Convert from voxel coordinates to world (LPS+) coordinates which ANTs work with"
+    affine = np.eye(4) 
+    affine[:-1,:-1] = np.multiply(ants_img.direction, ants_img.spacing)  # Convert in LPS+ coordinate (ANTs)
+    affine[:-1,-1] = ants_img.origin
+    physical_point = np.matmul(affine, np.append(voxel_index, 1))[:-1]
+    return physical_point#, affine
 
-affine = np.eye(4) 
-affine[:-1,:-1] = np.multiply(moving_img.direction, moving_img.spacing)  # Convert in LPS+ coordinate (ANTs)
-affine[:-1,-1] = moving_img.origin
-physical_point = np.matmul(affine, voxel_index)
-print("Physical point", physical_point)
+pt= voxpoint_to_worldpoint(voxel_index)
+print(pt)
 
-inv_affine = np.eye(4)
-inv_affine[:-1,:-1] = np.linalg.inv(affine[:-1,:-1])
-inv_affine[:-1,-1] = np.matmul(np.linalg.inv(-1*affine[:-1,:-1]),moving_img.origin)
-voxel_point = np.matmul(inv_affine, physical_point)[:-1]
-print("Voxel point", voxel_point)
+def worldpoint_to_voxpoint(physical_point, ants_img=moving_img):
+    " Convert from world (LPS+) coordinates to voxel coordinates"  
+    inv_affine = np.eye(4)
+    sub_affine = np.multiply(ants_img.direction, ants_img.spacing)
+    inv_affine[:-1,:-1] = np.linalg.inv(sub_affine)
+    inv_affine[:-1,-1] = np.matmul(np.linalg.inv(-1*sub_affine), ants_img.origin)
+    voxel_point = np.matmul(inv_affine, np.append(physical_point, 1))[:-1]
+    return voxel_point#, inv_affine
 
-
+vox = worldpoint_to_voxpoint(pt)
+print(vox)
 
 
 
@@ -94,13 +99,16 @@ explore_3D_array(arr=registered_full_head.numpy()) # Patient's head in the norma
 
 fwd_df_transform = ants.read_transform(transformation['fwdtransforms'][0]) # .nii.gz -> deformation field (df) fwd_df_transform != inv_df_transform
 fwd_a_transform = ants.read_transform(transformation['fwdtransforms'][1]) # .mat -> affine transform (a) fwd_a_transform = inv_a_transform 
-inv_a_transform = ants.read_transform(transformation['invtransforms'][0]) # .mat -> affine transform (a) 
+inv_a_transform = ants.invert_ants_transform(ants.read_transform(transformation['invtransforms'][0])) # .mat -> affine transform (a) 
 inv_df_transform = ants.read_transform(transformation['invtransforms'][1]) # .nii.gz -> deformation field (df)
 
+print("forward affine", fwd_a_transform.parameters)
+
+print("inverse affine", inv_a_transform.parameters)
 
 # point to native space
-point = (25, 25, 25)
-
+vox = np.array([25, 25, 25])
+point = voxpoint_to_worldpoint(vox)
 
 a_point = ants.apply_ants_transform_to_point(fwd_a_transform, point) # forward transforms
 transformed_point = ants.apply_ants_transform_to_point(fwd_df_transform, a_point)
@@ -112,7 +120,7 @@ df_point = ants.apply_ants_transform_to_point(inv_df_transform, transformed_poin
 original_point = ants.apply_ants_transform_to_point(inv_a_transform, df_point)
 
 print("Inverse transformed point:", original_point)
-
+print('to voxel', worldpoint_to_voxpoint(original_point))
 
 
 

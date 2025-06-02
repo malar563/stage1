@@ -137,7 +137,25 @@ plt.plot(gaussian_filter1d(-1*nose, sigma=2))
 # plt.show()
 
 binary = np.array([0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0])
-print(np.nonzero(binary)[0][0])
+# print(np.nonzero(binary)[0][0])
+
+voxel_index = np.array([100, 225, 256])
+# print(np.append(voxel_index, 1))
+
+import ants
+
+fwd_transform = np.array([ 9.73895967e-01, -3.47097553e-02,  3.70225497e-02,  4.83456627e-03, 8.98923755e-01, -5.44617735e-02, -3.11447047e-02, 1.33252731e-02, 9.55993474e-01,  6.73420477e+00, -2.17528336e+02, -7.79117371e+02])
+inv_params = fwd_transform.reshape(3, 4)
+print(inv_params)
+print(inv_params[:,:-1], inv_params[:,-1])
+sub_inv_params = np.linalg.inv(inv_params[:,:-1])
+inv_params[:,-1] = np.matmul(-1*sub_inv_params, inv_params[:,-1])
+inv_params[:,:-1] = sub_inv_params
+print(inv_params)
+print(inv_params.reshape(1,12)[0])
+
+# transform = ANTsTransform()
+  
 
 
 
