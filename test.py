@@ -155,6 +155,11 @@ print(inv_params)
 print(inv_params.reshape(1,12)[0])
 
 # transform = ANTsTransform()
+# import nibabel as nib
+# nifti_img = nib.load('nifti/2/brain2.nii')
+# voxel_index = np.array([25, 28, 100, 1])
+# print(nifti_img.affine)
+# print(np.matmul(nifti_img.affine, voxel_index)) # Ne fonctionne pas car donne en RAS+ coordinate pour nibabel
   
 
 

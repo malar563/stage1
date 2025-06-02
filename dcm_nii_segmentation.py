@@ -7,8 +7,7 @@ import numpy as np
 import glob
 
 
-# class Preprocessing(path = "jsp"):
-#     pass
+
 
 def dcm_to_nifti(dicom_directory = "DICOM_003/Carotid_Angio_0.625mm", output_directory = "nifti", crop="yes"):
 

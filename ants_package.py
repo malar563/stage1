@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 import SimpleITK as sitk
 import numpy as np
 from matplotlib.widgets import Slider
+import nilearn
+import nibabel as nib
 
 
 
@@ -29,9 +31,23 @@ def explore_3D_array(arr):
 
 
 
-moving_img_path = 'nifti/2/brain2.nii'
-moving_img = ants.image_read('nifti/2/brain2.nii', reorient='IAL')
+moving_img_path = 'nifti/2/cropped_6_cow_angio__06__hv36__3.nii.gz'
+moving_img = ants.image_read('nifti/2/cropped_6_cow_angio__06__hv36__3.nii.gz', reorient='IAL')
 explore_3D_array(arr=moving_img.numpy())
+
+
+fixed_img = ants.image_read('nifti/icbm_avg_152_t1_tal_lin.nii', reorient='IAL')
+explore_3D_array(arr = fixed_img.numpy())
+
+
+# moving_img_path = 'nifti/2/brain2.nii'
+# moving_img = ants.image_read('nifti/2/brain2.nii', reorient='IAL')
+# explore_3D_array(arr=moving_img.numpy())
+
+
+# fixed_img = ants.image_read('nifti/miplab-ncct_sym_brain.nii.gz', reorient='IAL')
+# explore_3D_array(arr = fixed_img.numpy())
+
 
 
 # Convert to world (LPS+) coordinate
@@ -64,8 +80,7 @@ print(vox)
 
 
 
-fixed_img = ants.image_read('nifti/miplab-ncct_sym_brain.nii.gz', reorient='IAL')
-explore_3D_array(arr = fixed_img.numpy())
+
 
 # Image properties
 print('\t\tMOVING IMG')
@@ -107,20 +122,22 @@ print("forward affine", fwd_a_transform.parameters)
 print("inverse affine", inv_a_transform.parameters)
 
 # point to native space
-vox = np.array([25, 25, 25])
+vox = np.array([25, 255, 100])
+print("Voxel initial :", vox)
 point = voxpoint_to_worldpoint(vox)
+print("Point espace patient initial :", point)
 
 a_point = ants.apply_ants_transform_to_point(fwd_a_transform, point) # forward transforms
 transformed_point = ants.apply_ants_transform_to_point(fwd_df_transform, a_point)
 
-print("Transformed point:", transformed_point)
+print("Point espace normalisé :", transformed_point)
 
 # Apply inverse transform (from fixed to moving space)
 df_point = ants.apply_ants_transform_to_point(inv_df_transform, transformed_point)
 original_point = ants.apply_ants_transform_to_point(inv_a_transform, df_point)
 
-print("Inverse transformed point:", original_point)
-print('to voxel', worldpoint_to_voxpoint(original_point))
+print("Point espace patient final :", original_point)
+print('Voxel final', worldpoint_to_voxpoint(original_point))
 
 
 
