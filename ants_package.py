@@ -37,21 +37,23 @@ moving_img = ants.image_read('nifti/2/brain2.nii', reorient='IAL')
 explore_3D_array(arr=moving_img.numpy())
 
 
+# Convert to world (LPS+) coordinate
+
+voxel_index = np.array([25, 28, 100, 1])
+
+affine = np.eye(4) 
+affine[:-1,:-1] = np.multiply(moving_img.direction, moving_img.spacing)  # Convert in LPS+ coordinate (ANTs)
+affine[:-1,-1] = moving_img.origin
+physical_point = np.matmul(affine, voxel_index)
+print("Physical point", physical_point)
+
+inv_affine = np.eye(4)
+inv_affine[:-1,:-1] = np.linalg.inv(affine[:-1,:-1])
+inv_affine[:-1,-1] = np.matmul(np.linalg.inv(-1*affine[:-1,:-1]),moving_img.origin)
+voxel_point = np.matmul(inv_affine, physical_point)[:-1]
+print("Voxel point", voxel_point)
 
 
-# Convert index to physical coordinates IMPORTANT RECOMMENCER ICI LUNDIII
-voxel_index = np.array([0, 0, 0])
-origin = np.array(moving_img.origin)
-spacing = np.array(moving_img.spacing)
-direction = np.array(moving_img.direction)
-# Convert voxel index to physical point
-physical_point = origin + direction @ (voxel_index * spacing)
-voxel_index = np.linalg.inv(direction) @ ((physical_point - origin) / spacing)
-voxel_index = np.round(voxel_index).astype(int)
-
-print("Voxel index:", voxel_index)
-print("Physical point:", physical_point)
-print(moving_img.dimension, moving_img.origin, moving_img.pixeltype, moving_img.spacing)
 
 
 
