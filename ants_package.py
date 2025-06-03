@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 import SimpleITK as sitk
 import numpy as np
 from matplotlib.widgets import Slider
-import nilearn
 import nibabel as nib
 
 
@@ -29,22 +28,24 @@ def explore_3D_array(arr):
     plt.show()
 
 
-
-
-moving_img_path = 'nifti/2/cropped_6_cow_angio__06__hv36__3.nii.gz'
-moving_img = ants.image_read('nifti/2/cropped_6_cow_angio__06__hv36__3.nii.gz', reorient='IAL')
+# Head without metal frame
+moving_img_path = 'nifti/2/head2.nii'
+moving_img = ants.image_read('nifti/2/head2.nii', reorient='IAL')
 explore_3D_array(arr=moving_img.numpy())
-
-
 fixed_img = ants.image_read('nifti/icbm_avg_152_t1_tal_lin.nii', reorient='IAL')
 explore_3D_array(arr = fixed_img.numpy())
 
+# # Head with metal frame
+# moving_img_path = 'nifti/2/cropped_6_cow_angio__06__hv36__3.nii.gz'
+# moving_img = ants.image_read('nifti/2/cropped_6_cow_angio__06__hv36__3.nii.gz', reorient='IAL')
+# explore_3D_array(arr=moving_img.numpy())
+# fixed_img = ants.image_read('nifti/icbm_avg_152_t1_tal_lin.nii', reorient='IAL')
+# explore_3D_array(arr = fixed_img.numpy())
 
+# # Brain
 # moving_img_path = 'nifti/2/brain2.nii'
 # moving_img = ants.image_read('nifti/2/brain2.nii', reorient='IAL')
 # explore_3D_array(arr=moving_img.numpy())
-
-
 # fixed_img = ants.image_read('nifti/miplab-ncct_sym_brain.nii.gz', reorient='IAL')
 # explore_3D_array(arr = fixed_img.numpy())
 

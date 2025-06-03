@@ -177,19 +177,19 @@ class Segmentation:
         return self.air
     
 
-# Segmentation
-ct_scan = Segmentation()
-# ct_scan = Segmentation(folder_path="DICOM_003/Carotid_Angio_0.625mm")
-print("Resolution", ct_scan.resolution, ct_scan.px_spacing)
-ct_scan.cut()
-print("Volume shape", ct_scan.array.shape)
+# # Segmentation
+# ct_scan = Segmentation()
+# # ct_scan = Segmentation(folder_path="DICOM_003/Carotid_Angio_0.625mm")
+# print("Resolution", ct_scan.resolution, ct_scan.px_spacing)
+# ct_scan.cut()
+# print("Volume shape", ct_scan.array.shape)
 
-ct_scan.apply_threshold()
-ct_scan.keep_largest_island()
+# ct_scan.apply_threshold()
+# ct_scan.keep_largest_island()
 
-ct_scan.fill_holes()
-ct_scan.tests()
-# ct_scan.show(ct_scan.skull, 256, "y")
-ct_scan.show(ct_scan.air, 256, "y")
-ct_scan.show(ct_scan.air, 245, "y")
-ct_scan.show(ct_scan.air, 230, "y")
+# ct_scan.fill_holes()
+# ct_scan.tests()
+# # ct_scan.show(ct_scan.skull, 256, "y")
+# ct_scan.show(ct_scan.air, 256, "y")
+# ct_scan.show(ct_scan.air, 245, "y")
+# ct_scan.show(ct_scan.air, 230, "y")
