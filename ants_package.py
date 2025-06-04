@@ -6,6 +6,10 @@ from matplotlib.widgets import Slider
 import nibabel as nib
 
 
+class Registration(): # Mettre une dépendance à Segmentation
+    def __init__(self):
+        self.jsp = None
+    
 
 def explore_3D_array(arr):
     
@@ -96,6 +100,12 @@ transformation = ants.registration(
     verbose=True)
 print("TRANSFORMATION : ", transformation)
 
+print("skjdksfkdstypee", ants.read_transform(transformation['fwdtransforms'][1]), ants.read_transform(transformation['fwdtransforms'][1]).type)
+
+# Sauver les transformations
+import shutil
+ants.write_transform(transform=ants.read_transform(transformation['fwdtransforms'][1]), filename="filename_testest.mat")
+shutil.copy(transformation['fwdtransforms'][0], "bar.nii.gz")
 
 registered_img = transformation['warpedmovout'] # Moving_image déformée
 explore_3D_array(arr=registered_img.numpy())
@@ -126,7 +136,7 @@ print("inverse affine", inv_a_transform.parameters)
 vox = np.array([25, 255, 100])
 print("Voxel initial :", vox)
 point = voxpoint_to_worldpoint(vox)
-print("Point espace patient initial :", point)
+print("Point espace patient initial :", point, ants.transform_index_to_physical_point(moving_img, vox))
 
 a_point = ants.apply_ants_transform_to_point(fwd_a_transform, point) # forward transforms
 transformed_point = ants.apply_ants_transform_to_point(fwd_df_transform, a_point)
@@ -138,16 +148,7 @@ df_point = ants.apply_ants_transform_to_point(inv_df_transform, transformed_poin
 original_point = ants.apply_ants_transform_to_point(inv_a_transform, df_point)
 
 print("Point espace patient final :", original_point)
-print('Voxel final', worldpoint_to_voxpoint(original_point))
+print('Voxel final', worldpoint_to_voxpoint(original_point), ants.transform_physical_point_to_index(moving_img, original_point))
 
 
 
-# # Ceci ne fonctionne pas 
-# import os
-# out_folder = "nifti/2"
-# os.makedirs(out_folder, exist_ok=True) # create folder if not exists
-
-# out_filename = "registered2"
-# out_path = os.path.join(out_folder, out_filename)
-
-# registered_img.to_file(out_path)

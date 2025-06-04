@@ -190,6 +190,13 @@ def to_nii(all0 = "jsp"):
 
 
 ct = Segmentation()
+
+arr = nib.load("nifti/icbm_avg_152_t1_tal_lin_headmask.nii").get_fdata()
+arr = nib.load("nifti/icbm_avg_152_t1_tal_lin.nii").get_fdata() #* arr # Marche pas, il faudrait resample
+ct.show_3D_array(arr=arr)
+
+
+
 ct.dcm_to_nii(output_directory=ct.output_directory) # Trouver comment ne pas avoir besoin de refaire des .nii mais d'avoir le nom nii automatique 
 ct.load_nii()
 ct.apply_threshold()
