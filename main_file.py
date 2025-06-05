@@ -18,26 +18,27 @@ class Segmentation:
         self.nii_path = None
         
         self.no_arteries_array = None
+        self.arteries = None
         self.head = None
         self.skull = None
         self.air = None
   
 
-    def dcm_to_nii(self, output_directory = "nifti", crop="yes"):
+    def dcm_to_nii(self, crop="yes"):
 
         dicom_directory = self.dcm_path
 
         # Create the output_directory file
-        os.makedirs(output_directory, exist_ok=True)
+        os.makedirs(self.output_directory, exist_ok=True)
 
         # Convert DICOM to NIfTI (compression=False -> .nii instead of .nii.gz)
-        dicom2nifti.convert_directory(dicom_directory, output_directory, compression=True)
+        dicom2nifti.convert_directory(dicom_directory, self.output_directory, compression=True)
 
         # Find the generated file in the output file
-        nifti_files = [f for f in os.listdir(output_directory) if f.endswith('.nii.gz')]
+        nifti_files = [f for f in os.listdir(self.output_directory) if f.endswith('.nii.gz')]
 
         # Use the first generated file
-        nifti_path = os.path.join(output_directory, nifti_files[0])
+        nifti_path = os.path.join(self.output_directory, nifti_files[0])
         print(f"NIfTI generated : {nifti_path}")
 
         if crop is not None:
@@ -57,7 +58,7 @@ class Segmentation:
             cropped_image = nib.Nifti1Image(cropped_data, nifti_image.affine, nifti_image.header)
 
             # Save the new NIfTI image under the same path + "cropped"
-            nifti_path = os.path.join(output_directory, "cropped_"+nifti_files[0])
+            nifti_path = os.path.join(self.output_directory, "cropped_"+nifti_files[0])
             nib.save(cropped_image, nifti_path)
             print(f"NIfTI generated : {nifti_path}")
 
@@ -80,7 +81,7 @@ class Segmentation:
         return self.array
     
 
-    def show_3D_array(self, arr, axis=0): # y=0, x=1, z=2
+    def show_3D_array(self, arr, axis=0, pt=None): # y=0, x=1, z=2
         from matplotlib.widgets import Slider
 
         fig, ax = plt.subplots()
@@ -112,20 +113,21 @@ class Segmentation:
         plt.show()
 
 
-    def apply_threshold(self, threshold_head=-200, threshold_skull=200, threshold_no_arteries = 500):
+    def apply_threshold(self, threshold_head=-200, threshold_skull=200, threshold_no_arteries = 500, threshold_arteries = 100):
         # Array with "True" where it is, and "False" where it is not
         thresholded_head = self.array >= threshold_head
         thresholded_air = self.array <= threshold_head
         thresholded_skull = self.array >= threshold_skull
         thresholded_no_arteries = self.array >= threshold_no_arteries
-        test = (self.array <= threshold_skull) & (self.array >= threshold_head)
+        thresholded_arteries = self.array >= threshold_arteries
         # Put the value 1 if True, and 0 if False
         self.head = np.where(thresholded_head, 1, 0)
         self.air = np.where(thresholded_air, 1, 0)
         self.skull = np.where(thresholded_skull, 1, 0)
         self.no_arteries_array = np.where(thresholded_no_arteries, 1, 0)
+        self.arteries = np.where(thresholded_arteries, 1, 0)
 
-        return self.head, self.skull, self.no_arteries_array, self.air
+        return self.head, self.skull, self.no_arteries_array, self.air, self.arteries
     
     
     def keep_largest_island(self):
@@ -165,47 +167,66 @@ class Segmentation:
 
         return self.skull
     
-def to_nii(all0 = "jsp"):
 
-    segm_img = nib.load("nifti/2/totalsegmentator2.nii")
-    segm_array = segm_img.get_fdata()
+    def arteries_mask(self, brain_mask_path=None):
+        brain_mask_path = "nifti/2/totalsegmentator2.nii"
+        brain_mask = nib.load(brain_mask_path).get_fdata()
+        brain_mask = brain_mask == 90.0
+        brain_mask = np.where(brain_mask, 1, 0)
+        self.show_3D_array(brain_mask, axis=0) # En y 
+        self.arteries = brain_mask * self.arteries
+        return self.arteries
 
-    head_img =  nib.load("nifti/2/cropped_6_cow_angio__06__hv36__3.nii.gz")
-    head_array = head_img.get_fdata()
-    brain = np.where(segm_array == 1, head_array, -1000) # Put -1000 where the mask is 0
-    # brain = head_array*segm_array
 
-    plt.imshow(brain[:,:,200], origin="lower", cmap="gist_gray") # y, x, z
-    plt.show()
-
-    # Create a new NIfTI image
-    brain_image = nib.Nifti1Image(brain, head_img.affine, head_img.header)
-
-    # Save the new NIfTI image under the same path 
-    nifti_path = "nifti/2/brain2"
-
-    nib.save(brain_image, nifti_path)
-    print(f"NIfTI generated : {nifti_path}")
     
+    def to_nii(all0 = "jsp"):
+
+        segm_img = nib.load("nifti/2/totalsegmentator2.nii")
+        segm_array = segm_img.get_fdata()
+
+        head_img =  nib.load("nifti/2/cropped_6_cow_angio__06__hv36__3.nii.gz")
+        head_array = head_img.get_fdata()
+        brain = np.where(segm_array == 1, head_array, -1000) # Put -1000 where the mask is 0
+        # brain = head_array*segm_array
+
+        plt.imshow(brain[:,:,200], origin="lower", cmap="gist_gray") # y, x, z
+        plt.show()
+
+        # Create a new NIfTI image
+        brain_image = nib.Nifti1Image(brain, head_img.affine, head_img.header)
+
+        # Save the new NIfTI image under the same path 
+        nifti_path = "nifti/2/brain2"
+
+        nib.save(brain_image, nifti_path)
+        print(f"NIfTI generated : {nifti_path}")
+        
 
 
 ct = Segmentation()
 
+print(nib.load("nifti/icbm_avg_152_t1_tal_lin_headmask.nii").header)
+
+# Rajouter la segmentation du cerveau fait par TotalSegmentator (deep learning)
 arr = nib.load("nifti/icbm_avg_152_t1_tal_lin_headmask.nii").get_fdata()
 arr = nib.load("nifti/icbm_avg_152_t1_tal_lin.nii").get_fdata() #* arr # Marche pas, il faudrait resample
-ct.show_3D_array(arr=arr)
+ct.show_3D_array(arr=arr, axis=0)
+ct.show_3D_array(arr=arr, axis=1)
+ct.show_3D_array(arr=arr, axis=2)
 
 
 
-ct.dcm_to_nii(output_directory=ct.output_directory) # Trouver comment ne pas avoir besoin de refaire des .nii mais d'avoir le nom nii automatique 
+ct.dcm_to_nii() # Trouver comment ne pas avoir besoin de refaire des .nii mais d'avoir le nom nii automatique 
 ct.load_nii()
 ct.apply_threshold()
 ct.keep_largest_island()
 ct.fill_holes()
 ct.remove_arteries()
-ct.show_3D_array(ct.air, axis=0) # En y 
-ct.show_3D_array(ct.head, axis=1) # En x 
-ct.show_3D_array(ct.skull, axis=2) # En z 
+ct.show_3D_array(ct.arteries, axis=0) # En y 
+ct.arteries_mask()
+ct.show_3D_array(ct.arteries, axis=0) # En y 
+ct.show_3D_array(ct.arteries, axis=1) # En x 
+ct.show_3D_array(ct.arteries, axis=2) # En z 
 
 
 
