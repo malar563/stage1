@@ -23,9 +23,11 @@ def explore_3D_array(arr, axis=0, pt=None):
     if axis == 0:
         img = ax.imshow(arr[index, :, :], cmap="gray", origin="lower")
         if pt is not None:
-            ax.scatter([pt[0]],[pt[1]])
+            ax.scatter([pt[0]],[pt[1]], c="r")
     elif axis == 1:
         img = ax.imshow(arr[:, index, :], cmap="gray", origin="lower")
+        if pt is not None:
+            ax.scatter([pt[0]],[pt[1]], c="r")
     else:
         img = ax.imshow(arr[:, :, index], cmap="gray", origin="lower")
         if pt is not None:
@@ -55,10 +57,23 @@ moving_img = ants.image_read('nifti/2/head2.nii', reorient='IAL')
 fixed_img = ants.image_read('nifti/icbm_avg_152_t1_tal_lin.nii', reorient='IAL')
 # explore_3D_array(arr = fixed_img.numpy(), axis=2, pt=(0,0)) # z=0, x=1, y=2
 # explore_3D_array(arr=moving_img.numpy(), axis=2, pt=(54,26)) # z=0, x=1, y=2
-explore_3D_array(arr = fixed_img.numpy(), axis=2, pt=(107,7)) # z=0, x=1, y=2 # tranche 6
-explore_3D_array(arr=moving_img.numpy(), axis=2, pt=(25,107)) # z=0, x=1, y=2 # tranche 6 
-# explore_3D_array(arr = fixed_img.numpy(), axis=2, pt=(114,7)) # z=0, x=1, y=2 # tranche 22
-# explore_3D_array(arr=moving_img.numpy(), axis=2, pt=(237,57)) # z=0, x=1, y=2 # tranche 82
+
+# # LPA
+# explore_3D_array(arr = fixed_img.numpy(), axis=2, pt=(115,22)) # z=0, x=1, y=2 # tranche 7
+# explore_3D_array(arr=moving_img.numpy(), axis=2, pt=(237,57)) # z=0, x=1, y=2 # tranche 82 <- À partir de
+# explore_3D_array(arr = fixed_img.numpy(), axis=2, pt=(107,25)) # z=0, x=1, y=2 # tranche 6 <- À partir de
+# explore_3D_array(arr=moving_img.numpy(), axis=2, pt=(223,63)) # z=0, x=1, y=2 # tranche 84
+
+# # RPA 
+# explore_3D_array(arr = fixed_img.numpy(), axis=2, pt=(107,25)) # z=0, x=1, y=2 # tranche 173 <- À partir de
+# explore_3D_array(arr=moving_img.numpy(), axis=2, pt=(228,69)) # z=0, x=1, y=2 # tranche 399
+# explore_3D_array(arr=moving_img.numpy(), axis=2, pt=(237,70)) # z=0, x=1, y=2 # tranche 403
+
+# nasion
+explore_3D_array(arr = fixed_img.numpy(), axis=1, pt=(90,28)) # z=0, x=1, y=2 # tranche 4 <- À partir de
+explore_3D_array(arr=moving_img.numpy(), axis=1, pt=(237,96)) # z=0, x=1, y=2 # tranche 47
+explore_3D_array(arr=moving_img.numpy(), axis=1, pt=(237,99)) # z=0, x=1, y=2 # tranche 50
+
 
 print("ORIGIN", fixed_img.origin)
 
@@ -145,7 +160,7 @@ def register():
 
     print("inverse affine", inv_a_transform.parameters)
 
-# # point to native space
+# # Test aller-retour
 # vox = np.array([0, 0, 0])
 # print("Voxel initial :", vox)
 # point = voxpoint_to_worldpoint(vox)
@@ -174,77 +189,51 @@ inv_df_transform = ants.read_transform("nifti/2/inv2.nii.gz") # .nii.gz -> defor
 
 
 
-
-# point to native space
-vox = np.array([237, 57, 82])
-vox = np.array([57, 237, 82])
-# vox = np.array([0, 0, 0])
-print("Voxel initial :", vox)
-point = voxpoint_to_worldpoint(vox)
-print("Point espace patient initial :", point, ants.transform_index_to_physical_point(moving_img, vox))
-
-# transformed_point = ants.apply_transforms_to_points(dim=3, points=[0,0,0,4,5,7], transformlist=["nifti/2/fwd2.nii.gz","nifti/2/fwd2.mat"], whichtoinvert=None, verbose=True)
-
-a_point = ants.apply_ants_transform_to_point(inv_a_transform, point) # forward transforms
-transformed_point = ants.apply_ants_transform_to_point(inv_df_transform, a_point)
-
-print("Point espace normalisé :", transformed_point)
-print("voxel normalisé", worldpoint_to_voxpoint(transformed_point, fixed_img), ants.transform_physical_point_to_index(fixed_img, transformed_point))
-
-
-
-# normalized to patient's space
-vox = np.array([25, 107, 6])
-vox = np.array([107, 25, 6])
-# vox = np.array([0, 0, 0])
-print("Voxel initial :", vox)
-point = voxpoint_to_worldpoint(vox, fixed_img)
-print("Point espace normalisé :", point, ants.transform_index_to_physical_point(fixed_img, vox))
-
-# Apply inverse transform (from fixed to moving space)
-df_point = ants.apply_ants_transform_to_point(fwd_df_transform, point)
-original_point = ants.apply_ants_transform_to_point(fwd_a_transform, df_point)
-
-print("Point espace patient final :", original_point)
-print('Voxel final', worldpoint_to_voxpoint(original_point), ants.transform_physical_point_to_index(moving_img, original_point))
-
-
-
-
-
-
-
-
-
-
-# # point to native space
-# vox = np.array([237, 57, 82])
-# vox = np.array([0, 0, 0])
-# print("Voxel initial :", vox)
-# point = voxpoint_to_worldpoint(vox)
-# print("Point espace patient initial :", point, ants.transform_index_to_physical_point(moving_img, vox))
-
-# # transformed_point = ants.apply_transforms_to_points(dim=3, points=[0,0,0,4,5,7], transformlist=["nifti/2/fwd2.nii.gz","nifti/2/fwd2.mat"], whichtoinvert=None, verbose=True)
-
-# a_point = ants.apply_ants_transform_to_vector(fwd_df_transform, point) # forward transforms
-# transformed_point = ants.apply_ants_transform_to_vector(fwd_a_transform, a_point)
-
+# # LPA : Inutile pour notre application (Identifier automatique sur IRM)
+# vox_lpa = np.array([57, 237, 82])
+# print("Voxel initial :", vox_lpa)
+# point = voxpoint_to_worldpoint(vox_lpa)
+# print("Point espace patient initial :", point, ants.transform_index_to_physical_point(moving_img, vox_lpa))
+# a_point = ants.apply_ants_transform_to_point(inv_a_transform, point)
+# transformed_point = ants.apply_ants_transform_to_point(inv_df_transform, a_point)
 # print("Point espace normalisé :", transformed_point)
 # print("voxel normalisé", worldpoint_to_voxpoint(transformed_point, fixed_img), ants.transform_physical_point_to_index(fixed_img, transformed_point))
 
 
 
-# # normalized to patient's space
-# vox = np.array([25, 107, 6])
-# vox = np.array([0, 0, 0])
-# print("Voxel initial :", vox)
-# point = voxpoint_to_worldpoint(vox, fixed_img)
-# print("Point espace normalisé :", point, ants.transform_index_to_physical_point(fixed_img, vox))
-
-# # Apply inverse transform (from fixed to moving space)
-# df_point = ants.apply_ants_transform_to_vector(inv_a_transform, point)
-# original_point = ants.apply_ants_transform_to_vector(inv_df_transform, df_point)
-
+# # LPA : Identifier automatique sur patient
+# vox_lpa = np.array([25, 107, 6])
+# print("Voxel initial :", vox_lpa)
+# point = voxpoint_to_worldpoint(vox_lpa, fixed_img)
+# print("Point espace normalisé :", point, ants.transform_index_to_physical_point(fixed_img, vox_lpa))
+# df_point = ants.apply_ants_transform_to_point(fwd_df_transform, point)
+# original_point = ants.apply_ants_transform_to_point(fwd_a_transform, df_point)
 # print("Point espace patient final :", original_point)
 # print('Voxel final', worldpoint_to_voxpoint(original_point), ants.transform_physical_point_to_index(moving_img, original_point))
+
+
+
+# # RPA : Identifier automatique sur patient
+# vox_rpa = np.array([25, 107, 173])
+# print("Voxel initial :", vox_rpa)
+# point = voxpoint_to_worldpoint(vox_rpa, fixed_img)
+# print("Point espace normalisé :", point, ants.transform_index_to_physical_point(fixed_img, vox_rpa))
+# df_point = ants.apply_ants_transform_to_point(fwd_df_transform, point)
+# original_point = ants.apply_ants_transform_to_point(fwd_a_transform, df_point)
+# print("Point espace patient final :", original_point)
+# print('Voxel final', worldpoint_to_voxpoint(original_point), ants.transform_physical_point_to_index(moving_img, original_point))
+
+
+
+# nasion : Identifier automatique sur patient
+vox_nasion = np.array([28, 4, 90])
+print("Voxel initial :", vox_nasion)
+point = voxpoint_to_worldpoint(vox_nasion, fixed_img)
+print("Point espace normalisé :", point, ants.transform_index_to_physical_point(fixed_img, vox_nasion))
+df_point = ants.apply_ants_transform_to_point(fwd_df_transform, point)
+original_point = ants.apply_ants_transform_to_point(fwd_a_transform, df_point)
+print("Point espace patient final :", original_point)
+print('Voxel final', worldpoint_to_voxpoint(original_point), ants.transform_physical_point_to_index(moving_img, original_point))
+
+
 
