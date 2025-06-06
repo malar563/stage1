@@ -53,14 +53,15 @@ moving_img_path = 'nifti/2/head2.nii'
 moving_img = ants.image_read('nifti/2/head2.nii', reorient='IAL')
 
 fixed_img = ants.image_read('nifti/icbm_avg_152_t1_tal_lin.nii', reorient='IAL')
-explore_3D_array(arr = fixed_img.numpy(), axis=2, pt=(107,25)) # z=0, x=1, y=2
-explore_3D_array(arr=moving_img.numpy(), axis=2) # z=0, x=1, y=2
+# explore_3D_array(arr = fixed_img.numpy(), axis=2, pt=(0,0)) # z=0, x=1, y=2
+# explore_3D_array(arr=moving_img.numpy(), axis=2, pt=(54,26)) # z=0, x=1, y=2
+explore_3D_array(arr = fixed_img.numpy(), axis=2, pt=(107,7)) # z=0, x=1, y=2 # tranche 6
+explore_3D_array(arr=moving_img.numpy(), axis=2, pt=(25,107)) # z=0, x=1, y=2 # tranche 6 
+# explore_3D_array(arr = fixed_img.numpy(), axis=2, pt=(114,7)) # z=0, x=1, y=2 # tranche 22
+# explore_3D_array(arr=moving_img.numpy(), axis=2, pt=(237,57)) # z=0, x=1, y=2 # tranche 82
 
 print("ORIGIN", fixed_img.origin)
 
-
-new_moving_img = ants.resample_image_to_target(moving_img, fixed_img, verbose=True)
-explore_3D_array(arr=new_moving_img.numpy(), axis=2)
 
 # # Brain
 # moving_img_path = 'nifti/2/brain2.nii'
@@ -113,9 +114,9 @@ def register():
 
     # Sauver les transformations
     import shutil
-    shutil.copy(transformation['fwdtransforms'][0], "fwd2.nii.gz")
-    ants.write_transform(transform=ants.read_transform(transformation['fwdtransforms'][1]), filename="fwd2.mat")
-    shutil.copy(transformation['invtransforms'][1], "inv2.nii.gz")
+    shutil.copy(transformation['fwdtransforms'][0], "nifti/2/fwd2.nii.gz")
+    ants.write_transform(transform=ants.read_transform(transformation['fwdtransforms'][1]), filename="nifti/2/fwd2.mat")
+    shutil.copy(transformation['invtransforms'][1], "nifti/2/inv2.nii.gz")
 
     registered_img = transformation['warpedmovout'] # Moving_image déformée
     explore_3D_array(arr=registered_img.numpy())
@@ -124,8 +125,16 @@ def register():
 
     full_head = ants.image_read('nifti/2/cropped_6_cow_angio__06__hv36__3.nii.gz', reorient='IAL')
     registered_full_head = ants.apply_transforms(moving=full_head, fixed=transformation['warpedmovout'], transformlist=transformation['fwdtransforms'], verbose=True)
+    print("registered image", registered_full_head.origin, registered_full_head.shape, registered_full_head.spacing, registered_full_head.dimension, registered_full_head.direction)
+    deregistered_full_head = ants.apply_transforms(moving=registered_full_head, fixed=transformation['warpedfixout'], transformlist=transformation['invtransforms'], verbose=True)
+    print("deregistered image", deregistered_full_head.origin, deregistered_full_head.shape, deregistered_full_head.spacing, deregistered_full_head.dimension, deregistered_full_head.direction)
     explore_3D_array(arr=full_head.numpy()) # Patient's head
-    explore_3D_array(arr=registered_full_head.numpy()) # Patient's head in the normalized space
+    explore_3D_array(arr=deregistered_full_head.numpy()) # Patient's head in the normalized space
+
+    resampled_full_head = ants.resample_image_to_target(registered_full_head, fixed_img, verbose=True)
+    explore_3D_array(arr=resampled_full_head.numpy())
+    print("fixed image", fixed_img.origin, fixed_img.shape, fixed_img.spacing, fixed_img.dimension, fixed_img.direction)
+    print("resamp image", resampled_full_head.origin, resampled_full_head.shape, resampled_full_head.spacing, resampled_full_head.dimension, resampled_full_head.direction)
 
     fwd_df_transform = ants.read_transform(transformation['fwdtransforms'][0]) # .nii.gz -> deformation field (df) fwd_df_transform != inv_df_transform
     fwd_a_transform = ants.read_transform(transformation['fwdtransforms'][1]) # .mat -> affine transform (a) fwd_a_transform = inv_a_transform 
@@ -168,6 +177,7 @@ inv_df_transform = ants.read_transform("nifti/2/inv2.nii.gz") # .nii.gz -> defor
 
 # point to native space
 vox = np.array([237, 57, 82])
+vox = np.array([57, 237, 82])
 # vox = np.array([0, 0, 0])
 print("Voxel initial :", vox)
 point = voxpoint_to_worldpoint(vox)
@@ -175,8 +185,8 @@ print("Point espace patient initial :", point, ants.transform_index_to_physical_
 
 # transformed_point = ants.apply_transforms_to_points(dim=3, points=[0,0,0,4,5,7], transformlist=["nifti/2/fwd2.nii.gz","nifti/2/fwd2.mat"], whichtoinvert=None, verbose=True)
 
-a_point = ants.apply_ants_transform_to_point(fwd_df_transform, point) # forward transforms
-transformed_point = ants.apply_ants_transform_to_point(fwd_a_transform, a_point)
+a_point = ants.apply_ants_transform_to_point(inv_a_transform, point) # forward transforms
+transformed_point = ants.apply_ants_transform_to_point(inv_df_transform, a_point)
 
 print("Point espace normalisé :", transformed_point)
 print("voxel normalisé", worldpoint_to_voxpoint(transformed_point, fixed_img), ants.transform_physical_point_to_index(fixed_img, transformed_point))
@@ -185,15 +195,56 @@ print("voxel normalisé", worldpoint_to_voxpoint(transformed_point, fixed_img), 
 
 # normalized to patient's space
 vox = np.array([25, 107, 6])
-vox = np.array([0, 0, 0])
+vox = np.array([107, 25, 6])
+# vox = np.array([0, 0, 0])
 print("Voxel initial :", vox)
 point = voxpoint_to_worldpoint(vox, fixed_img)
 print("Point espace normalisé :", point, ants.transform_index_to_physical_point(fixed_img, vox))
 
 # Apply inverse transform (from fixed to moving space)
-df_point = ants.apply_ants_transform_to_point(inv_df_transform, point)
-original_point = ants.apply_ants_transform_to_point(inv_a_transform, df_point)
+df_point = ants.apply_ants_transform_to_point(fwd_df_transform, point)
+original_point = ants.apply_ants_transform_to_point(fwd_a_transform, df_point)
 
 print("Point espace patient final :", original_point)
 print('Voxel final', worldpoint_to_voxpoint(original_point), ants.transform_physical_point_to_index(moving_img, original_point))
+
+
+
+
+
+
+
+
+
+
+# # point to native space
+# vox = np.array([237, 57, 82])
+# vox = np.array([0, 0, 0])
+# print("Voxel initial :", vox)
+# point = voxpoint_to_worldpoint(vox)
+# print("Point espace patient initial :", point, ants.transform_index_to_physical_point(moving_img, vox))
+
+# # transformed_point = ants.apply_transforms_to_points(dim=3, points=[0,0,0,4,5,7], transformlist=["nifti/2/fwd2.nii.gz","nifti/2/fwd2.mat"], whichtoinvert=None, verbose=True)
+
+# a_point = ants.apply_ants_transform_to_vector(fwd_df_transform, point) # forward transforms
+# transformed_point = ants.apply_ants_transform_to_vector(fwd_a_transform, a_point)
+
+# print("Point espace normalisé :", transformed_point)
+# print("voxel normalisé", worldpoint_to_voxpoint(transformed_point, fixed_img), ants.transform_physical_point_to_index(fixed_img, transformed_point))
+
+
+
+# # normalized to patient's space
+# vox = np.array([25, 107, 6])
+# vox = np.array([0, 0, 0])
+# print("Voxel initial :", vox)
+# point = voxpoint_to_worldpoint(vox, fixed_img)
+# print("Point espace normalisé :", point, ants.transform_index_to_physical_point(fixed_img, vox))
+
+# # Apply inverse transform (from fixed to moving space)
+# df_point = ants.apply_ants_transform_to_vector(inv_a_transform, point)
+# original_point = ants.apply_ants_transform_to_vector(inv_df_transform, df_point)
+
+# print("Point espace patient final :", original_point)
+# print('Voxel final', worldpoint_to_voxpoint(original_point), ants.transform_physical_point_to_index(moving_img, original_point))
 
