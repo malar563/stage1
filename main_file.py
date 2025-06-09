@@ -7,14 +7,18 @@ import numpy as np
 import glob
 
 
+dicoms_list = ["DICOM_003/Carotid_Angio_0.625mm", "DICOM_010/COW_Angio_0.6_Hv36_3"]
+
 class Segmentation:
     
-    def __init__(self, dcm_path="DICOM_010/COW_Angio_0.6_Hv36_3", output_directory="jspakoi"):
+    def __init__(self, dcm_path="DICOM_010/COW_Angio_0.6_Hv36_3", big_output_directory="processed_files", file_number=0):
         self.array = None
         # self.resolution = None
         # self.px_spacing = None
         self.dcm_path = dcm_path
-        self.output_directory = output_directory
+        self.big_output_directory = big_output_directory
+        self.file_number = str(file_number)
+        self.nifti_output_directory = os.path.join(self.big_output_directory, self.file_number)
         self.nii_path = None
         
         self.no_arteries_array = None
@@ -28,17 +32,18 @@ class Segmentation:
 
         dicom_directory = self.dcm_path
 
+
         # Create the output_directory file
-        os.makedirs(self.output_directory, exist_ok=True)
+        os.makedirs(self.nifti_output_directory, exist_ok=True)
 
         # Convert DICOM to NIfTI (compression=False -> .nii instead of .nii.gz)
-        dicom2nifti.convert_directory(dicom_directory, self.output_directory, compression=True)
+        dicom2nifti.convert_directory(dicom_directory, self.nifti_output_directory, compression=True)
 
         # Find the generated file in the output file
-        nifti_files = [f for f in os.listdir(self.output_directory) if f.endswith('.nii.gz')]
+        nifti_files = [f for f in os.listdir(self.nifti_output_directory) if f.endswith('.nii.gz')]
 
         # Use the first generated file
-        nifti_path = os.path.join(self.output_directory, nifti_files[0])
+        nifti_path = os.path.join(self.nifti_output_directory, nifti_files[0])
         print(f"NIfTI generated : {nifti_path}")
 
         if crop is not None:
@@ -58,7 +63,7 @@ class Segmentation:
             cropped_image = nib.Nifti1Image(cropped_data, nifti_image.affine, nifti_image.header)
 
             # Save the new NIfTI image under the same path + "cropped"
-            nifti_path = os.path.join(self.output_directory, "cropped_"+nifti_files[0])
+            nifti_path = os.path.join(self.nifti_output_directory, "cropped_"+nifti_files[0])
             nib.save(cropped_image, nifti_path)
             print(f"NIfTI generated : {nifti_path}")
 
@@ -166,20 +171,39 @@ class Segmentation:
         self.skull = binary_dilation(self.skull, generate_binary_structure(3, 1))
 
         return self.skull
-    
+
+
+    def segment_brain(self, fast=False, only_brain=False):
+        if __name__ == "__main__":
+        # def segment(input_path="nifti/2/cropped_6_cow_angio__06__hv36__3.nii.gz", output_path="nifti/2/totalsegmentator2", fast=False, only_brain=False):
+            input_img = nib.load(self.nii_path)
+            if only_brain:
+                output_img = totalsegmentator(input_img, fast=fast, roi_subset=["brain"]) # Mettre True pour plus vite
+            else:
+                output_img = totalsegmentator(input_img, fast=fast) # Mettre True pour plus vite
+            print("ça marche tu")
+            output_path = os.path.join(self.nifti_output_directory, "totalsegmentator"+self.file_number)
+            nib.save(output_img, output_path)
+
+        # Brain is labeled with the number 90
+        # Skull is labeled with the number 91
+        
+# segment(input_path="nifti/2/cropped_6_cow_angio__06__hv36__3.nii.gz", output_path="testtii/2/totalsegmentator2")
+# segment(input_path="nifti/1/cropped_301_carotid_angio_0625mm.nii.gz", output_path="nifti/1/totalsegmentator1")
+
 
     def arteries_mask(self, brain_mask_path=None):
-        brain_mask_path = "nifti/2/totalsegmentator2.nii"
+        # brain_mask_path = "nifti/2/totalsegmentator2.nii"  
+        brain_mask_path = os.path.join(self.nifti_output_directory, "totalsegmentator"+self.file_number)
         brain_mask = nib.load(brain_mask_path).get_fdata()
         brain_mask = brain_mask == 90.0
         brain_mask = np.where(brain_mask, 1, 0)
-        self.show_3D_array(brain_mask, axis=0) # En y 
+        # self.show_3D_array(brain_mask, axis=0) # En y 
         self.arteries = brain_mask * self.arteries
         return self.arteries
-
-
     
-    def to_nii(all0 = "jsp"):
+    
+    def mask_to_nii(all0 = "jsp"):
 
         segm_img = nib.load("nifti/2/totalsegmentator2.nii")
         segm_array = segm_img.get_fdata()
@@ -203,39 +227,40 @@ class Segmentation:
         
 
 
-ct = Segmentation()
 
-print(nib.load("nifti/icbm_avg_152_t1_tal_lin_headmask.nii").header)
+# -----------------------------------------------------------------------------------------------
+dicoms_list = ["DICOM_003/Carotid_Angio_0.625mm", "DICOM_010/COW_Angio_0.6_Hv36_3"]
+
+def main(dicoms_list = dicoms_list):
+    for i, dicom in enumerate(dicoms_list):
+        # print("allo toi", i, dicom)
+        ct = Segmentation(dcm_path=dicom, big_output_directory="jspakoi", file_number=i)
+        ct.dcm_to_nii() # Trouver comment ne pas avoir besoin de refaire des .nii mais d'avoir le nom nii automatique 
+        ct.load_nii()
+        ct.apply_threshold()
+        ct.keep_largest_island()
+        ct.fill_holes()
+        ct.remove_arteries()
+        # ct.show_3D_array(ct.arteries, axis=0) # En y 
+
+        # Totalsegmentator
+        ct.segment_brain()
+        # ct.arteries_mask()
+        # ct.show_3D_array(ct.arteries, axis=0) # En y 
+        # ct.show_3D_array(ct.arteries, axis=1) # En x 
+        # ct.show_3D_array(ct.arteries, axis=2) # En z
+
+if __name__ == "__main__":
+    main()
+
+
+# ct = Segmentation()
+# print(nib.load("nifti/icbm_avg_152_t1_tal_lin_headmask.nii").header)
 
 # Rajouter la segmentation du cerveau fait par TotalSegmentator (deep learning)
 arr = nib.load("nifti/icbm_avg_152_t1_tal_lin_headmask.nii").get_fdata()
 arr = nib.load("nifti/icbm_avg_152_t1_tal_lin.nii").get_fdata() #* arr # Marche pas, il faudrait resample
-ct.show_3D_array(arr=arr, axis=0)
-ct.show_3D_array(arr=arr, axis=1)
-ct.show_3D_array(arr=arr, axis=2)
+# ct.show_3D_array(arr=arr, axis=0)
+# ct.show_3D_array(arr=arr, axis=1)
+# ct.show_3D_array(arr=arr, axis=2)
 
-
-
-ct.dcm_to_nii() # Trouver comment ne pas avoir besoin de refaire des .nii mais d'avoir le nom nii automatique 
-ct.load_nii()
-ct.apply_threshold()
-ct.keep_largest_island()
-ct.fill_holes()
-ct.remove_arteries()
-ct.show_3D_array(ct.arteries, axis=0) # En y 
-ct.arteries_mask()
-ct.show_3D_array(ct.arteries, axis=0) # En y 
-ct.show_3D_array(ct.arteries, axis=1) # En x 
-ct.show_3D_array(ct.arteries, axis=2) # En z 
-
-
-
-
-
-
-
-
-
-    # # Rendre plus automatique : si je ne mets pas nifti/1 et /2, ils s'overwritent
-    # dcm_to_nii(dicom_directory = "DICOM_003/Carotid_Angio_0.625mm", output_directory = "nifti/1")
-    # dcm_to_nii(dicom_directory = "DICOM_010/COW_Angio_0.6_Hv36_3", output_directory = "nifti/2")

@@ -10,7 +10,7 @@ import glob
 
 
 def dcm_to_nifti(dicom_directory = "DICOM_003/Carotid_Angio_0.625mm", output_directory = "nifti", crop="yes"):
-
+    """Maintenant dans main_file"""
     # Create the output_directory file
     os.makedirs(output_directory, exist_ok=True)
 
@@ -63,7 +63,7 @@ def dcm_to_nifti(dicom_directory = "DICOM_003/Carotid_Angio_0.625mm", output_dir
 
 
 def segment(input_path="nifti/2/cropped_6_cow_angio__06__hv36__3.nii.gz", output_path="nifti/2/totalsegmentator2", fast=False, only_brain=False):
-
+    """Maintenant dans main_file"""
     input_img = nib.load(input_path)
     if only_brain:
         output_img = totalsegmentator(input_img, fast=fast, roi_subset=["brain"]) # Mettre False pour plus vite
@@ -81,6 +81,7 @@ def segment(input_path="nifti/2/cropped_6_cow_angio__06__hv36__3.nii.gz", output
 
 # def to_brain(mask_path, input_img_path, output_path):
 def to_brain(all0 = "jsp"):
+    """Maintenant inutile"""
     # Brain mask into brain
     segm_img = nib.load("nifti/2/totalsegmentator2.nii")
     # segm_img = nib.load("nifti/1/totalsegmentator1.nii")
@@ -134,6 +135,7 @@ to_brain()
 dicoms_list = ["DICOM_003/Carotid_Angio_0.625mm", "DICOM_010/COW_Angio_0.6_Hv36_3"]
 
 def automatic(dicoms_list = dicoms_list, output_dir = "testtii"):
+    """Maintenant inutile"""
     for i, file_path in enumerate(dicoms_list):
         file = dcm_to_nifti(dicom_directory = file_path, output_directory = os.path.join(output_dir, f"{i+1}"))
         input_dir = os.path.join(output_dir, f"{i+1}")
