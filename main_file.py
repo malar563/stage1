@@ -4,10 +4,8 @@ import os
 from totalsegmentator.python_api import totalsegmentator
 import matplotlib.pyplot as plt
 import numpy as np
-import glob
+import ants
 
-
-dicoms_list = ["DICOM_003/Carotid_Angio_0.625mm", "DICOM_010/COW_Angio_0.6_Hv36_3"]
 
 class Segmentation:
     
@@ -21,17 +19,18 @@ class Segmentation:
         self.nifti_output_directory = os.path.join(self.big_output_directory, self.file_number)
         self.nii_path = None
         
+        # All of these arrays are masks
         self.no_arteries_array = None
         self.arteries = None
         self.head = None
         self.skull = None
         self.air = None
+        self.brain = None
   
 
     def dcm_to_nii(self, crop="yes"):
 
         dicom_directory = self.dcm_path
-
 
         # Create the output_directory file
         os.makedirs(self.nifti_output_directory, exist_ok=True)
@@ -173,56 +172,50 @@ class Segmentation:
         return self.skull
 
 
-    def segment_brain(self, fast=False, only_brain=False):
+    def segment_brain(self, fast=False, only_brain=False): # fast=True to speed up the process, but lessen resolution (1.5mm vs 3mm)
         if __name__ == "__main__":
-        # def segment(input_path="nifti/2/cropped_6_cow_angio__06__hv36__3.nii.gz", output_path="nifti/2/totalsegmentator2", fast=False, only_brain=False):
             input_img = nib.load(self.nii_path)
             if only_brain:
-                output_img = totalsegmentator(input_img, fast=fast, roi_subset=["brain"]) # Mettre True pour plus vite
+                output_img = totalsegmentator(input_img, fast=fast, roi_subset=["brain"])
             else:
-                output_img = totalsegmentator(input_img, fast=fast) # Mettre True pour plus vite
+                output_img = totalsegmentator(input_img, fast=fast)
             print("ça marche tu")
             output_path = os.path.join(self.nifti_output_directory, "totalsegmentator"+self.file_number)
             nib.save(output_img, output_path)
-
         # Brain is labeled with the number 90
         # Skull is labeled with the number 91
         
-# segment(input_path="nifti/2/cropped_6_cow_angio__06__hv36__3.nii.gz", output_path="testtii/2/totalsegmentator2")
-# segment(input_path="nifti/1/cropped_301_carotid_angio_0625mm.nii.gz", output_path="nifti/1/totalsegmentator1")
-
 
     def arteries_mask(self, brain_mask_path=None):
         # brain_mask_path = "nifti/2/totalsegmentator2.nii"  
-        brain_mask_path = os.path.join(self.nifti_output_directory, "totalsegmentator"+self.file_number)
+        brain_mask_path = os.path.join(self.nifti_output_directory, "totalsegmentator"+self.file_number+".nii")
         brain_mask = nib.load(brain_mask_path).get_fdata()
         brain_mask = brain_mask == 90.0
-        brain_mask = np.where(brain_mask, 1, 0)
+        self.brain = np.where(brain_mask, 1, 0)
         # self.show_3D_array(brain_mask, axis=0) # En y 
-        self.arteries = brain_mask * self.arteries
+        self.arteries = self.brain * self.arteries
         return self.arteries
     
     
-    def mask_to_nii(all0 = "jsp"):
-
-        segm_img = nib.load("nifti/2/totalsegmentator2.nii")
-        segm_array = segm_img.get_fdata()
-
-        head_img =  nib.load("nifti/2/cropped_6_cow_angio__06__hv36__3.nii.gz")
+    def mask_to_nii(self):
+        
+        # Nifti file with the head for the registration
+        head_img =  nib.load(self.nii_path)
         head_array = head_img.get_fdata()
-        brain = np.where(segm_array == 1, head_array, -1000) # Put -1000 where the mask is 0
-        # brain = head_array*segm_array
+        head_array = head_array*self.head # image*mask
+        head_image = nib.Nifti1Image(head_array, head_img.affine, head_img.header) # Create a new NIfTI image
+        nifti_path = os.path.join(self.nifti_output_directory, "head"+self.file_number)
+        nib.save(head_image, nifti_path)
+        print(f"NIfTI generated : {nifti_path}")
 
-        plt.imshow(brain[:,:,200], origin="lower", cmap="gist_gray") # y, x, z
-        plt.show()
-
-        # Create a new NIfTI image
-        brain_image = nib.Nifti1Image(brain, head_img.affine, head_img.header)
-
-        # Save the new NIfTI image under the same path 
-        nifti_path = "nifti/2/brain2"
-
-        nib.save(brain_image, nifti_path)
+        # NIfTI file with all the masks
+        total_mask = 1*self.head + 2*self.skull + 1*self.arteries
+        self.show_3D_array(self.head, axis=2)
+        self.show_3D_array(self.skull, axis=2)
+        self.show_3D_array(total_mask, axis=2) # En y 
+        masked_image = nib.Nifti1Image(total_mask, head_img.affine, head_img.header) # Create a new NIfTI image
+        nifti_path = os.path.join(self.nifti_output_directory, "mask"+self.file_number)
+        nib.save(masked_image, nifti_path)
         print(f"NIfTI generated : {nifti_path}")
         
 
@@ -244,23 +237,109 @@ def main(dicoms_list = dicoms_list):
         # ct.show_3D_array(ct.arteries, axis=0) # En y 
 
         # Totalsegmentator
-        ct.segment_brain()
-        # ct.arteries_mask()
+        # ct.segment_brain()
+        ct.arteries_mask()
+        ct.mask_to_nii()
         # ct.show_3D_array(ct.arteries, axis=0) # En y 
         # ct.show_3D_array(ct.arteries, axis=1) # En x 
         # ct.show_3D_array(ct.arteries, axis=2) # En z
 
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     main()
 
 
-# ct = Segmentation()
-# print(nib.load("nifti/icbm_avg_152_t1_tal_lin_headmask.nii").header)
 
-# Rajouter la segmentation du cerveau fait par TotalSegmentator (deep learning)
-arr = nib.load("nifti/icbm_avg_152_t1_tal_lin_headmask.nii").get_fdata()
-arr = nib.load("nifti/icbm_avg_152_t1_tal_lin.nii").get_fdata() #* arr # Marche pas, il faudrait resample
-# ct.show_3D_array(arr=arr, axis=0)
-# ct.show_3D_array(arr=arr, axis=1)
-# ct.show_3D_array(arr=arr, axis=2)
+
+
+
+
+
+
+
+class Registration(Segmentation):
+
+    def __init__(self, big_output_directory="processed_files", file_number=0, fixed_img_path='icbm_avg_152_t1_tal_lin.nii'):
+        self.big_output_directory = big_output_directory
+        self.file_number = str(file_number)
+        self.nifti_output_directory = os.path.join(self.big_output_directory, self.file_number)
+        self.moving_img_path = os.path.join(self.nifti_output_directory, "head"+self.file_number+".nii") # Complete head without metal frame        
+        self.moving_img = ants.image_read(self.moving_img_path, reorient='IAL')
+        self.fixed_img = ants.image_read(fixed_img_path, reorient='IAL')
+
+        self.fwd_df_transform = None
+        self.fwd_a_transform = None 
+        self.inv_a_transform = None
+        self.inv_df_transform = None
+
+        self.vox_lpa = np.array([25, 107, 6])
+        self.vox_rpa = np.array([25, 107, 173])
+        self.vox_nasion = np.array([28, 4, 90])
+
+
+    def register(self, show=True):
+        transformation = ants.registration(fixed=self.fixed_img, moving=self.moving_img, type_of_transform='SyN', verbose=True)
+        print("TRANSFORMATION : ", transformation)
+
+        # Sauver les transformations
+        import shutil
+        shutil.copy(transformation['fwdtransforms'][0], os.path.join(self.nifti_output_directory, "fwd"+self.file_number+".nii.gz"))
+        ants.write_transform(transform=ants.read_transform(transformation['fwdtransforms'][1]), filename=os.path.join(self.nifti_output_directory, "fwd"+self.file_number+".mat"))
+        ants.write_transform(transform=ants.invert_ants_transform(ants.read_transform(transformation['invtransforms'][0])), filename=os.path.join(self.nifti_output_directory, "inv"+self.file_number+".mat"))
+        shutil.copy(transformation['invtransforms'][1], os.path.join(self.nifti_output_directory, "inv"+self.file_number+".nii.gz"))
+
+        self.fwd_df_transform = ants.read_transform(transformation['fwdtransforms'][0]) # .nii.gz -> deformation field (df) fwd_df_transform != inv_df_transform
+        self.fwd_a_transform = ants.read_transform(transformation['fwdtransforms'][1]) # .mat -> affine transform (a) fwd_a_transform = inv_a_transform 
+        self.inv_a_transform = ants.invert_ants_transform(ants.read_transform(transformation['invtransforms'][0])) # .mat -> affine transform (a) 
+        self.inv_df_transform = ants.read_transform(transformation['invtransforms'][1]) # .nii.gz -> deformation field (df)
+    
+        if show:
+            self.show_3D_array(arr=self.moving_img.numpy())
+            self.show_3D_array(arr=self.fixed_img.numpy())
+            self.show_3D_array(arr=transformation['warpedmovout'].numpy()) # moving_image déformée
+            self.show_3D_array(arr=transformation['warpedfixout'].numpy()) # fixed_image déformée
+
+
+    def read_transforms(self):
+        self.fwd_df_transform = ants.read_transform(os.path.join(self.nifti_output_directory, "fwd"+self.file_number+".nii.gz")) # .nii.gz -> deformation field (df) fwd_df_transform != inv_df_transform
+        self.fwd_a_transform = ants.read_transform(os.path.join(self.nifti_output_directory, "fwd"+self.file_number+".mat")) # .mat -> affine transform (a) fwd_a_transform = inv_a_transform 
+        self.inv_a_transform = ants.read_transform(os.path.join(self.nifti_output_directory, "inv"+self.file_number+".mat")) # .mat -> affine transform (a) 
+        self.inv_df_transform = ants.read_transform(os.path.join(self.nifti_output_directory, "inv"+self.file_number+".nii.gz")) # .nii.gz -> deformation field (df)
+
+
+    def find_lpa_rpa_nasion(self):
+
+        # LPA : automatically identify on patient
+        lpa_pt_normal_space = ants.transform_index_to_physical_point(self.fixed_img, self.vox_lpa)
+        lpa_pt_patient_space = ants.apply_ants_transform_to_point(self.fwd_df_transform, lpa_pt_normal_space)
+        lpa_pt_patient_space = ants.apply_ants_transform_to_point(self.fwd_a_transform, lpa_pt_patient_space)
+        lpa_vox_patient_space =  ants.transform_physical_point_to_index(self.moving_img, lpa_pt_patient_space)
+        print("Point espace patient final :", lpa_pt_patient_space)
+        print('Voxel final', lpa_vox_patient_space)
+
+        # RPA : automatically identify on patient
+        rpa_pt_normal_space = ants.transform_index_to_physical_point(self.fixed_img, self.vox_rpa)
+        rpa_pt_patient_space = ants.apply_ants_transform_to_point(self.fwd_df_transform, rpa_pt_normal_space)
+        rpa_pt_patient_space = ants.apply_ants_transform_to_point(self.fwd_a_transform, rpa_pt_patient_space)
+        rpa_vox_patient_space = ants.transform_physical_point_to_index(self.moving_img, rpa_pt_patient_space)
+        print("Point espace patient final :", rpa_pt_patient_space)
+        print('Voxel final', rpa_vox_patient_space)
+
+        # nasion : automatically identify on patient
+        nas_pt_normal_space = ants.transform_index_to_physical_point(self.fixed_img, self.vox_nasion)
+        nas_pt_patient_space = ants.apply_ants_transform_to_point(self.fwd_df_transform, nas_pt_normal_space)
+        nas_pt_patient_space = ants.apply_ants_transform_to_point(self.fwd_a_transform, nas_pt_patient_space)
+        nas_vox_patient_space = ants.transform_physical_point_to_index(self.moving_img, nas_pt_patient_space)
+        print("Point espace patient final :", nas_pt_patient_space)
+        print('Voxel final', nas_vox_patient_space)
+
+
+
+id = Registration(big_output_directory="nifti", file_number=2, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
+# id.register()
+id.read_transforms()
+id.find_lpa_rpa_nasion()
+# AJOUTER L'AFFICHAGE DES PTS TROUVÉS
+
+
+
 
