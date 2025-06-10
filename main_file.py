@@ -237,12 +237,18 @@ def main(dicoms_list = dicoms_list):
         # ct.show_3D_array(ct.arteries, axis=0) # En y 
 
         # Totalsegmentator
-        # ct.segment_brain()
+        ct.segment_brain()
         ct.arteries_mask()
         ct.mask_to_nii()
         # ct.show_3D_array(ct.arteries, axis=0) # En y 
         # ct.show_3D_array(ct.arteries, axis=1) # En x 
         # ct.show_3D_array(ct.arteries, axis=2) # En z
+        # id = Registration(big_output_directory="nifti", file_number=2, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
+        # # id.register()
+        # id.read_transforms()
+        # id.find_registered_lpa_rpa_nasion()
+        # # AJOUTER L'AFFICHAGE DES PTS TROUVÉS
+
 
 # if __name__ == "__main__":
 #     main()
@@ -254,7 +260,7 @@ def main(dicoms_list = dicoms_list):
 
 
 
-
+# ------------------------------------------------------------------------------------------------------------------------------
 
 class Registration(Segmentation):
 
@@ -271,9 +277,18 @@ class Registration(Segmentation):
         self.inv_a_transform = None
         self.inv_df_transform = None
 
-        self.vox_lpa = np.array([25, 107, 6])
-        self.vox_rpa = np.array([25, 107, 173])
-        self.vox_nasion = np.array([28, 4, 90])
+        self.lpa_vox_normal_space = np.array([25, 107, 6])
+        self.rpa_vox_normal_space = np.array([25, 107, 173])
+        self.nas_vox_normal_space = np.array([28, 4, 90])
+        self.lpa_vox_patient_space = None
+        self.rpa_vox_patient_space = None
+        self.nas_vox_patient_space = None
+
+        self.filled_y_slices = []
+        self.head = nib.load(os.path.join(self.nifti_output_directory, "mask"+self.file_number+".nii")).get_fdata()
+        # Swap axes 0 and 2 and mirrors axis 1 and 2 because the .nii files gives (y, x, z) instead of (z, x, y) otherwise
+        # It is for the coordinates to fit with those given by ants
+        self.head = np.flip(np.flip(np.transpose(np.where(self.head>=1, 1, 0), (2, 1, 0)), axis=1), axis=2) 
 
 
     def register(self, show=True):
@@ -306,38 +321,109 @@ class Registration(Segmentation):
         self.inv_df_transform = ants.read_transform(os.path.join(self.nifti_output_directory, "inv"+self.file_number+".nii.gz")) # .nii.gz -> deformation field (df)
 
 
-    def find_lpa_rpa_nasion(self):
+    def find_registered_lpa_rpa_nasion(self):
 
         # LPA : automatically identify on patient
-        lpa_pt_normal_space = ants.transform_index_to_physical_point(self.fixed_img, self.vox_lpa)
+        lpa_pt_normal_space = ants.transform_index_to_physical_point(self.fixed_img, self.lpa_vox_normal_space)
         lpa_pt_patient_space = ants.apply_ants_transform_to_point(self.fwd_df_transform, lpa_pt_normal_space)
         lpa_pt_patient_space = ants.apply_ants_transform_to_point(self.fwd_a_transform, lpa_pt_patient_space)
-        lpa_vox_patient_space =  ants.transform_physical_point_to_index(self.moving_img, lpa_pt_patient_space)
+        self.lpa_vox_patient_space =  ants.transform_physical_point_to_index(self.moving_img, lpa_pt_patient_space)
         print("Point espace patient final :", lpa_pt_patient_space)
-        print('Voxel final', lpa_vox_patient_space)
+        print('Voxel final', self.lpa_vox_patient_space)
 
         # RPA : automatically identify on patient
-        rpa_pt_normal_space = ants.transform_index_to_physical_point(self.fixed_img, self.vox_rpa)
+        rpa_pt_normal_space = ants.transform_index_to_physical_point(self.fixed_img, self.rpa_vox_normal_space)
         rpa_pt_patient_space = ants.apply_ants_transform_to_point(self.fwd_df_transform, rpa_pt_normal_space)
         rpa_pt_patient_space = ants.apply_ants_transform_to_point(self.fwd_a_transform, rpa_pt_patient_space)
-        rpa_vox_patient_space = ants.transform_physical_point_to_index(self.moving_img, rpa_pt_patient_space)
+        self.rpa_vox_patient_space = ants.transform_physical_point_to_index(self.moving_img, rpa_pt_patient_space)
         print("Point espace patient final :", rpa_pt_patient_space)
-        print('Voxel final', rpa_vox_patient_space)
+        print('Voxel final', self.rpa_vox_patient_space)
 
         # nasion : automatically identify on patient
-        nas_pt_normal_space = ants.transform_index_to_physical_point(self.fixed_img, self.vox_nasion)
+        nas_pt_normal_space = ants.transform_index_to_physical_point(self.fixed_img, self.nas_vox_normal_space)
         nas_pt_patient_space = ants.apply_ants_transform_to_point(self.fwd_df_transform, nas_pt_normal_space)
         nas_pt_patient_space = ants.apply_ants_transform_to_point(self.fwd_a_transform, nas_pt_patient_space)
-        nas_vox_patient_space = ants.transform_physical_point_to_index(self.moving_img, nas_pt_patient_space)
+        self.nas_vox_patient_space = ants.transform_physical_point_to_index(self.moving_img, nas_pt_patient_space)
         print("Point espace patient final :", nas_pt_patient_space)
-        print('Voxel final', nas_vox_patient_space)
+        print('Voxel final', self.nas_vox_patient_space)
+
+
+    def fill_cavities(self):
+        from scipy.ndimage import binary_fill_holes
+
+        for i in range(0, len(self.head[1,1,:])):
+            # Fill holes in the x-z and y-z plane 
+            original = self.head[:,:,i]
+            filled = binary_fill_holes(self.head[:,:,i])
+            if not np.array_equal(original,filled):
+                self.filled_y_slices.append(i)
+            self.head[:,:,i] = filled
+            self.head[:,i,:] = binary_fill_holes(self.head[:,i,:])
+        print(self.filled_y_slices)
+        for i in range(0, len(self.head[:,1,1])):
+            # Fill holes in the x-y plane
+            self.head[i,:,:] = binary_fill_holes(self.head[i,:,:])
+        
+        return self.head, self.filled_y_slices
+    
+
+    def find_nasion(self, window=20, y_min=150, y_max=350):
+        nasion_x = 47
+        nasion_y = 237
+        nasion_z = 96
+        x_half_head = self.head[nasion_z-window:nasion_z+window,nasion_x-window:nasion_x+window,nasion_y-window:nasion_y+window]
+        # Sum up one values of the binary mask on the x axis (3D array -> 2D array)
+        counts_x = np.sum(x_half_head, axis = 1) # axis=2 donne somme en y, axis=0 donne somme en z
+        plt.imshow(counts_x, origin="lower")
+        plt.show()
+
+        # Index of the maximal values for rows and minimal values for columns
+        max_index_row = (np.argmin(counts_x, axis=0))
+        min_index_column = (np.argmax(counts_x, axis=1))
+
+        optimize_minmax = []
+        for column, position_min_in_column in enumerate(min_index_column):
+            max_index_in_row_of_min_column = max_index_row[position_min_in_column]
+            optimize_minmax.append(np.abs(column-max_index_in_row_of_min_column))
+        print(optimize_minmax)
+        i = np.argmin(optimize_minmax)
+        j = min_index_column[i]
+        print(i,j)
+        nasion_row = np.where(counts_x[i,:] == np.max(counts_x[i,:]))[0] 
+        nasion_column = np.where(counts_x[:,j] == np.min(counts_x[:,j]))[0]
+        nasion_y = int(np.mean(nasion_row))
+        nasion_z = int(np.mean(nasion_column))
+        nasion_x = 0# pour cela, aller au pt trouvé et faire counts[nasion_y,nasion_z]+window
+        print(nasion_z, nasion_y)
 
 
 
-id = Registration(big_output_directory="nifti", file_number=2, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
+        # plt.imshow(nose_section, origin="lower")
+        # plt.scatter([nose_y], [nose_z], c="b")
+        # plt.scatter([nose_y], [nasion_z], c="r")
+        # plt.show()
+    
+        # # Approximation : nose's y position = nasion's y position
+        # nasion_y = nose_y +  np.argmin(derive) + y_min # In self.head
+        # nasion_x = counts_x[nasion_z, nasion_y-y_min]
+        # nasion_x = np.nonzero(self.head[nasion_z,:,nasion_y])[0][0]
+        
+        # # Nasion en (x, y, z)
+        self.nasion = nasion_x, nasion_y, nasion_z
+        return self.nasion
+
+    # def find_nasion(self):
+    #     pass
+
+
+id = Registration(big_output_directory="jspakoi", file_number=1, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
 # id.register()
+id.show_3D_array(id.head)
+id.fill_cavities()
+id.find_nasion()
+id.show_3D_array(id.head)
 id.read_transforms()
-id.find_lpa_rpa_nasion()
+id.find_registered_lpa_rpa_nasion()
 # AJOUTER L'AFFICHAGE DES PTS TROUVÉS
 
 

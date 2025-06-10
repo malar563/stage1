@@ -146,13 +146,13 @@ import ants
 
 fwd_transform = np.array([ 9.73895967e-01, -3.47097553e-02,  3.70225497e-02,  4.83456627e-03, 8.98923755e-01, -5.44617735e-02, -3.11447047e-02, 1.33252731e-02, 9.55993474e-01,  6.73420477e+00, -2.17528336e+02, -7.79117371e+02])
 inv_params = fwd_transform.reshape(3, 4)
-print(inv_params)
-print(inv_params[:,:-1], inv_params[:,-1])
+# print(inv_params)
+# print(inv_params[:,:-1], inv_params[:,-1])
 sub_inv_params = np.linalg.inv(inv_params[:,:-1])
 inv_params[:,-1] = np.matmul(-1*sub_inv_params, inv_params[:,-1])
 inv_params[:,:-1] = sub_inv_params
-print(inv_params)
-print(inv_params.reshape(1,12)[0])
+# print(inv_params)
+# print(inv_params.reshape(1,12)[0])
 
 # transform = ANTsTransform()
 # import nibabel as nib
@@ -162,6 +162,14 @@ print(inv_params.reshape(1,12)[0])
 # print(np.matmul(nifti_img.affine, voxel_index)) # Ne fonctionne pas car donne en RAS+ coordinate pour nibabel
   
 
+arr = np.array([6, 7, 7, 8, 8, 9, 9, 10, 11, 11, 12, 13, 13, 14, 15, 15, 16, 16, 16,
+                17, 17, 17, 17, 17, 16, 16, 15, 14, 13, 13, 12, 11, 11, 10, 9, 8, 8, 7, 7, 6])
+# Find all indices where the value is 17
+indices_17 = np.where(arr >= 14)[0]
+print(indices_17)
+# Get the index of the middle one
+middle_index = indices_17[len(indices_17) // 2]
+print("Index of the middle 17:", middle_index)
 
 
 
