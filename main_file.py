@@ -426,19 +426,19 @@ class Registration(Segmentation):
 
     def find_lpa_rpa(self, window=50):
         lpa_x = 223
-        lpa_y = 87#84
+        lpa_y = 99#84
         lpa_z = 63
         self.registered_lpa = lpa_x, lpa_y, lpa_z
 
         if lpa_y in self.filled_y_slices:
+            print("allo test passé")
+            self.filled_y_slices = np.array(self.filled_y_slices)
             print(self.filled_y_slices)   
-            index_lpa_y = np.where(self.filled_y_slices == lpa_y)[0]
+            index_lpa_y = np.where(self.filled_y_slices == lpa_y)[0][0]
             print(index_lpa_y)
-            for i in range(1, lpa_y):
+            for i in range(1, index_lpa_y):
                 if self.filled_y_slices[index_lpa_y-i] != lpa_y-i:
-                    return self.filled_y_slices[index_lpa_y-i]
-                else:
-                    return self.filled_y_slices[0]
+                    return self.filled_y_slices[index_lpa_y-i+1]-1
         else:
             index_lpa = np.argmin(np.abs(lpa_y-self.filled_y_slices))
             return self.filled_y_slices[index_lpa]-1
@@ -459,12 +459,12 @@ id = Registration(big_output_directory="jspakoi", file_number=0, fixed_img_path=
 # id.find_registered_lpa_rpa_nasion()
 
 
-id.show_3D_array(id.head, axis=2)
+# id.show_3D_array(id.head, axis=2)
 id.fill_cavities()
-id.show_3D_array(id.head, axis=2)
+# id.show_3D_array(id.head, axis=2)
 # id.find_nasion()
 # id.check_nasion()
-id.find_lpa_rpa()
+print(id.find_lpa_rpa())
 
 id.show_3D_array(id.head)
 id.read_transforms()
