@@ -254,6 +254,8 @@ def main(dicoms_list = dicoms_list):
 #     main()
 
 
+# BIZARREEEEEEEE : S'ASSURER QUE Z=AXE0, X=AXE1 ET Y=AXE2 TEL QUE DHABITUDE : PAS LE CAS DANS LE MASQUE CI-HAUT
+
 
 
 
@@ -289,6 +291,7 @@ class Registration(Segmentation):
         # Swap axes 0 and 2 and mirrors axis 1 and 2 because the .nii files gives (y, x, z) instead of (z, x, y) otherwise
         # It is for the coordinates to fit with those given by ants
         self.head = np.flip(np.flip(np.transpose(np.where(self.head>=1, 1, 0), (2, 1, 0)), axis=1), axis=2)
+        # self.head = np.flip(np.flip(np.flip(np.where(self.head>=1, 1, 0), axis=1), axis=2), axis=0)
         self.registered_nasion = None
         self.nasion = None
 
@@ -375,9 +378,9 @@ class Registration(Segmentation):
         nasion_z = 96
         self.registered_nasion = nasion_x, nasion_y, nasion_z
 
-        x_half_head = self.head[nasion_z-window:nasion_z+window,nasion_x-window:nasion_x+window,nasion_y-window:nasion_y+window]
+        ROI_nas = self.head[nasion_z-window:nasion_z+window,nasion_x-window:nasion_x+window,nasion_y-window:nasion_y+window]
         # Sum up one values of the binary mask on the x axis (3D array -> 2D array)
-        counts_x = np.sum(x_half_head, axis = 1) # axis=2 donne somme en y, axis=0 donne somme en z
+        counts_x = np.sum(ROI_nas, axis = 1) # axis=2 donne somme en y, axis=0 donne somme en z
         plt.imshow(counts_x, origin="lower")
         plt.show()
 
@@ -389,16 +392,13 @@ class Registration(Segmentation):
         for column, position_min_in_column in enumerate(min_index_column):
             max_index_in_row_of_min_column = max_index_row[position_min_in_column]
             optimize_minmax.append(np.abs(column-max_index_in_row_of_min_column))
-        print(optimize_minmax)
         i = np.argmin(optimize_minmax)
         j = min_index_column[i]
-        print(i,j)
         nasion_row = np.where(counts_x[i,:] == np.max(counts_x[i,:]))[0] 
         nasion_column = np.where(counts_x[:,j] == np.min(counts_x[:,j]))[0]
         nasion_y_final = int(np.mean(nasion_row)) + (nasion_y - window)
         nasion_z_final = int(np.mean(nasion_column)) + (nasion_z - window)
-        nasion_x_final = (2*window) - counts_x[int(np.mean(nasion_row)),int(np.mean(nasion_column))] + (nasion_x - window)# pour cela, aller au pt trouvé et faire counts[nasion_y,nasion_z]+window
-        print(nasion_z_final, nasion_y_final, nasion_x_final)
+        nasion_x_final = (2*window) - counts_x[int(np.mean(nasion_row)),int(np.mean(nasion_column))] + (nasion_x - window)
 
         # Nasion en (x, y, z)
         self.nasion = nasion_x_final, nasion_y_final, nasion_z_final
@@ -424,17 +424,47 @@ class Registration(Segmentation):
         plt.show()
 
 
-    def find_lpa_rpa(self, window=20):
-        pass
+    def find_lpa_rpa(self, window=50):
+        lpa_x = 223
+        lpa_y = 87#84
+        lpa_z = 63
+        self.registered_lpa = lpa_x, lpa_y, lpa_z
+
+        if lpa_y in self.filled_y_slices:
+            print(self.filled_y_slices)   
+            index_lpa_y = np.where(self.filled_y_slices == lpa_y)[0]
+            print(index_lpa_y)
+            for i in range(1, lpa_y):
+                if self.filled_y_slices[index_lpa_y-i] != lpa_y-i:
+                    return self.filled_y_slices[index_lpa_y-i]
+                else:
+                    return self.filled_y_slices[0]
+        else:
+            index_lpa = np.argmin(np.abs(lpa_y-self.filled_y_slices))
+            return self.filled_y_slices[index_lpa]-1
+                
+            # mettre que si self.filled_y_slices[index-i] != 87-i
+            # return self.filled_y_slices[index-i]
+            # else: return self.filled_y_slices[0]
+        # ROI_lpa = self.head[lpa_z-window:lpa_z+window,lpa_x-window:lpa_x+window,lpa_y-window:lpa_y+window]
+        # self.show_3D_array(ROI_lpa, axis=2) # y axis
 
 
 
-id = Registration(big_output_directory="jspakoi", file_number=1, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
+
+
+id = Registration(big_output_directory="jspakoi", file_number=0, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
 # id.register()
-id.show_3D_array(id.head)
+# id.read_transforms()
+# id.find_registered_lpa_rpa_nasion()
+
+
+id.show_3D_array(id.head, axis=2)
 id.fill_cavities()
-id.find_nasion()
-id.check_nasion()
+id.show_3D_array(id.head, axis=2)
+# id.find_nasion()
+# id.check_nasion()
+id.find_lpa_rpa()
 
 id.show_3D_array(id.head)
 id.read_transforms()
