@@ -288,7 +288,9 @@ class Registration(Segmentation):
         self.head = nib.load(os.path.join(self.nifti_output_directory, "mask"+self.file_number+".nii")).get_fdata()
         # Swap axes 0 and 2 and mirrors axis 1 and 2 because the .nii files gives (y, x, z) instead of (z, x, y) otherwise
         # It is for the coordinates to fit with those given by ants
-        self.head = np.flip(np.flip(np.transpose(np.where(self.head>=1, 1, 0), (2, 1, 0)), axis=1), axis=2) 
+        self.head = np.flip(np.flip(np.transpose(np.where(self.head>=1, 1, 0), (2, 1, 0)), axis=1), axis=2)
+        self.registered_nasion = None
+        self.nasion = None
 
 
     def register(self, show=True):
@@ -367,10 +369,12 @@ class Registration(Segmentation):
         return self.head, self.filled_y_slices
     
 
-    def find_nasion(self, window=20, y_min=150, y_max=350):
+    def find_nasion(self, window=20):
         nasion_x = 47
         nasion_y = 237
         nasion_z = 96
+        self.registered_nasion = nasion_x, nasion_y, nasion_z
+
         x_half_head = self.head[nasion_z-window:nasion_z+window,nasion_x-window:nasion_x+window,nasion_y-window:nasion_y+window]
         # Sum up one values of the binary mask on the x axis (3D array -> 2D array)
         counts_x = np.sum(x_half_head, axis = 1) # axis=2 donne somme en y, axis=0 donne somme en z
@@ -391,29 +395,38 @@ class Registration(Segmentation):
         print(i,j)
         nasion_row = np.where(counts_x[i,:] == np.max(counts_x[i,:]))[0] 
         nasion_column = np.where(counts_x[:,j] == np.min(counts_x[:,j]))[0]
-        nasion_y = int(np.mean(nasion_row))
-        nasion_z = int(np.mean(nasion_column))
-        nasion_x = 0# pour cela, aller au pt trouvé et faire counts[nasion_y,nasion_z]+window
-        print(nasion_z, nasion_y)
+        nasion_y_final = int(np.mean(nasion_row)) + (nasion_y - window)
+        nasion_z_final = int(np.mean(nasion_column)) + (nasion_z - window)
+        nasion_x_final = (2*window) - counts_x[int(np.mean(nasion_row)),int(np.mean(nasion_column))] + (nasion_x - window)# pour cela, aller au pt trouvé et faire counts[nasion_y,nasion_z]+window
+        print(nasion_z_final, nasion_y_final, nasion_x_final)
 
-
-
-        # plt.imshow(nose_section, origin="lower")
-        # plt.scatter([nose_y], [nose_z], c="b")
-        # plt.scatter([nose_y], [nasion_z], c="r")
-        # plt.show()
-    
-        # # Approximation : nose's y position = nasion's y position
-        # nasion_y = nose_y +  np.argmin(derive) + y_min # In self.head
-        # nasion_x = counts_x[nasion_z, nasion_y-y_min]
-        # nasion_x = np.nonzero(self.head[nasion_z,:,nasion_y])[0][0]
-        
-        # # Nasion en (x, y, z)
-        self.nasion = nasion_x, nasion_y, nasion_z
+        # Nasion en (x, y, z)
+        self.nasion = nasion_x_final, nasion_y_final, nasion_z_final
         return self.nasion
 
-    # def find_nasion(self):
-    #     pass
+
+    def check_nasion(self):
+        # # Si l'axe x passe à travers le nasion et règle de la main droite
+        # # Plan axial : Valeur fixe de z
+        plt.imshow(self.head[self.nasion[2],:,:], origin="lower")
+        plt.scatter([self.nasion[1]], [self.nasion[0]], c="r")
+        plt.scatter([self.registered_nasion[1]], [self.registered_nasion[0]], c="b")
+        plt.show()
+        # # Plan coronal : Valeur fixe de x
+        plt.imshow(self.head[:,self.nasion[0],:], origin="lower")
+        plt.scatter([self.nasion[1]], [self.nasion[2]], c="r")
+        plt.scatter([self.registered_nasion[1]], [self.registered_nasion[2]], c="b")
+        plt.show()
+        # # Plan sagittal : Valeur fixe de y
+        plt.imshow(self.head[:,:,self.nasion[1]], origin="lower")
+        plt.scatter([self.nasion[0]], [self.nasion[2]], c="r")
+        plt.scatter([self.registered_nasion[0]], [self.registered_nasion[2]], c="b")
+        plt.show()
+
+
+    def find_lpa_rpa(self, window=20):
+        pass
+
 
 
 id = Registration(big_output_directory="jspakoi", file_number=1, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
@@ -421,9 +434,12 @@ id = Registration(big_output_directory="jspakoi", file_number=1, fixed_img_path=
 id.show_3D_array(id.head)
 id.fill_cavities()
 id.find_nasion()
+id.check_nasion()
+
 id.show_3D_array(id.head)
 id.read_transforms()
 id.find_registered_lpa_rpa_nasion()
+
 # AJOUTER L'AFFICHAGE DES PTS TROUVÉS
 
 
