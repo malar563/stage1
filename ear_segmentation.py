@@ -49,8 +49,8 @@ def show_3D_array(arr, axis=0, pt=None):
 
 
 
-mask_img = nib.load("jspakoi/0/mask0.nii").get_fdata()
-segmentator_img = nib.load("jspakoi/0/totalsegmentator0.nii").get_fdata()
+mask_img = nib.load("jspakoi/1/mask1.nii").get_fdata()
+segmentator_img = nib.load("jspakoi/1/totalsegmentator1.nii").get_fdata()
 
 skull_img = np.where(segmentator_img == 91, 1, 0)
 brain_img = np.where(segmentator_img ==90, 1, 0)
