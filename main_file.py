@@ -24,7 +24,8 @@ class Segmentation:
         self.head = None
         self.skull = None
         self.air = None
-        self.brain = None
+        self.brain_totalsegmentator = None
+        self.skull_totalsegmentator = None
   
 
     def dcm_to_nii(self, crop="yes"):
@@ -192,18 +193,17 @@ class Segmentation:
         # Skull is labeled with the number 91
         
 
-    def arteries_mask(self, brain_mask_path=None):
-        # brain_mask_path = "nifti/2/totalsegmentator2.nii"  
-        brain_mask_path = os.path.join(self.nifti_output_directory, "totalsegmentator"+self.file_number+".nii")
-        brain_mask = nib.load(brain_mask_path).get_fdata()
-        brain_mask = brain_mask == 90.0
-        self.brain = np.where(brain_mask, 1, 0)
+    def arteries_and_totalsegmentator_mask(self):
+
+        totalsegmentator_mask = nib.load(os.path.join(self.nifti_output_directory, "totalsegmentator"+self.file_number+".nii")).get_fdata()
+        self.brain_totalsegmentator = np.where(totalsegmentator_mask == 90, 1, 0)
+        self.skull_totalsegmentator = np.where(totalsegmentator_mask == 91, 1, 0) 
         # self.show_3D_array(brain_mask, axis=0) # En y 
-        self.arteries = self.brain * self.arteries
+        self.arteries = self.brain_totalsegmentator * self.arteries
         return self.arteries
     
     
-    def mask_to_nii(self):
+    def mask_to_nii(self, iter_erosion=3):
         
         # Nifti file with the head for the registration
         head_img =  nib.load(self.nii_path)
@@ -216,6 +216,13 @@ class Segmentation:
 
         # NIfTI file with all the masks
         total_mask = 1*self.head + 2*self.skull + 1*self.arteries
+        # Improve the mask of the skull # ICI TESTER L'IMPLÉMENTATION
+        from scipy.ndimage import binary_erosion, generate_binary_structure
+        mask_soft_tissues = np.where(total_mask == 1, 1, 0)
+        mask_eroded_skull = binary_erosion(self.skull_totalsegmentator, structure=generate_binary_structure(3,1), iterations=iter_erosion)
+        not_included_skull = 3*mask_soft_tissues*mask_eroded_skull
+        total_mask = total_mask + not_included_skull
+
         self.show_3D_array(self.head, axis=2)
         self.show_3D_array(self.skull, axis=2)
         self.show_3D_array(total_mask, axis=2) # En y 
@@ -244,7 +251,7 @@ def main(dicoms_list = dicoms_list):
 
         # Totalsegmentator
         ct.segment_brain()
-        ct.arteries_mask()
+        ct.arteries_and_totalsegmentator_mask()
         ct.mask_to_nii()
         # ct.show_3D_array(ct.arteries, axis=0) # En y 
         # ct.show_3D_array(ct.arteries, axis=1) # En x 
