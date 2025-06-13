@@ -11,8 +11,7 @@ class Segmentation:
     
     def __init__(self, dcm_path="DICOM_010/COW_Angio_0.6_Hv36_3", big_output_directory="processed_files", file_number=0):
         self.array = None
-        # self.resolution = None
-        # self.px_spacing = None
+        self.resolution = None
         self.dcm_path = dcm_path
         self.big_output_directory = big_output_directory
         self.file_number = str(file_number)
@@ -51,6 +50,7 @@ class Segmentation:
 
             header = nifti_image.header
             pix_dim, pix_z = header["pixdim"][1:4], header["pixdim"][3]
+
 
             # Crop the image
             if pix_z >= 0.6:
@@ -95,10 +95,16 @@ class Segmentation:
         index = arr.shape[axis] // 2
         if axis == 0:
             img = ax.imshow(arr[index, :, :], cmap="gray", origin="lower")
+            if pt is not None:
+                ax.scatter([pt[0]],[pt[1]], c="r")
         elif axis == 1:
             img = ax.imshow(arr[:, index, :], cmap="gray", origin="lower")
+            if pt is not None:
+                ax.scatter([pt[0]],[pt[1]], c="r")
         else:
             img = ax.imshow(arr[:, :, index], cmap="gray", origin="lower")
+            if pt is not None:
+                ax.scatter([pt[0]],[pt[1]], c="r")
 
         # Slider setup
         ax_slider = plt.axes([0.2, 0.1, 0.65, 0.03])
@@ -287,13 +293,19 @@ class Registration(Segmentation):
         self.nas_vox_patient_space = None
 
         self.filled_y_slices = []
-        self.head = nib.load(os.path.join(self.nifti_output_directory, "mask"+self.file_number+".nii")).get_fdata()
+        mask_img = nib.load(os.path.join(self.nifti_output_directory, "mask"+self.file_number+".nii"))
+        self.head = mask_img.get_fdata()
+        self.resolution = np.abs(mask_img.affine[0][0]), np.abs(mask_img.affine[1][1]), np.abs(mask_img.affine[2][2])
+        print(self.resolution)
         # Swap axes 0 and 2 and mirrors axis 1 and 2 because the .nii files gives (y, x, z) instead of (z, x, y) otherwise
         # It is for the coordinates to fit with those given by ants
-        self.head = np.flip(np.flip(np.transpose(np.where(self.head>=1, 1, 0), (2, 1, 0)), axis=1), axis=2)
+        self.filled_head = np.flip(np.flip(np.transpose(np.where(self.head>=1, 1, 0), (2, 1, 0)), axis=1), axis=2)
+        self.head = np.flip(np.flip(np.transpose(np.where(self.head>=1, 1, 0), (2, 1, 0)), axis=1), axis=2) # Pk ça marche pas de juste mettre =self.filled_head
         # self.head = np.flip(np.flip(np.flip(np.where(self.head>=1, 1, 0), axis=1), axis=2), axis=0)
         self.registered_nasion = None
         self.nasion = None
+        self.regitered_lpa=None
+        self.registered_rpa=None
 
 
     def register(self, show=True):
@@ -356,20 +368,20 @@ class Registration(Segmentation):
     def fill_cavities(self):
         from scipy.ndimage import binary_fill_holes
 
-        for i in range(0, len(self.head[1,1,:])):
+        for i in range(0, len(self.filled_head[1,1,:])):
             # Fill holes in the x-z and y-z plane 
-            original = self.head[:,:,i]
-            filled = binary_fill_holes(self.head[:,:,i])
+            original = self.filled_head[:,:,i]
+            filled = binary_fill_holes(self.filled_head[:,:,i])
             if not np.array_equal(original,filled):
                 self.filled_y_slices.append(i)
-            self.head[:,:,i] = filled
-            self.head[:,i,:] = binary_fill_holes(self.head[:,i,:])
+            self.filled_head[:,:,i] = filled
+            self.filled_head[:,i,:] = binary_fill_holes(self.filled_head[:,i,:])
         print(self.filled_y_slices)
-        for i in range(0, len(self.head[:,1,1])):
+        for i in range(0, len(self.filled_head[:,1,1])):
             # Fill holes in the x-y plane
-            self.head[i,:,:] = binary_fill_holes(self.head[i,:,:])
+            self.filled_head[i,:,:] = binary_fill_holes(self.filled_head[i,:,:])
         
-        return self.head, self.filled_y_slices
+        return self.filled_head, self.filled_y_slices
     
 
     def find_nasion(self, window=20):
@@ -378,7 +390,7 @@ class Registration(Segmentation):
         nasion_z = 96
         self.registered_nasion = nasion_x, nasion_y, nasion_z
 
-        ROI_nas = self.head[nasion_z-window:nasion_z+window,nasion_x-window:nasion_x+window,nasion_y-window:nasion_y+window]
+        ROI_nas = self.filled_head[nasion_z-window:nasion_z+window,nasion_x-window:nasion_x+window,nasion_y-window:nasion_y+window]
         # Sum up one values of the binary mask on the x axis (3D array -> 2D array)
         counts_x = np.sum(ROI_nas, axis = 1) # axis=2 donne somme en y, axis=0 donne somme en z
         plt.imshow(counts_x, origin="lower")
@@ -424,30 +436,79 @@ class Registration(Segmentation):
         plt.show()
 
 
-    def find_lpa_rpa(self, window=50):
-        lpa_x = 223
-        lpa_y = 99#84
-        lpa_z = 63
-        self.registered_lpa = lpa_x, lpa_y, lpa_z
+    def __find_lpa_y__(self, lpa_y):
+        self.filled_y_slices = np.array(self.filled_y_slices)
 
         if lpa_y in self.filled_y_slices:
-            print("allo test passé")
-            self.filled_y_slices = np.array(self.filled_y_slices)
             print(self.filled_y_slices)   
             index_lpa_y = np.where(self.filled_y_slices == lpa_y)[0][0]
             print(index_lpa_y)
             for i in range(1, index_lpa_y):
                 if self.filled_y_slices[index_lpa_y-i] != lpa_y-i:
-                    return self.filled_y_slices[index_lpa_y-i+1]-1
+                    return self.filled_y_slices[index_lpa_y-i+1]-1 # -1 to get the surface of the head
+            return self.filled_y_slices[0] - 1 # -1 to get the surface of the head
         else:
-            index_lpa = np.argmin(np.abs(lpa_y-self.filled_y_slices))
-            return self.filled_y_slices[index_lpa]-1
+            index_lpa = np.argmin(np.abs(self.filled_y_slices-lpa_y))
+            return self.filled_y_slices[index_lpa]-1 # -1 to get the surface of the head
+        
+    def __find_rpa_y__(self, rpa_y):
+        self.filled_y_slices = np.array(self.filled_y_slices)
+
+        if rpa_y in self.filled_y_slices:
+            print(self.filled_y_slices)   
+            index_rpa_y = np.where(self.filled_y_slices == rpa_y)[0][0]
+            print(index_rpa_y)
+            for i in range(1, len(self.filled_y_slices)-index_rpa_y):
+                if self.filled_y_slices[index_rpa_y+i] != rpa_y+i:
+                    return self.filled_y_slices[index_rpa_y+i-1]+1 # -1 to get the surface of the head
+            return self.filled_y_slices[-1] + 1 # -1 to get the surface of the head
+        else:
+            index_lpa = np.argmin(np.abs(self.filled_y_slices-rpa_y))
+            return self.filled_y_slices[index_lpa]+1 # -1 to get the surface of the head
+        
+    def find_rpa(self, window=60):
+        rpa_x = 228
+        rpa_y = 399
+        rpa_z = 69
+        # rpa_x = 251 # 0625mm
+        # rpa_y = 388
+        # rpa_z = 135
+        rpa_y_final = self.__find_rpa_y__(rpa_y=rpa_y)
+        self.registered_rpa = rpa_x, rpa_y_final, rpa_z
+        print(self.registered_rpa)
+    
+
+
+
+    def find_lpa(self, window=60):
+        lpa_x = 223
+        lpa_y = 84
+        lpa_z = 63
+        # lpa_x = 239
+        # lpa_y = 97
+        # lpa_z = 131
+        self.registered_lpa = lpa_x, lpa_y, lpa_z
+
+        # Ya absolument rien qui marche ci-bas donc inutile
+        lpa_y_final = self.__find_lpa_y__(lpa_y=lpa_y)
+        print(lpa_y_final)
+        ROI_lpa = self.head[lpa_z-window:lpa_z+window,lpa_x-window:lpa_x+window,lpa_y_final-window:lpa_y_final+window]
+        # frame_before_filling = self.head[lpa_z-window:lpa_z+window,lpa_x-window:lpa_x+window,lpa_y_final]
+        # frame_start_filling = self.head[lpa_z-window:lpa_z+window,lpa_x-window:lpa_x+window,lpa_y_final+1]
+        frame_before_filling = self.head[:,:,lpa_y_final]
+        frame_start_filling = self.head[:,:,lpa_y_final+1]
+        intersection = ~frame_before_filling & frame_start_filling
+        plt.imshow(intersection, origin="lower")
+        plt.scatter([lpa_x], [lpa_z], c="r")
+        plt.show()
+
+        
+        self.show_3D_array(ROI_lpa, axis=2)
+        counts_x = np.sum(ROI_lpa, axis=2) # axis=2 donne somme en y, axis=0 donne somme en z
+        plt.imshow(counts_x, origin="lower")
+        plt.show()
+
                 
-            # mettre que si self.filled_y_slices[index-i] != 87-i
-            # return self.filled_y_slices[index-i]
-            # else: return self.filled_y_slices[0]
-        # ROI_lpa = self.head[lpa_z-window:lpa_z+window,lpa_x-window:lpa_x+window,lpa_y-window:lpa_y+window]
-        # self.show_3D_array(ROI_lpa, axis=2) # y axis
 
 
 
@@ -458,15 +519,19 @@ id = Registration(big_output_directory="jspakoi", file_number=0, fixed_img_path=
 # id.read_transforms()
 # id.find_registered_lpa_rpa_nasion()
 
+id.show_3D_array(nib.load('icbm_avg_152_t1_tal_lin.nii').get_fdata(), axis=0)
 
-# id.show_3D_array(id.head, axis=2)
+id.show_3D_array(id.head, axis=2)
 id.fill_cavities()
 # id.show_3D_array(id.head, axis=2)
+# id.show_3D_array(id.filled_head, axis=2)
 # id.find_nasion()
 # id.check_nasion()
-print(id.find_lpa_rpa())
+print(id.find_rpa())
+print(id.find_lpa())
 
-id.show_3D_array(id.head)
+id.show_3D_array(id.head, axis=2, pt=(id.registered_lpa[0], id.registered_lpa[2]))
+id.show_3D_array(id.head, axis=2, pt=(id.registered_rpa[0], id.registered_rpa[2]))
 id.read_transforms()
 id.find_registered_lpa_rpa_nasion()
 
