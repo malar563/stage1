@@ -47,8 +47,6 @@ def show_3D_array(arr, axis=0, pt=None):
 
 
 
-
-
 mask_img = nib.load("jspakoi/1/mask1.nii").get_fdata()
 segmentator_img = nib.load("jspakoi/1/totalsegmentator1.nii").get_fdata()
 

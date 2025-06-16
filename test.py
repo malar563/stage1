@@ -170,9 +170,12 @@ indices_17 = np.where(arr >= 14)[0]
 # Get the index of the middle one
 middle_index = indices_17[len(indices_17) // 2]
 # print("Index of the middle 17:", middle_index)
+# print(len(arr))
 
 
-print(len(arr))
+txt = "Hello, welcome to my world."
+x = txt.startswith("Hello")
+print(x)
 
 
 

@@ -8,25 +8,36 @@ import ants
 
 
 class Segmentation:
+    """Processing DICOM files, segmenting the head and storing various image masks."""
     
     def __init__(self, dcm_path="DICOM_010/COW_Angio_0.6_Hv36_3", big_output_directory="processed_files", file_number=0):
-        self.array = None
-        self.resolution = None
-        self.dcm_path = dcm_path
-        self.big_output_directory = big_output_directory
-        self.file_number = str(file_number)
-        self.nifti_output_directory = os.path.join(self.big_output_directory, self.file_number)
-        self.nii_path = None
+        """
+        This constructor receive the path of the DICOM file to be processed,
+        sets up file paths for NIfTI outputs and initializes storage for multiple segmentation masks.
+        """
+        self.dcm_path = dcm_path # Path to the DICOM directory.
+        self.big_output_directory = big_output_directory # Path to the top-level directory for storing outputs.
+        self.file_number = str(file_number) # String version of the file number used in folder naming.
+        self.nifti_output_directory = os.path.join(self.big_output_directory, self.file_number) # Full path to the directory where NIfTI outputs will be stored.
         
-        # All of these arrays are masks
-        self.no_arteries_array = None
-        self.arteries = None
-        self.head = None
-        self.skull = None
-        self.air = None
-        self.brain_totalsegmentator = None
-        self.skull_totalsegmentator = None
-  
+        try:
+            self.nii_path = [f for f in os.listdir(self.nifti_output_directory) if f.startswith('cropped')][0] #None # Full path to the primary NIfTI file after conversion. [f for f in os.listdir(self.nifti_output_directory) if f.endswith('.nii.gz')]
+        except:
+            print("No processed NIfTI file in the directory. Processing the specified DICOM file...")
+
+
+        # CONTINUER LA DOCUMENTATION ICI + ÉVITER DE TJR AVOIR À REPROCESS
+
+
+
+        self.array = None # Placeholder for loaded NIfTI image data (primary NIfTI file) 
+        self.resolution = None # Resolution information extracted from the image metadata.
+
+        """
+        Mask you can access at one point in the segmentation process :
+        self.head, self.air, self.skull, self.no_arteries_array, self.arteries
+        """
+     
 
     def dcm_to_nii(self, crop="yes"):
 
@@ -49,10 +60,6 @@ class Segmentation:
             # Load the image with nibabel
             nifti_image = nib.load(nifti_path)
 
-            header = nifti_image.header
-            pix_dim, pix_z = header["pixdim"][1:4], header["pixdim"][3]
-
-
             # Crop the image
             if pix_z >= 0.6:
                 cropped_data = nifti_image.get_fdata()[:,:,-256:]
@@ -67,16 +74,18 @@ class Segmentation:
             nib.save(cropped_image, nifti_path)
             print(f"NIfTI generated : {nifti_path}")
 
-            shape = cropped_image.shape
+            # No other purpose than to see
             header = cropped_image.header
+            pix_dim, pix_z = header["pixdim"][1:4], header["pixdim"][3]
+            shape = cropped_image.shape
             affine = cropped_image.affine
             data = cropped_image.get_fdata()
-
-            print("Dimensions :", shape)
-            print("Pixel dimensions :", pix_dim)
+            # print("Pixel dimensions :", pix_dim, pix_z)
+            # print("Dimensions :", shape)
             # print("Entête :", header)
-            # print("Eaffine :", affine)
+            # print("Affine :", affine)
             # print("data :", data)
+
             self.nii_path = nifti_path
             return self.nii_path
         
@@ -202,6 +211,7 @@ class Segmentation:
         self.arteries = self.brain_totalsegmentator * self.arteries
         return self.arteries
     
+
     
     def mask_to_nii(self, iter_erosion=3):
         
@@ -230,6 +240,12 @@ class Segmentation:
         nifti_path = os.path.join(self.nifti_output_directory, "mask"+self.file_number)
         nib.save(masked_image, nifti_path)
         print(f"NIfTI generated : {nifti_path}")
+
+
+
+
+    
+
         
 
 
@@ -239,18 +255,19 @@ dicoms_list = ["DICOM_003/Carotid_Angio_0.625mm", "DICOM_010/COW_Angio_0.6_Hv36_
 
 def main(dicoms_list = dicoms_list):
     for i, dicom in enumerate(dicoms_list):
-        # print("allo toi", i, dicom)
-        ct = Segmentation(dcm_path=dicom, big_output_directory="jspakoi", file_number=i)
+        ct = Segmentation(dcm_path=dicom, big_output_directory="balasdsa", file_number=i)
+        print(ct.nii_path)
         ct.dcm_to_nii() # Trouver comment ne pas avoir besoin de refaire des .nii mais d'avoir le nom nii automatique 
         ct.load_nii()
         ct.apply_threshold()
+        ct.show_3D_array(ct.skull, axis=0) # En y 
         ct.keep_largest_island()
         ct.fill_holes()
         ct.remove_arteries()
         # ct.show_3D_array(ct.arteries, axis=0) # En y 
 
         # Totalsegmentator
-        ct.segment_brain()
+        # ct.segment_brain()
         ct.arteries_and_totalsegmentator_mask()
         ct.mask_to_nii()
         # ct.show_3D_array(ct.arteries, axis=0) # En y 
@@ -263,8 +280,8 @@ def main(dicoms_list = dicoms_list):
         # # AJOUTER L'AFFICHAGE DES PTS TROUVÉS
 
 
-# if __name__ == "__main__":
-#     main()
+if __name__ == "__main__":
+    main()
 
 
 # BIZARREEEEEEEE : S'ASSURER QUE Z=AXE0, X=AXE1 ET Y=AXE2 TEL QUE DHABITUDE : PAS LE CAS DANS LE MASQUE CI-HAUT
@@ -306,6 +323,7 @@ class Registration(Segmentation):
         print(self.resolution)
         # Swap axes 0 and 2 and mirrors axis 1 and 2 because the .nii files gives (y, x, z) instead of (z, x, y) otherwise
         # It is for the coordinates to fit with those given by ants
+        self.arteries = None
         self.filled_head = np.flip(np.flip(np.transpose(np.where(self.head>=1, 1, 0), (2, 1, 0)), axis=1), axis=2)
         self.head = np.flip(np.flip(np.transpose(np.where(self.head>=1, 1, 0), (2, 1, 0)), axis=1), axis=2) # Pk ça marche pas de juste mettre =self.filled_head
         # self.head = np.flip(np.flip(np.flip(np.where(self.head>=1, 1, 0), axis=1), axis=2), axis=0)
@@ -370,6 +388,44 @@ class Registration(Segmentation):
         self.nas_vox_patient_space = ants.transform_physical_point_to_index(self.moving_img, nas_pt_patient_space)
         print("Point espace patient final :", nas_pt_patient_space)
         print('Voxel final', self.nas_vox_patient_space)
+
+
+    def mca_arteries_mask(self):
+        
+        arterial_territories = ants.image_read("mni_vascular_territories.nii.gz", reorient='IAL')
+        mca_territories = np.where(arterial_territories.numpy() == 4.0, 1, 0) + np.where(arterial_territories.numpy() == 14.0, 1, 0)
+        mca_territories = arterial_territories.new_image_like(mca_territories) # copies image information and just changes the data
+        
+        # Resample to target image mais avec l'irm et les arterial territories
+        mri = ants.image_read("icbm_avg_152_t1_tal_lin.nii", reorient='IAL')
+        resampled_mca_territories = ants.resample_image_to_target(mca_territories, mri, verbose=True)
+
+        # # Voir la superposition
+        # superposition = (arterial_territories.numpy()[:-1,:-1,:-1]/np.max(arterial_territories.numpy()))+(irm.numpy()/np.max(irm.numpy()))
+        # self.show_3D_array(superposition)
+
+        self.arteries = ants.image_read(os.path.join(self.nifti_output_directory, "mask"+self.file_number+".nii"), reorient="IAL")
+        arteries_only = np.where(self.arteries.numpy()==2,1,0)
+        # arteries_only = self.arteries.numpy() # Pour mieux voir, mais ne sera pas dans la version finale
+        self.arteries = self.arteries.new_image_like(arteries_only)
+        self.show_3D_array(self.arteries.numpy())
+
+        registered_arteries = ants.apply_transforms(fixed=resampled_mca_territories, moving=self.arteries, transformlist=[os.path.join(self.nifti_output_directory, "inv"+self.file_number+".mat"), os.path.join(self.nifti_output_directory, "inv"+self.file_number+".nii.gz")])
+        self.show_3D_array(registered_arteries.numpy())
+        normalized_mca_arteries = registered_arteries.numpy()*resampled_mca_territories.numpy()
+        self.show_3D_array(normalized_mca_arteries)
+
+        normalized_mca_arteries = registered_arteries.new_image_like(normalized_mca_arteries)
+        patient_mca_arteries = ants.apply_transforms(fixed=self.arteries, moving=normalized_mca_arteries, transformlist=[os.path.join(self.nifti_output_directory, "fwd"+self.file_number+".mat"), os.path.join(self.nifti_output_directory, "fwd"+self.file_number+".nii.gz")])
+        self.show_3D_array(patient_mca_arteries.numpy())
+        counts_z = np.sum(patient_mca_arteries.numpy(), axis = 0) # axis=2 donne somme en y, axis=0 donne somme en z
+        plt.imshow(counts_z, origin="lower")
+        plt.show()
+
+
+        # Appliquer la transformation sur les artères, multiplier par la masque (checker si ça marche bien), ramener dans l'autre espace
+
+
 
 
     def fill_cavities(self):
@@ -527,6 +583,7 @@ id = Registration(big_output_directory="jspakoi", file_number=0, fixed_img_path=
 # id.find_registered_lpa_rpa_nasion()
 
 id.show_3D_array(nib.load('icbm_avg_152_t1_tal_lin.nii').get_fdata(), axis=0)
+id.mca_arteries_mask()
 
 id.show_3D_array(id.head, axis=2)
 id.fill_cavities()
