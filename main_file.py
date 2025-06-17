@@ -5,6 +5,7 @@ from totalsegmentator.python_api import totalsegmentator
 import matplotlib.pyplot as plt
 import numpy as np
 import ants
+import time
 
 
 class Segmentation:
@@ -14,53 +15,77 @@ class Segmentation:
         """
         This constructor receive the path of the DICOM file to be processed,
         sets up file paths for NIfTI outputs and initializes storage for multiple segmentation masks.
+
+        Arguments
+        ---------
+        dcm_path : string
+            Path to the directory containing the DICOM files to be processed.
+        
+        big_output_directory : string
+            Base directory where processed NIfTI files will be saved.
+        
+        file_number : int
+            Integer identifier for the file being processed, used to create subdirectories.
+
+        Mask you can access at one point in the segmentation process :
+            -> self.head, self.air, self.skull, self.no_arteries_array, self.arteries
+            -> self.brain_totalsegmentator and self.skull_totalsegmentator
         """
+
         self.dcm_path = dcm_path # Path to the DICOM directory.
         self.big_output_directory = big_output_directory # Path to the top-level directory for storing outputs.
         self.file_number = str(file_number) # String version of the file number used in folder naming.
         self.nifti_output_directory = os.path.join(self.big_output_directory, self.file_number) # Full path to the directory where NIfTI outputs will be stored.
         
+        # Checking if the DICOM has already been converted. If not, converting it.
         try:
-            self.nii_path = [f for f in os.listdir(self.nifti_output_directory) if f.startswith('cropped')][0] #None # Full path to the primary NIfTI file after conversion. [f for f in os.listdir(self.nifti_output_directory) if f.endswith('.nii.gz')]
+            self.nii_path = [f for f in os.listdir(self.nifti_output_directory) if f.startswith('cropped')][0] 
+            self.nii_path = os.path.join(self.nifti_output_directory, self.nii_path) # Full path to the primary NIfTI file after conversion.
+            self.array = nib.load(self.nii_path).get_fdata() # Placeholder for loaded NIfTI image data (primary NIfTI file)
+            print(f"NIfTI found : {self.nii_path}")
         except:
             print("No processed NIfTI file in the directory. Processing the specified DICOM file...")
-
-
-        # CONTINUER LA DOCUMENTATION ICI + ÉVITER DE TJR AVOIR À REPROCESS
-
-
-
-        self.array = None # Placeholder for loaded NIfTI image data (primary NIfTI file) 
-        self.resolution = None # Resolution information extracted from the image metadata.
-
-        """
-        Mask you can access at one point in the segmentation process :
-        self.head, self.air, self.skull, self.no_arteries_array, self.arteries
-        """
+            self.dcm_to_nii()
+            self.array = nib.load(self.nii_path).get_fdata() # Placeholder for loaded NIfTI image data (primary NIfTI file) 
      
 
     def dcm_to_nii(self, crop="yes"):
+        """
+        Convert a DICOM series to a NIfTI file and optionally crop it along the z-axis.
 
-        dicom_directory = self.dcm_path
+        Uses `dicom2nifti` to convert DICOM files in `self.dcm_path` to a `.nii.gz` file 
+        saved in `self.nifti_output_directory`. If `crop` is set, the image is cropped 
+        based on slice thickness (last 256 or 512 slices kept) and saved with a new name.
+
+        Arguments
+        ----------
+        crop : str or None
+            If not None, crop the volume depending on pixel spacing.
+
+        Notes
+        -------
+        str
+            Path to the generated (cropped or original) NIfTI file is now accessible.
+        """
 
         # Create the output_directory file
         os.makedirs(self.nifti_output_directory, exist_ok=True)
 
         # Convert DICOM to NIfTI (compression=False -> .nii instead of .nii.gz)
-        dicom2nifti.convert_directory(dicom_directory, self.nifti_output_directory, compression=True)
+        dicom2nifti.convert_directory(self.dcm_path, self.nifti_output_directory, compression=True)
 
-        # Find the generated file in the output file
+        # Find the generated file in the output folder
         nifti_files = [f for f in os.listdir(self.nifti_output_directory) if f.endswith('.nii.gz')]
-
-        # Use the first generated file
-        nifti_path = os.path.join(self.nifti_output_directory, nifti_files[0])
+        nifti_path = os.path.join(self.nifti_output_directory, nifti_files[0]) # Use the first .nii.gz file found
         print(f"NIfTI generated : {nifti_path}")
 
         if crop is not None:
             # Load the image with nibabel
             nifti_image = nib.load(nifti_path)
 
-            # Crop the image
+            # Crop the image depending on the resolution 
+            header = cropped_image.header
+            pix_dim, pix_z = header["pixdim"][1:4], header["pixdim"][3]
             if pix_z >= 0.6:
                 cropped_data = nifti_image.get_fdata()[:,:,-256:]
             else:
@@ -75,8 +100,6 @@ class Segmentation:
             print(f"NIfTI generated : {nifti_path}")
 
             # No other purpose than to see
-            header = cropped_image.header
-            pix_dim, pix_z = header["pixdim"][1:4], header["pixdim"][3]
             shape = cropped_image.shape
             affine = cropped_image.affine
             data = cropped_image.get_fdata()
@@ -87,15 +110,28 @@ class Segmentation:
             # print("data :", data)
 
             self.nii_path = nifti_path
-            return self.nii_path
-        
-    
-    def load_nii(self):
-        self.array = nib.load(self.nii_path).get_fdata()
-        return self.array
-    
+
+   
 
     def show_3D_array(self, arr, axis=0, pt=None): # y=0, x=1, z=2
+        """
+        Display a 3D array slice-by-slice using a matplotlib slider.
+
+        Arguments
+        ----------
+        arr : numpy.ndarray
+            3D array to visualize.
+
+        axis : int
+            Axis along which to slice (0=y, 1=x, 2=z).
+
+        pt : tuple or None
+            Optional (x, y) coordinates to highlight on each slice.
+
+        Notes
+        -----
+        Opens an interactive window to scroll through slices of the array.
+        """
         from matplotlib.widgets import Slider
 
         fig, ax = plt.subplots()
@@ -134,6 +170,31 @@ class Segmentation:
 
 
     def apply_threshold(self, threshold_head=-200, threshold_skull=200, threshold_no_arteries = 500, threshold_arteries = 100):
+        """
+        Apply intensity thresholds to segment different anatomical structures.
+
+        Generates binary masks for head, air, skull, arteries, and a no-arteries region 
+        based on fixed intensity thresholds applied to `self.array`.
+
+        Arguments
+        ----------
+        threshold_head : int
+            Lower bound for head tissue detection.
+        
+        threshold_skull : int
+            Lower bound for skull segmentation.
+        
+        threshold_no_arteries : int
+            Threshold above which regions are considered free of arteries.
+        
+        threshold_arteries : int
+            Lower bound for artery detection.
+
+        Notes
+        -------
+        numpy.ndarray
+            Binary masks for head, air, skull, no_arteries_array, and arteries are now accessible.
+        """
         # Array with "True" where it is, and "False" where it is not
         thresholded_head = self.array >= threshold_head
         thresholded_air = self.array <= threshold_head
@@ -146,11 +207,20 @@ class Segmentation:
         self.skull = np.where(thresholded_skull, 1, 0)
         self.no_arteries_array = np.where(thresholded_no_arteries, 1, 0)
         self.arteries = np.where(thresholded_arteries, 1, 0)
-
-        return self.head, self.skull, self.no_arteries_array, self.air, self.arteries
     
     
     def keep_largest_island(self):
+        """
+        Keep only the largest connected component in each binary mask.
+
+        Applies 3D connected component labeling to `head`, `skull`, `no_arteries_array`, 
+        and `air`, and retains only the largest region in each.
+
+        Notes
+        -------
+        numpy.ndarray
+            Masks for head, skull, no_arteries_array, and air are now updated.
+        """
         from scipy.ndimage import label, generate_binary_structure
 
         def largest_connected_island(mask):
@@ -165,123 +235,189 @@ class Segmentation:
         self.no_arteries_array = largest_connected_island(self.no_arteries_array)
         self.air = largest_connected_island(self.air != 1)
         self.air = np.where(self.air, 0, 1)
-
-        return self.head, self.skull, self.no_arteries_array, self.air
     
 
     def fill_holes(self):
+        """
+        Fill internal holes in the skull mask.
+        Uses binary morphology to fill enclosed voids in `self.skull`.
+
+        Notes
+        -------
+        numpy.ndarray
+            Skull mask is now updated.
+        """
         from scipy.ndimage import binary_fill_holes
-
         self.skull = binary_fill_holes(self.skull)
-        return self.skull
 
 
-    def remove_arteries(self, max_distance = 3): # Mettre 200 et 500 comme seuil avec cette distance
+
+    def remove_arteries(self, max_distance = 3): 
+        # max_distance = 3 with skull threshold = 200 and no_arteries threshold = 500 works fine, but not totally systematic
+        """
+        Remove arteries from the skull mask based on proximity to artery-free regions.
+
+        Uses a distance transform on `no_arteries_array` to exclude skull voxels 
+        too far from artery-free regions, then slightly dilates the result.
+
+        Arguments
+        ----------
+        max_distance : int
+            Maximum distance (in voxels) to keep skull regions near artery-free zones.
+
+        Notes
+        -------
+        numpy.ndarray
+            Skull mask is now updated by removing arteries.
+        """
         from scipy.ndimage import distance_transform_edt, binary_dilation, generate_binary_structure
 
         self.no_arteries_array = self.no_arteries_array != 1
-        distance = distance_transform_edt(self.no_arteries_array)
-        close_to_bone = distance < max_distance
-        self.skull = self.skull & close_to_bone
+        distance = distance_transform_edt(self.no_arteries_array) # Compute distance of the voxel from closet 0 value
+        close_to_bone = distance < max_distance 
+        self.skull = self.skull & close_to_bone # Voxels in the skull mask must be in the original mask AND close to higher HU value bones
         self.skull = binary_dilation(self.skull, generate_binary_structure(3, 1))
 
-        return self.skull
 
+    def segment_brain(self, fast=False, only_brain=False):
+        """
+        Run TotalSegmentator to segment the head (brain and skull mainly).
 
-    def segment_brain(self, fast=False, only_brain=False): # fast=True to speed up the process, but lessen resolution (1.5mm vs 3mm)
+        Loads the NIfTI image from `self.nii_path` and performs segmentation using 
+        TotalSegmentator. Can restrict to brain only or segment the full head.
+
+        Arguments
+        ----------
+        fast : bool
+            If True, uses lower resolution (3mm instead of 1.5mm) for faster segmentation. 
+            (not recommanded for our purposes)
+
+        only_brain : bool
+            If True, segments only the brain (label 90); not recommanded, the skull is needed later in the process.
+            Otherwise, includes the skull (label 91) and more.
+
+        Notes
+        -----
+        Output is saved to `self.nifti_output_directory` as a NIfTI file.
+        Only runs when the script is executed directly.
+        IMPORTANT : 
+            Brain is labeled with the number 90
+            Skull is labeled with the number 91
+        """
         if __name__ == "__main__":
             input_img = nib.load(self.nii_path)
             if only_brain:
                 output_img = totalsegmentator(input_img, fast=fast, roi_subset=["brain"])
             else:
                 output_img = totalsegmentator(input_img, fast=fast)
-            print("ça marche tu")
+            print("Segmentation with TotalSegmentator has been completed")
             output_path = os.path.join(self.nifti_output_directory, "totalsegmentator"+self.file_number)
             nib.save(output_img, output_path)
-        # Brain is labeled with the number 90
-        # Skull is labeled with the number 91
-        
+
 
     def arteries_and_totalsegmentator_mask(self):
+        """
+        Combine TotalSegmentator brain mask with existing artery mask.
 
+        Loads TotalSegmentator output, extracts brain (label 90) and skull (label 91) masks, 
+        and updates `self.arteries` to keep only arteries within the brain.
+
+        Notes
+        -------
+        numpy.ndarray
+            Binary masks for brain_totalsegmentator and skull_totalsegmentator are now accessible.
+            Binary mask for arteries is now updated.
+        """
         totalsegmentator_mask = nib.load(os.path.join(self.nifti_output_directory, "totalsegmentator"+self.file_number+".nii")).get_fdata()
         self.brain_totalsegmentator = np.where(totalsegmentator_mask == 90, 1, 0)
         self.skull_totalsegmentator = np.where(totalsegmentator_mask == 91, 1, 0) 
-        # self.show_3D_array(brain_mask, axis=0) # En y 
         self.arteries = self.brain_totalsegmentator * self.arteries
-        return self.arteries
+
     
 
     
     def mask_to_nii(self, iter_erosion=3):
-        
-        # Nifti file with the head for the registration
+        """
+        Save head and masks as NIfTI files, with skull refinement.
+
+        Creates two NIfTI files:
+        - One containing the original image masked by the head (useful for registration).
+        - One combining the air (label=0), head (label=1), arteries (label=2) and skull (label>=3),
+          and artery masks with skull refinement using erosion and soft tissue overlap.
+
+        Arguments
+        ----------
+        iter_erosion : int
+            Number of binary erosion iterations to refine the skull mask.
+
+        Returns
+        -------
+        None
+
+        Notes
+        -----
+        Files are saved in `self.nifti_output_directory` as "head{file_number}.nii" 
+        and "mask{file_number}.nii".
+        """
+        # Nifti file with the HU units of the whole head for the registration
         head_img =  nib.load(self.nii_path)
         head_array = head_img.get_fdata()
         head_array = head_array*self.head # image*mask
         head_image = nib.Nifti1Image(head_array, head_img.affine, head_img.header) # Create a new NIfTI image
         nifti_path = os.path.join(self.nifti_output_directory, "head"+self.file_number)
         nib.save(head_image, nifti_path)
-        print(f"NIfTI generated : {nifti_path}")
+        print(f"NIfTI generated : {nifti_path}.nii")
 
         # NIfTI file with all the masks
         total_mask = 1*self.head + 2*self.skull + 1*self.arteries
-        # Improve the mask of the skull # ICI TESTER L'IMPLÉMENTATION
+        # Improve the mask of the skull
         from scipy.ndimage import binary_erosion, generate_binary_structure
         mask_soft_tissues = np.where(total_mask == 1, 1, 0)
         mask_eroded_skull = binary_erosion(self.skull_totalsegmentator, structure=generate_binary_structure(3,1), iterations=iter_erosion)
         not_included_skull = 3*mask_soft_tissues*mask_eroded_skull
+        self.skull = self.skull + (mask_soft_tissues*mask_eroded_skull)
         total_mask = total_mask + not_included_skull
 
-        self.show_3D_array(self.head, axis=2)
-        self.show_3D_array(self.skull, axis=2)
-        self.show_3D_array(total_mask, axis=2) # En y 
         masked_image = nib.Nifti1Image(total_mask, head_img.affine, head_img.header) # Create a new NIfTI image
         nifti_path = os.path.join(self.nifti_output_directory, "mask"+self.file_number)
         nib.save(masked_image, nifti_path)
-        print(f"NIfTI generated : {nifti_path}")
+        print(f"NIfTI generated : {nifti_path}.nii")
 
 
-
-
-    
-
-        
+ 
 
 
 
 # -----------------------------------------------------------------------------------------------
 dicoms_list = ["DICOM_003/Carotid_Angio_0.625mm", "DICOM_010/COW_Angio_0.6_Hv36_3"]
 
+
+# CHECKER LES AXES PARTOUT POUR ÊTRE SÛR QUE C'EST CHILL
 def main(dicoms_list = dicoms_list):
     for i, dicom in enumerate(dicoms_list):
-        ct = Segmentation(dcm_path=dicom, big_output_directory="balasdsa", file_number=i)
-        print(ct.nii_path)
-        ct.dcm_to_nii() # Trouver comment ne pas avoir besoin de refaire des .nii mais d'avoir le nom nii automatique 
-        ct.load_nii()
+        start = time.time()
+        ct = Segmentation(dcm_path=dicom, big_output_directory="jspakoi", file_number=i) 
         ct.apply_threshold()
-        ct.show_3D_array(ct.skull, axis=0) # En y 
         ct.keep_largest_island()
         ct.fill_holes()
         ct.remove_arteries()
-        # ct.show_3D_array(ct.arteries, axis=0) # En y 
 
         # Totalsegmentator
         # ct.segment_brain()
         ct.arteries_and_totalsegmentator_mask()
         ct.mask_to_nii()
-        # ct.show_3D_array(ct.arteries, axis=0) # En y 
-        # ct.show_3D_array(ct.arteries, axis=1) # En x 
-        # ct.show_3D_array(ct.arteries, axis=2) # En z
+        ct.show_3D_array(ct.skull, axis=2) # En z
+
         # id = Registration(big_output_directory="nifti", file_number=2, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
         # # id.register()
         # id.read_transforms()
         # id.find_registered_lpa_rpa_nasion()
         # # AJOUTER L'AFFICHAGE DES PTS TROUVÉS
+        print(f"Time to segment file {ct.nii_path} : {time.time() - start} seconds")
 
 
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     main()
 
 
 # BIZARREEEEEEEE : S'ASSURER QUE Z=AXE0, X=AXE1 ET Y=AXE2 TEL QUE DHABITUDE : PAS LE CAS DANS LE MASQUE CI-HAUT
