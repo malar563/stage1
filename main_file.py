@@ -27,9 +27,40 @@ class Segmentation:
         file_number : int
             Integer identifier for the file being processed, used to create subdirectories.
 
-        Mask you can access at one point in the segmentation process :
-            -> self.head, self.air, self.skull, self.no_arteries_array, self.arteries
-            -> self.brain_totalsegmentator and self.skull_totalsegmentator
+        Attributes
+        ----------
+        dcm_path : string
+            Path to the DICOM directory.
+
+        nii_path : string or None
+            Full path to the primary NIfTI file after conversion.
+
+        array : numpy.ndarray
+            Placeholder for the primary loaded DICOM or NIfTI image data.
+
+        resolution : tuple or None
+            Resolution information extracted from the image metadata.
+
+        big_output_directory : string
+            Path to the top-level directory for storing outputs.
+
+        file_number : string
+            String version of the file number used in folder naming.
+
+        nifti_output_directory : string
+            Full path to the directory where NIfTI outputs will be stored.
+
+        Future attributes
+        -----------------
+        Masks you can access at one point in the segmentation process :
+            -> self.head, self.skull, self.no_arteries_array, self.arteries
+            -> self.brain_totalsegmentator and self.skull_totalsegmentator            
+
+        Notes
+        -----
+        IMPORTANT :
+            In this class, when displaying an array, note that the index order is
+            (Y, X, Z)    
         """
 
         self.dcm_path = dcm_path # Path to the DICOM directory.
@@ -41,13 +72,16 @@ class Segmentation:
         try:
             self.nii_path = [f for f in os.listdir(self.nifti_output_directory) if f.startswith('cropped')][0] 
             self.nii_path = os.path.join(self.nifti_output_directory, self.nii_path) # Full path to the primary NIfTI file after conversion.
-            self.array = nib.load(self.nii_path).get_fdata() # Placeholder for loaded NIfTI image data (primary NIfTI file)
+            self.img = nib.load(self.nii_path)
+            self.array = img.get_fdata() # Placeholder for loaded NIfTI image data (primary NIfTI file)
+            self.resolution = np.abs(img.affine[0][0]), np.abs(img.affine[1][1]), np.abs(img.affine[2][2]) # Just in case you want to see
             print(f"NIfTI found : {self.nii_path}")
         except:
             print("No processed NIfTI file in the directory. Processing the specified DICOM file...")
             self.dcm_to_nii()
-            self.array = nib.load(self.nii_path).get_fdata() # Placeholder for loaded NIfTI image data (primary NIfTI file) 
-     
+            img = nib.load(self.nii_path)
+            self.array = img.get_fdata() # Placeholder for loaded NIfTI image data (primary NIfTI file)
+            self.resolution = np.abs(img.affine[0][0]), np.abs(img.affine[1][1]), np.abs(img.affine[2][2]) # Just in case you want to see
 
     def dcm_to_nii(self, crop="yes"):
         """
@@ -62,10 +96,15 @@ class Segmentation:
         crop : str or None
             If not None, crop the volume depending on pixel spacing.
 
-        Notes
-        -------
-        str
-            Path to the generated (cropped or original) NIfTI file is now accessible.
+        Sets
+        ----    
+        self.nii_path : string
+            Full path to the primary NIfTI file after conversion.    
+
+        Files Created
+        -------------
+        - {automatically_named_file}.nii.gz : Equivalent of the DICOM folder converted
+        - cropped_{automatically_named_file}.nii.gz : Cropped according to the resolution file
         """
 
         # Create the output_directory file
@@ -99,7 +138,7 @@ class Segmentation:
             nib.save(cropped_image, nifti_path)
             print(f"NIfTI generated : {nifti_path}")
 
-            # No other purpose than to see
+            # No other purpose than seeing it
             shape = cropped_image.shape
             affine = cropped_image.affine
             data = cropped_image.get_fdata()
@@ -190,20 +229,20 @@ class Segmentation:
         threshold_arteries : int
             Lower bound for artery detection.
 
-        Notes
-        -------
-        numpy.ndarray
-            Binary masks for head, air, skull, no_arteries_array, and arteries are now accessible.
+        Sets
+        ----
+        self.head : numpy.ndarray
+        self.skull : numpy.ndarray
+        self.no_arteries_array : numpy.ndarray
+        self.arteries : numpy.ndarray
         """
         # Array with "True" where it is, and "False" where it is not
         thresholded_head = self.array >= threshold_head
-        thresholded_air = self.array <= threshold_head
         thresholded_skull = self.array >= threshold_skull
         thresholded_no_arteries = self.array >= threshold_no_arteries
         thresholded_arteries = self.array >= threshold_arteries
         # Put the value 1 if True, and 0 if False
         self.head = np.where(thresholded_head, 1, 0)
-        self.air = np.where(thresholded_air, 1, 0)
         self.skull = np.where(thresholded_skull, 1, 0)
         self.no_arteries_array = np.where(thresholded_no_arteries, 1, 0)
         self.arteries = np.where(thresholded_arteries, 1, 0)
@@ -213,13 +252,15 @@ class Segmentation:
         """
         Keep only the largest connected component in each binary mask.
 
-        Applies 3D connected component labeling to `head`, `skull`, `no_arteries_array`, 
-        and `air`, and retains only the largest region in each.
+        Applies 3D connected component labeling to `head`, `skull` and `no_arteries_array`,
+        and retains only the largest region in each.
 
-        Notes
+        Updates
         -------
-        numpy.ndarray
-            Masks for head, skull, no_arteries_array, and air are now updated.
+        self.head : numpy.ndarray
+            Binary mask of the where only the biggest component (head) is left.
+        self.skull : numpy.ndarray
+        self.no_arteries_array : numpy.ndarray
         """
         from scipy.ndimage import label, generate_binary_structure
 
@@ -233,8 +274,6 @@ class Segmentation:
         self.head = largest_connected_island(self.head)
         self.skull = largest_connected_island(self.skull)
         self.no_arteries_array = largest_connected_island(self.no_arteries_array)
-        self.air = largest_connected_island(self.air != 1)
-        self.air = np.where(self.air, 0, 1)
     
 
     def fill_holes(self):
@@ -242,10 +281,10 @@ class Segmentation:
         Fill internal holes in the skull mask.
         Uses binary morphology to fill enclosed voids in `self.skull`.
 
-        Notes
+        Updates
         -------
-        numpy.ndarray
-            Skull mask is now updated.
+        self.skull : numpy.ndarray
+            Binary mask of skull without hole.
         """
         from scipy.ndimage import binary_fill_holes
         self.skull = binary_fill_holes(self.skull)
@@ -265,10 +304,10 @@ class Segmentation:
         max_distance : int
             Maximum distance (in voxels) to keep skull regions near artery-free zones.
 
-        Notes
+        Updates
         -------
-        numpy.ndarray
-            Skull mask is now updated by removing arteries.
+        self.skull : numpy.ndarray
+            Binary mask of skull where arteries are removed.
         """
         from scipy.ndimage import distance_transform_edt, binary_dilation, generate_binary_structure
 
@@ -296,9 +335,12 @@ class Segmentation:
             If True, segments only the brain (label 90); not recommanded, the skull is needed later in the process.
             Otherwise, includes the skull (label 91) and more.
 
+        File Created
+        -------------
+        - totalsegmentator{file_number}.nii : Segmented head     
+
         Notes
         -----
-        Output is saved to `self.nifti_output_directory` as a NIfTI file.
         Only runs when the script is executed directly.
         IMPORTANT : 
             Brain is labeled with the number 90
@@ -322,11 +364,17 @@ class Segmentation:
         Loads TotalSegmentator output, extracts brain (label 90) and skull (label 91) masks, 
         and updates `self.arteries` to keep only arteries within the brain.
 
-        Notes
+        Sets
+        -----
+        self.brain_totalsegmentator : numpy.ndarray
+            Binary mask of the brain obtained with TotalSegmentator. 
+        self.skull_totalsegmentator : numpy.ndarray
+            Binary mask of the skull obtained with TotalSegmentator.
+        
+        Updates
         -------
-        numpy.ndarray
-            Binary masks for brain_totalsegmentator and skull_totalsegmentator are now accessible.
-            Binary mask for arteries is now updated.
+        self.arteries : numpy.ndarray
+            Binary mask of brain arteries.
         """
         totalsegmentator_mask = nib.load(os.path.join(self.nifti_output_directory, "totalsegmentator"+self.file_number+".nii")).get_fdata()
         self.brain_totalsegmentator = np.where(totalsegmentator_mask == 90, 1, 0)
@@ -350,19 +398,15 @@ class Segmentation:
         iter_erosion : int
             Number of binary erosion iterations to refine the skull mask.
 
-        Returns
-        -------
-        None
-
-        Notes
-        -----
-        Files are saved in `self.nifti_output_directory` as "head{file_number}.nii" 
-        and "mask{file_number}.nii".
+        Files Created
+        -------------
+        - head{file_number}.nii : Non masked head image. 
+        - mask{file_number}.nii : Labeled mask
         """
         # Nifti file with the HU units of the whole head for the registration
         head_img =  nib.load(self.nii_path)
-        head_array = head_img.get_fdata()
-        head_array = head_array*self.head # image*mask
+        head_array = head_img.get_fdata() # primary nifti file data
+        head_array = np.where(self.head == 1, head_array, -1000) # HU units where the mask is 1, -1000 where the mask is 0
         head_image = nib.Nifti1Image(head_array, head_img.affine, head_img.header) # Create a new NIfTI image
         nifti_path = os.path.join(self.nifti_output_directory, "head"+self.file_number)
         nib.save(head_image, nifti_path)
@@ -433,66 +477,147 @@ def main(dicoms_list = dicoms_list):
 class Registration(Segmentation):
 
     def __init__(self, big_output_directory="processed_files", file_number=0, fixed_img_path='icbm_avg_152_t1_tal_lin.nii'):
+        """
+        Initialize the Registration class for image alignment and landmark localization.
+
+        Loads moving (patient) and fixed (atlas) images, prepares file paths, loads head/mask data, 
+        and precomputes resolution and flipped/transposed arrays for visualization or processing.
+
+        Arguments
+        ----------
+        big_output_directory : str
+            Directory where processed folder of files are stored.
+        file_number : int
+            Identifier used to locate the directory, load specific NIfTI and mask files.
+        fixed_img_path : str
+            Path to the fixed atlas image used for registration.
+
+        Attributes
+        ----------
+        moving_img : ants.ANTsImage
+            Patient image to be registered.
+        fixed_img : ants.ANTsImage
+            Atlas image used as reference.
+        lpa_vox_normal_space, rpa_vox_normal_space, nas_vox_normal_space : np.ndarray
+            Landmark coordinates in the normalized space (they were determined visually on the fixed_img).
+        head, filled_head : np.ndarray
+            Processed head mask arrays, flipped and transposed for display.
+        resolution : tuple of float
+            Spatial resolution (voxel spacing) in mm along each axis.
+
+        Future attributes
+        -----------------
+        Attributes you can access at one point in the identification process :
+            -> fwd_df_transform, fwd_a_transform, inv_a_transform, inv_df_transform 
+            -> registered_nasion, registered_lpa, registered_rpa, nasion, lpa, rpa :
+            -> arteries
+
+        Notes
+        -----
+        IMPORTANT :
+            In this class, when displaying an array, note that the index order is
+            (Z, X, Y) and NOT (Y, X, Z) as it was in the Segmentation class  
+        """
+        
         self.big_output_directory = big_output_directory
         self.file_number = str(file_number)
         self.nifti_output_directory = os.path.join(self.big_output_directory, self.file_number)
-        self.moving_img_path = os.path.join(self.nifti_output_directory, "head"+self.file_number+".nii") # Complete head without metal frame        
-        self.moving_img = ants.image_read(self.moving_img_path, reorient='IAL')
-        self.fixed_img = ants.image_read(fixed_img_path, reorient='IAL')
+        self.moving_img_path = os.path.join(self.nifti_output_directory, "head"+self.file_number+".nii")
+        self.fixed_img_path = fixed_img_path
 
-        self.fwd_df_transform = None
-        self.fwd_a_transform = None 
-        self.inv_a_transform = None
-        self.inv_df_transform = None
+        self.moving_img = ants.image_read(self.moving_img_path, reorient='IAL') # Image to be registered
+        self.fixed_img = ants.image_read(fixed_img_path, reorient='IAL') # Reference image for registration
 
+        # Landmark coordinates determined visually
         self.lpa_vox_normal_space = np.array([25, 107, 6])
         self.rpa_vox_normal_space = np.array([25, 107, 173])
         self.nas_vox_normal_space = np.array([28, 4, 90])
-        self.lpa_vox_patient_space = None
-        self.rpa_vox_patient_space = None
-        self.nas_vox_patient_space = None
 
-        self.filled_y_slices = []
+        self.filled_y_slices = [] # Used to determine positions (lpa and rpa)
         mask_img = nib.load(os.path.join(self.nifti_output_directory, "mask"+self.file_number+".nii"))
         self.head = mask_img.get_fdata()
-        self.resolution = np.abs(mask_img.affine[0][0]), np.abs(mask_img.affine[1][1]), np.abs(mask_img.affine[2][2])
-        print(self.resolution)
-        # Swap axes 0 and 2 and mirrors axis 1 and 2 because the .nii files gives (y, x, z) instead of (z, x, y) otherwise
-        # It is for the coordinates to fit with those given by ants
-        self.arteries = None
+        # IMPORTANT : flipping the images for better display. 
+        # From now on, it is [z,x,y] and not [y,x,z] as it was in the Segmentation class
         self.filled_head = np.flip(np.flip(np.transpose(np.where(self.head>=1, 1, 0), (2, 1, 0)), axis=1), axis=2)
-        self.head = np.flip(np.flip(np.transpose(np.where(self.head>=1, 1, 0), (2, 1, 0)), axis=1), axis=2) # Pk ça marche pas de juste mettre =self.filled_head
-        # self.head = np.flip(np.flip(np.flip(np.where(self.head>=1, 1, 0), axis=1), axis=2), axis=0)
-        self.registered_nasion = None
-        self.nasion = None
-        self.regitered_lpa=None
-        self.registered_rpa=None
+        self.head = np.flip(np.flip(np.transpose(np.where(self.head>=1, 1, 0), (2, 1, 0)), axis=1), axis=2) 
 
 
-    def register(self, show=True):
+    def register(self, show=False):
+        """
+        Perform non-linear registration (SyN) between the moving (patient) and fixed (atlas) images.
+
+        Uses ANTsPy to compute affine and deformable transformations. Saves the transformation 
+        files (forward and inverse) in the output directory, and stores them as class attributes 
+        for later use (e.g., point or image transformation).
+
+        Parameters
+        ----------
+        show : bool, optional
+            If True, displays the moving image, fixed image, and the results of the registration 
+            (warped moving and fixed outputs) using the show_3D_array method.
+
+        Sets
+        ----
+        self.fwd_df_transform : ants.ANTsTransform
+            Forward deformation field (.nii.gz).
+        self.fwd_a_transform : ants.ANTsTransform
+            Forward affine transform (.mat).
+        self.inv_a_transform : ants.ANTsTransform
+            Inverted affine transform (.mat).
+        self.inv_df_transform : ants.ANTsTransform
+            Inverse deformation field (.nii.gz).
+
+        Files Created
+        -------------
+        - fwd{file_number}.nii.gz  : Forward deformation field.
+        - fwd{file_number}.mat     : Forward affine transform.
+        - inv{file_number}.mat     : Inverted affine transform.
+        - inv{file_number}.nii.gz  : Inverse deformation field.
+        """
+
+        # Compute the optimal forward and inverse transforms
         transformation = ants.registration(fixed=self.fixed_img, moving=self.moving_img, type_of_transform='SyN', verbose=True)
         print("TRANSFORMATION : ", transformation)
 
-        # Sauver les transformations
+        # Save the transforms in the working directory
         import shutil
         shutil.copy(transformation['fwdtransforms'][0], os.path.join(self.nifti_output_directory, "fwd"+self.file_number+".nii.gz"))
         ants.write_transform(transform=ants.read_transform(transformation['fwdtransforms'][1]), filename=os.path.join(self.nifti_output_directory, "fwd"+self.file_number+".mat"))
         ants.write_transform(transform=ants.invert_ants_transform(ants.read_transform(transformation['invtransforms'][0])), filename=os.path.join(self.nifti_output_directory, "inv"+self.file_number+".mat"))
         shutil.copy(transformation['invtransforms'][1], os.path.join(self.nifti_output_directory, "inv"+self.file_number+".nii.gz"))
 
-        self.fwd_df_transform = ants.read_transform(transformation['fwdtransforms'][0]) # .nii.gz -> deformation field (df) fwd_df_transform != inv_df_transform
-        self.fwd_a_transform = ants.read_transform(transformation['fwdtransforms'][1]) # .mat -> affine transform (a) fwd_a_transform = inv_a_transform 
+        # Associate it to a variable for later use
+        self.fwd_df_transform = ants.read_transform(transformation['fwdtransforms'][0]) # .nii.gz -> deformation field (df) : fwd_df_transform != inv_df_transform
+        self.fwd_a_transform = ants.read_transform(transformation['fwdtransforms'][1]) # .mat -> affine transform (a) : fwd_a_transform = inv_a_transform 
         self.inv_a_transform = ants.invert_ants_transform(ants.read_transform(transformation['invtransforms'][0])) # .mat -> affine transform (a) 
         self.inv_df_transform = ants.read_transform(transformation['invtransforms'][1]) # .nii.gz -> deformation field (df)
     
         if show:
-            self.show_3D_array(arr=self.moving_img.numpy())
-            self.show_3D_array(arr=self.fixed_img.numpy())
-            self.show_3D_array(arr=transformation['warpedmovout'].numpy()) # moving_image déformée
-            self.show_3D_array(arr=transformation['warpedfixout'].numpy()) # fixed_image déformée
+            self.show_3D_array(self.moving_img.numpy()) # moving_img (before reg.)
+            self.show_3D_array(self.fixed_img.numpy()) # fixed_img (before reg.)
+            self.show_3D_array(transformation['warpedmovout'].numpy()) # Warped moving_img (after reg.)
+            self.show_3D_array(transformation['warpedfixout'].numpy()) # Warped fixed_img (after reg.)
 
 
     def read_transforms(self):
+        """
+        Load precomputed ANTs transformation files (affine and deformation field) 
+        from the output directory and store them as class attributes.
+
+        This method is useful when transformations were previously saved to disk 
+        (e.g., after a registration step) and need to be reused without re-registering.
+
+        Sets
+        ----
+        self.fwd_df_transform : ants.ANTsTransform
+            Forward deformation field (.nii.gz).
+        self.fwd_a_transform : ants.ANTsTransform
+            Forward affine transform (.mat).
+        self.inv_a_transform : ants.ANTsTransform
+            Inverse affine transform (.mat).
+        self.inv_df_transform : ants.ANTsTransform
+            Inverse deformation field (.nii.gz).
+        """
         self.fwd_df_transform = ants.read_transform(os.path.join(self.nifti_output_directory, "fwd"+self.file_number+".nii.gz")) # .nii.gz -> deformation field (df) fwd_df_transform != inv_df_transform
         self.fwd_a_transform = ants.read_transform(os.path.join(self.nifti_output_directory, "fwd"+self.file_number+".mat")) # .mat -> affine transform (a) fwd_a_transform = inv_a_transform 
         self.inv_a_transform = ants.read_transform(os.path.join(self.nifti_output_directory, "inv"+self.file_number+".mat")) # .mat -> affine transform (a) 
@@ -500,100 +625,116 @@ class Registration(Segmentation):
 
 
     def find_registered_lpa_rpa_nasion(self):
+        """
+        Compute the patient-space coordinates of anatomical landmarks (LPA, RPA, nasion)
+        by applying forward transformations to standard-space (MNI) coordinates.
 
+        Uses the fixed image (atlas) and moving image (patient) to convert known MNI voxel
+        positions to patient voxel space through deformation and affine transforms.
+
+        Sets
+        -------
+        self.registered_lpa : tuple[int, int, int]
+            LPA voxel coordinates in patient space (z, x, y).
+        self.registered_rpa : tuple[int, int, int]
+            RPA voxel coordinates in patient space (z, x, y).
+        self.registered_nasion : tuple[int, int, int]
+            Nasion voxel coordinates in patient space (z, x, y).
+
+        Notes
+        -----
+        - Uses `ants.transform_index_to_physical_point()` to get physical coordinates in the atlas.
+        - Applies both deformation and affine forward transforms in sequence.
+        - Converts transformed physical points back to voxel indices using the patient image.
+        - Coordinates are rounded to integer values (z, x, y) to get the position in the array.
+        """
         # LPA : automatically identify on patient
         lpa_pt_normal_space = ants.transform_index_to_physical_point(self.fixed_img, self.lpa_vox_normal_space)
         lpa_pt_patient_space = ants.apply_ants_transform_to_point(self.fwd_df_transform, lpa_pt_normal_space)
         lpa_pt_patient_space = ants.apply_ants_transform_to_point(self.fwd_a_transform, lpa_pt_patient_space)
-        self.lpa_vox_patient_space =  ants.transform_physical_point_to_index(self.moving_img, lpa_pt_patient_space)
-        print("Point espace patient final :", lpa_pt_patient_space)
-        print('Voxel final', self.lpa_vox_patient_space)
+        lpa_vox_patient_space =  ants.transform_physical_point_to_index(self.moving_img, lpa_pt_patient_space)
+        self.registered_lpa = round(lpa_vox_patient_space[0]), round(lpa_vox_patient_space[1]), round(lpa_vox_patient_space[2])
+        print('Voxel final', self.registered_lpa) # (z,x,y)
 
         # RPA : automatically identify on patient
         rpa_pt_normal_space = ants.transform_index_to_physical_point(self.fixed_img, self.rpa_vox_normal_space)
         rpa_pt_patient_space = ants.apply_ants_transform_to_point(self.fwd_df_transform, rpa_pt_normal_space)
         rpa_pt_patient_space = ants.apply_ants_transform_to_point(self.fwd_a_transform, rpa_pt_patient_space)
-        self.rpa_vox_patient_space = ants.transform_physical_point_to_index(self.moving_img, rpa_pt_patient_space)
-        print("Point espace patient final :", rpa_pt_patient_space)
-        print('Voxel final', self.rpa_vox_patient_space)
+        rpa_vox_patient_space = ants.transform_physical_point_to_index(self.moving_img, rpa_pt_patient_space)
+        self.registered_rpa = round(rpa_vox_patient_space[0]), round(rpa_vox_patient_space[1]), round(rpa_vox_patient_space[2])
+        print('Voxel final', self.registered_rpa) # (z,x,y)
 
         # nasion : automatically identify on patient
         nas_pt_normal_space = ants.transform_index_to_physical_point(self.fixed_img, self.nas_vox_normal_space)
         nas_pt_patient_space = ants.apply_ants_transform_to_point(self.fwd_df_transform, nas_pt_normal_space)
         nas_pt_patient_space = ants.apply_ants_transform_to_point(self.fwd_a_transform, nas_pt_patient_space)
-        self.nas_vox_patient_space = ants.transform_physical_point_to_index(self.moving_img, nas_pt_patient_space)
-        print("Point espace patient final :", nas_pt_patient_space)
-        print('Voxel final', self.nas_vox_patient_space)
-
-
-    def mca_arteries_mask(self):
-        
-        arterial_territories = ants.image_read("mni_vascular_territories.nii.gz", reorient='IAL')
-        mca_territories = np.where(arterial_territories.numpy() == 4.0, 1, 0) + np.where(arterial_territories.numpy() == 14.0, 1, 0)
-        mca_territories = arterial_territories.new_image_like(mca_territories) # copies image information and just changes the data
-        
-        # Resample to target image mais avec l'irm et les arterial territories
-        mri = ants.image_read("icbm_avg_152_t1_tal_lin.nii", reorient='IAL')
-        resampled_mca_territories = ants.resample_image_to_target(mca_territories, mri, verbose=True)
-
-        # # Voir la superposition
-        # superposition = (arterial_territories.numpy()[:-1,:-1,:-1]/np.max(arterial_territories.numpy()))+(irm.numpy()/np.max(irm.numpy()))
-        # self.show_3D_array(superposition)
-
-        self.arteries = ants.image_read(os.path.join(self.nifti_output_directory, "mask"+self.file_number+".nii"), reorient="IAL")
-        arteries_only = np.where(self.arteries.numpy()==2,1,0)
-        # arteries_only = self.arteries.numpy() # Pour mieux voir, mais ne sera pas dans la version finale
-        self.arteries = self.arteries.new_image_like(arteries_only)
-        self.show_3D_array(self.arteries.numpy())
-
-        registered_arteries = ants.apply_transforms(fixed=resampled_mca_territories, moving=self.arteries, transformlist=[os.path.join(self.nifti_output_directory, "inv"+self.file_number+".mat"), os.path.join(self.nifti_output_directory, "inv"+self.file_number+".nii.gz")])
-        self.show_3D_array(registered_arteries.numpy())
-        normalized_mca_arteries = registered_arteries.numpy()*resampled_mca_territories.numpy()
-        self.show_3D_array(normalized_mca_arteries)
-
-        normalized_mca_arteries = registered_arteries.new_image_like(normalized_mca_arteries)
-        patient_mca_arteries = ants.apply_transforms(fixed=self.arteries, moving=normalized_mca_arteries, transformlist=[os.path.join(self.nifti_output_directory, "fwd"+self.file_number+".mat"), os.path.join(self.nifti_output_directory, "fwd"+self.file_number+".nii.gz")])
-        self.show_3D_array(patient_mca_arteries.numpy())
-        counts_z = np.sum(patient_mca_arteries.numpy(), axis = 0) # axis=2 donne somme en y, axis=0 donne somme en z
-        plt.imshow(counts_z, origin="lower")
-        plt.show()
-
-
-        # Appliquer la transformation sur les artères, multiplier par la masque (checker si ça marche bien), ramener dans l'autre espace
-
-
+        nas_vox_patient_space = ants.transform_physical_point_to_index(self.moving_img, nas_pt_patient_space)
+        self.registered_nasion = round(nas_vox_patient_space[0]), round(nas_vox_patient_space[1]), round(nas_vox_patient_space[2])
+        print('Voxel final', self.registered_nasion) # (z,x,y)
 
 
     def fill_cavities(self):
+        """
+        Fill internal cavities in the binary head mask across all anatomical planes.
+
+        This method processes the mask slice-by-slice along the three orthogonal axes
+        (x-y, x-z, y-z) to fill holes within the `self.filled_head` volume.
+
+        Updates
+        -------
+        self.filled_head : np.ndarray
+            Modified binary head mask with filled cavities.
+        self.filled_y_slices : list[int]
+            Indices of y-slices where cavities were filled in the x-z plane.
+
+        Notes
+        -----
+        Assumes that the image has equal dimensions in x and y
+        """        
         from scipy.ndimage import binary_fill_holes
 
         for i in range(0, len(self.filled_head[1,1,:])):
             # Fill holes in the x-z and y-z plane 
             original = self.filled_head[:,:,i]
             filled = binary_fill_holes(self.filled_head[:,:,i])
-            if not np.array_equal(original,filled):
+            if not np.array_equal(original,filled): # Check if the slice has been filled
                 self.filled_y_slices.append(i)
-            self.filled_head[:,:,i] = filled
-            self.filled_head[:,i,:] = binary_fill_holes(self.filled_head[:,i,:])
+            self.filled_head[:,:,i] = filled # Assumes equal dimensions in x and y
+            self.filled_head[:,i,:] = binary_fill_holes(self.filled_head[:,i,:]) 
         print(self.filled_y_slices)
         for i in range(0, len(self.filled_head[:,1,1])):
             # Fill holes in the x-y plane
             self.filled_head[i,:,:] = binary_fill_holes(self.filled_head[i,:,:])
-        
-        return self.filled_head, self.filled_y_slices
     
 
     def find_nasion(self, window=20):
-        nasion_x = 47
-        nasion_y = 237
-        nasion_z = 96
-        self.registered_nasion = nasion_x, nasion_y, nasion_z
+        """
+        Refine the position of the nasion using local anatomical data in the filled head mask.
 
-        ROI_nas = self.filled_head[nasion_z-window:nasion_z+window,nasion_x-window:nasion_x+window,nasion_y-window:nasion_y+window]
+        This function takes an initial estimation of the nasion (from registration) and looks
+        within a cubic region of interest (ROI) centered on this point. It analyzes the 
+        density of the binary mask across the x-axis to find a more anatomically accurate location.
+
+        Argument
+        ----------
+        window : int, optional
+            Half-width of the cubic ROI (region of interest) centered on the initial nasion estimate
+            (default is 20).
+
+        Sets
+        -------
+        self.nasion : tuple[int, int, int]
+            Refined voxel coordinates of the nasion (z, x, y).
+        """
+        reg_nas_z, reg_nas_x, reg_nas_y = self.registered_nasion
+
+        ROI_nas = self.filled_head[reg_nas_z-window:reg_nas_z+window,
+                                   reg_nas_x-window:reg_nas_x+window,
+                                   reg_nas_y-window:reg_nas_y+window]
         # Sum up one values of the binary mask on the x axis (3D array -> 2D array)
-        counts_x = np.sum(ROI_nas, axis = 1) # axis=2 donne somme en y, axis=0 donne somme en z
-        plt.imshow(counts_x, origin="lower")
-        plt.show()
+        counts_x = np.sum(ROI_nas, axis = 1) # axis=2 sums in y, axis=0 sums in z
+        # plt.imshow(counts_x, origin="lower")
+        # plt.show()
 
         # Index of the maximal values for rows and minimal values for columns
         max_index_row = (np.argmin(counts_x, axis=0))
@@ -607,31 +748,36 @@ class Registration(Segmentation):
         j = min_index_column[i]
         nasion_row = np.where(counts_x[i,:] == np.max(counts_x[i,:]))[0] 
         nasion_column = np.where(counts_x[:,j] == np.min(counts_x[:,j]))[0]
-        nasion_y_final = int(np.mean(nasion_row)) + (nasion_y - window)
-        nasion_z_final = int(np.mean(nasion_column)) + (nasion_z - window)
-        nasion_x_final = (2*window) - counts_x[int(np.mean(nasion_row)),int(np.mean(nasion_column))] + (nasion_x - window)
+        nasion_y_final = int(np.mean(nasion_row)) + (reg_nas_y - window)
+        nasion_z_final = int(np.mean(nasion_column)) + (reg_nas_z - window)
+        nasion_x_final = (2*window) - counts_x[int(np.mean(nasion_row)),int(np.mean(nasion_column))] + (reg_nas_x - window)
 
-        # Nasion en (x, y, z)
-        self.nasion = nasion_x_final, nasion_y_final, nasion_z_final
-        return self.nasion
+        self.nasion = nasion_z_final, nasion_x_final, nasion_y_final # (z, x, y)
 
 
     def check_nasion(self):
+        """
+        Visually validate the refined nasion position against the initially registered one.
+
+        This function plots axial, coronal, and sagittal views of the head mask, overlaying
+        both the refined nasion (in red) and the registered nasion (in blue) to assess the
+        accuracy of the correction.
+        """
         # # Si l'axe x passe à travers le nasion et règle de la main droite
-        # # Plan axial : Valeur fixe de z
-        plt.imshow(self.head[self.nasion[2],:,:], origin="lower")
+        # # Axial view : fixed z-value
+        plt.imshow(self.head[self.nasion[0],:,:], origin="lower")
+        plt.scatter([self.nasion[2]], [self.nasion[1]], c="r")
+        plt.scatter([self.registered_nasion[2]], [self.registered_nasion[1]], c="b")
+        plt.show()
+        # # Coronal view : fixed x-value
+        plt.imshow(self.head[:,self.nasion[1],:], origin="lower")
+        plt.scatter([self.nasion[2]], [self.nasion[0]], c="r")
+        plt.scatter([self.registered_nasion[2]], [self.registered_nasion[0]], c="b")
+        plt.show()
+        # # Sagittal view : fixed y-value
+        plt.imshow(self.head[:,:,self.nasion[2]], origin="lower")
         plt.scatter([self.nasion[1]], [self.nasion[0]], c="r")
         plt.scatter([self.registered_nasion[1]], [self.registered_nasion[0]], c="b")
-        plt.show()
-        # # Plan coronal : Valeur fixe de x
-        plt.imshow(self.head[:,self.nasion[0],:], origin="lower")
-        plt.scatter([self.nasion[1]], [self.nasion[2]], c="r")
-        plt.scatter([self.registered_nasion[1]], [self.registered_nasion[2]], c="b")
-        plt.show()
-        # # Plan sagittal : Valeur fixe de y
-        plt.imshow(self.head[:,:,self.nasion[1]], origin="lower")
-        plt.scatter([self.nasion[0]], [self.nasion[2]], c="r")
-        plt.scatter([self.registered_nasion[0]], [self.registered_nasion[2]], c="b")
         plt.show()
 
 
@@ -678,7 +824,6 @@ class Registration(Segmentation):
     
 
 
-
     def find_lpa(self, window=60):
         lpa_x = 223
         lpa_y = 84
@@ -707,6 +852,74 @@ class Registration(Segmentation):
         plt.imshow(counts_x, origin="lower")
         plt.show()
 
+
+    def save_pts_to_txt(self):
+        try:
+            f = open("myfile.txt", "x")
+            f.write("Now the file has been created!")
+        except:
+            with open("myfile.txt", "w") as f:
+                f.write("Now the file has new content!")
+
+
+
+    
+    def mca_arteries_mask(self, arterial_territories_path="mni_vascular_territories.nii.gz"):
+        """
+        Identify and map the Middle Cerebral Artery (MCA) territories from MNI space to patient space.
+
+        This method extracts the MCA regions (labels 4 and 14) from a vascular atlas (by default
+        `mni_vascular_territories.nii.gz`), resamples them to the reference space (using `self.fixed_img_path`),
+        and maps the patient's segmented arteries to MNI space. It then isolates voxels included in the
+        MCA region and the registered arterial segmentation, and maps the result back to patient space.
+
+        Parameters
+        ----------
+        arterial_territories_path : str, optional
+            Path to the arterial territories in MNI space. 
+            Default is "mni_vascular_territories.nii.gz".
+
+        Sets
+        ----
+        self.arteries : ants.ANTsImage
+            Binary mask of segmented MCA arteries in patient space.
+        """
+        # Keeping the MCA territories
+        arterial_territories = ants.image_read(arterial_territories_path, reorient='IAL')
+        mca_territories = np.where(arterial_territories.numpy() == 4.0, 1, 0) + np.where(arterial_territories.numpy() == 14.0, 1, 0)
+        mca_territories = arterial_territories.new_image_like(mca_territories) # copies image information and just changes the data
+        
+        # Resample to target image (the atlas is supposed to be in the same space than the normalized MRI)
+        mri = ants.image_read(self.fixed_img_path, reorient='IAL')
+        resampled_mca_territories = ants.resample_image_to_target(mca_territories, mri, verbose=True)
+        # # Seeing the superposition between the 2 images
+        # superposition = (arterial_territories.numpy()[:-1,:-1,:-1]/np.max(arterial_territories.numpy()))+(irm.numpy()/np.max(irm.numpy()))
+        # self.show_3D_array(superposition)
+
+        # Getting the arteries mask
+        self.arteries = ants.image_read(os.path.join(self.nifti_output_directory, "mask"+self.file_number+".nii"), reorient="IAL")
+        arteries_only = np.where(self.arteries.numpy()==2,1,0)
+        # arteries_only = self.arteries.numpy() # Pour mieux voir, mais ne sera pas dans la version finale
+        self.arteries = self.arteries.new_image_like(arteries_only)
+        self.show_3D_array(self.arteries.numpy())
+
+        # Bringing the arteries mask in the normalized space 
+        registered_arteries = ants.apply_transforms(fixed=resampled_mca_territories, moving=self.arteries, transformlist=[os.path.join(self.nifti_output_directory, "inv"+self.file_number+".mat"), os.path.join(self.nifti_output_directory, "inv"+self.file_number+".nii.gz")])
+        self.show_3D_array(registered_arteries.numpy())
+        # Keeping the arteries of the mask included in the MC territories
+        normalized_mca_arteries = registered_arteries.numpy()*resampled_mca_territories.numpy()
+        self.show_3D_array(normalized_mca_arteries)
+
+        # Bringing the MCA arteries back to the patient's space
+        normalized_mca_arteries = registered_arteries.new_image_like(normalized_mca_arteries)
+        patient_mca_arteries = ants.apply_transforms(fixed=self.arteries, moving=normalized_mca_arteries, transformlist=[os.path.join(self.nifti_output_directory, "fwd"+self.file_number+".mat"), os.path.join(self.nifti_output_directory, "fwd"+self.file_number+".nii.gz")])
+        
+        self.show_3D_array(patient_mca_arteries.numpy())
+        counts_z = np.sum(patient_mca_arteries.numpy(), axis = 0) # axis=2 donne somme en y, axis=0 donne somme en z
+        plt.imshow(counts_z, origin="lower")
+        plt.show()
+
+
                 
 
 
@@ -715,24 +928,26 @@ class Registration(Segmentation):
 
 id = Registration(big_output_directory="jspakoi", file_number=0, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
 # id.register()
-# id.read_transforms()
-# id.find_registered_lpa_rpa_nasion()
+id.save_pts_to_txt()
+id.read_transforms()
+id.find_registered_lpa_rpa_nasion()
 
-id.show_3D_array(nib.load('icbm_avg_152_t1_tal_lin.nii').get_fdata(), axis=0)
-id.mca_arteries_mask()
+# id.show_3D_array(nib.load('icbm_avg_152_t1_tal_lin.nii').get_fdata(), axis=0)
+# id.show_3D_array(nib.load('jspakoi/0/head0.nii').get_fdata(), axis=0)
+# id.show_3D_array(id.head, axis=0)
+# id.show_3D_array(id.moving_img.numpy(), axis=0)
+# id.show_3D_array(id.fixed_img.numpy(), axis=0)
 
-id.show_3D_array(id.head, axis=2)
+# id.mca_arteries_mask()
 id.fill_cavities()
-# id.show_3D_array(id.head, axis=2)
-# id.show_3D_array(id.filled_head, axis=2)
-# id.find_nasion()
-# id.check_nasion()
+id.find_nasion()
+id.check_nasion()
 print(id.find_rpa())
 print(id.find_lpa())
 
 id.show_3D_array(id.head, axis=2, pt=(id.registered_lpa[0], id.registered_lpa[2]))
 id.show_3D_array(id.head, axis=2, pt=(id.registered_rpa[0], id.registered_rpa[2]))
-id.read_transforms()
+
 id.find_registered_lpa_rpa_nasion()
 
 # AJOUTER L'AFFICHAGE DES PTS TROUVÉS
