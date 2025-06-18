@@ -539,7 +539,10 @@ class Registration(Segmentation):
         # IMPORTANT : flipping the images for better display. 
         # From now on, it is [z,x,y] and not [y,x,z] as it was in the Segmentation class
         self.filled_head = np.flip(np.flip(np.transpose(np.where(self.head>=1, 1, 0), (2, 1, 0)), axis=1), axis=2)
-        self.head = np.flip(np.flip(np.transpose(np.where(self.head>=1, 1, 0), (2, 1, 0)), axis=1), axis=2) 
+        self.head = np.flip(np.flip(np.transpose(np.where(self.head>=1, 1, 0), (2, 1, 0)), axis=1), axis=2)
+
+        self.lpa=(0,0,2)
+        self.rpa=(0,0,9) 
 
 
     def register(self, show=False):
@@ -854,13 +857,24 @@ class Registration(Segmentation):
 
 
     def save_pts_to_txt(self):
-        try:
-            f = open("myfile.txt", "x")
-            f.write("Now the file has been created!")
-        except:
-            with open("myfile.txt", "w") as f:
-                f.write("Now the file has new content!")
+        """
+        Save anatomical point coordinates (Nasion, LPA, RPA) in voxel space to a text file.
 
+        File Created
+        ------------
+        - points{self.file_number}.txt : Text file containing nasion, LPA, and RPA coordinates.
+
+        Notes
+        -----
+        - The file is written with voxel coordinates reordered as (X, Y, Z) for readability.
+        - If the file already exists, it is overwritten.
+        """
+        txt_path = os.path.join(self.nifti_output_directory, f"points{self.file_number}.txt")
+        f = open(txt_path, "w")
+        f.write("Point coordinates are given in voxels : (X, Y, Z)\n" \
+                f"Nasion : ({self.nasion[1]}, {self.nasion[2]}, {self.nasion[0]})\n" \
+                f"LPA : ({self.lpa[1]}, {self.lpa[2]}, {self.lpa[0]})\n" \
+                f"RPA : ({self.rpa[1]}, {self.rpa[2]}, {self.rpa[0]})" )
 
 
     
@@ -928,7 +942,7 @@ class Registration(Segmentation):
 
 id = Registration(big_output_directory="jspakoi", file_number=0, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
 # id.register()
-id.save_pts_to_txt()
+
 id.read_transforms()
 id.find_registered_lpa_rpa_nasion()
 
@@ -944,6 +958,8 @@ id.find_nasion()
 id.check_nasion()
 print(id.find_rpa())
 print(id.find_lpa())
+
+id.save_pts_to_txt()
 
 id.show_3D_array(id.head, axis=2, pt=(id.registered_lpa[0], id.registered_lpa[2]))
 id.show_3D_array(id.head, axis=2, pt=(id.registered_rpa[0], id.registered_rpa[2]))

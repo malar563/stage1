@@ -1,0 +1,4 @@
+Point coordinates are given in voxels : (X, Y, Z)
+Nasion : (44, 259, 225)
+LPA : (0, 2, 0)
+RPA : (0, 9, 0)
