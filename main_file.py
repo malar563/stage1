@@ -475,8 +475,7 @@ dicoms_list = ["DICOM_003/Carotid_Angio_0.625mm", "DICOM_010/COW_Angio_0.6_Hv36_
 def main(dicoms_list = dicoms_list):
     for i, dicom in enumerate(dicoms_list):
         start = time.time()
-        ct = Segmentation(dcm_path=dicom, big_output_directory="jspakoi", file_number=i)
-        ct.show_3D_array(ct.array) 
+        ct = Segmentation(dcm_path=dicom, big_output_directory="jspakoi", file_number=i) 
         ct.apply_threshold()
         ct.keep_largest_island()
         ct.fill_holes()
@@ -992,6 +991,13 @@ class Registration(Segmentation):
         plt.imshow(counts_z, origin="lower")
         plt.show()
 
+        # Nifti file with the MCA territories
+        head_img =  nib.load(os.path.join(self.nifti_output_directory, "head"+self.file_number+".nii"))
+        mca_image = nib.Nifti1Image(patient_mca_arteries, head_img.affine, head_img.header) # Create a new NIfTI image
+        nifti_path = os.path.join(self.nifti_output_directory, "mca_territory"+self.file_number)
+        nib.save(mca_image, nifti_path)
+        print(f"NIfTI generated : {nifti_path}.nii")
+
 
                 
 
@@ -999,11 +1005,11 @@ class Registration(Segmentation):
 
 
 
-id = Registration(big_output_directory="nifti", file_number=2, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
+id = Registration(big_output_directory="jspakoi", file_number=0, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
 # id.register()
 # id.delete_useless_files()
 id.read_transforms()
-# id.mca_arteries_mask()
+id.mca_arteries_mask()
 id.find_registered_lpa_rpa_nasion()
 
 # id.show_3D_array(nib.load('icbm_avg_152_t1_tal_lin.nii').get_fdata(), axis=0)
