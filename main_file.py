@@ -111,16 +111,7 @@ class Segmentation:
                 ["Resolution (mm)", self.resolution[1], self.resolution[0], self.resolution[2]],
                 ["Length (mm)", self.dimension[1]*self.resolution[1], self.dimension[0]*self.resolution[0], self.dimension[2]*self.resolution[2]]]
         df = pd.DataFrame(data)
-        df.to_csv(csv_path, header=False, index=False)
-
-        # if os.path.exists(csv_path):
-        #     df_existing = pd.read_csv(csv_path)
-        #     df_final = pd.concat([df, df_existing[4:,4:]])
-        #     df_final.to_csv(csv_path, header=False, index=False)
-        # else:
-        #     df.to_csv(csv_path, header=False, index=False)
-
-            
+        df.to_csv(csv_path, header=False, index=False)            
 
 
     def dcm_to_nii(self, crop="yes"):
@@ -455,6 +446,17 @@ class Segmentation:
         nifti_path = os.path.join(self.nifti_output_directory, "mask"+self.file_number)
         nib.save(masked_image, nifti_path)
         print(f"NIfTI generated : {nifti_path}.nii")
+    
+
+    def delete_useless_files(self):
+        useless_files = [self.nii_path.removeprefix("cropped_"),
+                         os.path.join(self.nifti_output_directory, "totalsegmentator"+self.file_number+".nii"),
+                         os.path.join(self.nifti_output_directory, "head"+self.file_number+".nii")]
+        for file_path in useless_files:
+            if os.path.exists(file_path):
+                os.remove(file_path)
+            else:
+                print(f"The file {file_path} does not exist")
 
 
 
@@ -494,8 +496,8 @@ def main(dicoms_list = dicoms_list):
         print(f"Time to segment file {ct.nii_path} : {time.time() - start} seconds")
 
 
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     main()
 
 
 # BIZARREEEEEEEE : S'ASSURER QUE Z=AXE0, X=AXE1 ET Y=AXE2 TEL QUE DHABITUDE : PAS LE CAS DANS LE MASQUE CI-HAUT
@@ -567,17 +569,17 @@ class Registration(Segmentation):
         self.rpa_vox_normal_space = np.array([25, 107, 173])
         self.nas_vox_normal_space = np.array([28, 4, 90])
 
-        self.filled_y_slices = [] # Used to determine positions (lpa and rpa)
-        mask_img = nib.load(os.path.join(self.nifti_output_directory, "mask"+self.file_number+".nii"))
-        self.head = mask_img.get_fdata()
-        # IMPORTANT : flipping the images for better display. 
-        # From now on, it is [z,x,y] and not [y,x,z] as it was in the Segmentation class
-        self.filled_head = np.flip(np.flip(np.transpose(np.where(self.head>=1, 1, 0), (2, 1, 0)), axis=1), axis=2)
-        self.head = np.flip(np.flip(np.transpose(np.where(self.head>=1, 1, 0), (2, 1, 0)), axis=1), axis=2)
+        # self.filled_y_slices = [] # Used to determine positions (lpa and rpa)
+        # mask_img = nib.load(os.path.join(self.nifti_output_directory, "mask"+self.file_number+".nii"))
+        # self.head = mask_img.get_fdata()
+        # # IMPORTANT : flipping the images for better display. 
+        # # From now on, it is [z,x,y] and not [y,x,z] as it was in the Segmentation class
+        # self.filled_head = np.flip(np.flip(np.transpose(np.where(self.head>=1, 1, 0), (2, 1, 0)), axis=1), axis=2)
+        # self.head = np.flip(np.flip(np.transpose(np.where(self.head>=1, 1, 0), (2, 1, 0)), axis=1), axis=2)
 
-        self.lpa=(0,0,2)
-        self.rpa=(0,0,9)
-        self.nasion = (2,2,3) 
+        # self.lpa=(0,0,2)
+        # self.rpa=(0,0,9)
+        # self.nasion = (2,2,3) 
 
 
     def register(self, show=False):
@@ -913,19 +915,28 @@ class Registration(Segmentation):
                 ["RPA", self.rpa[1], self.rpa[2], self.rpa[0]]]
         df_to_add = pd.DataFrame(data)
         # Checks if the existing file already has the 3 landmarks
-        if df_existing.iloc[-3,-4]=="Dimensions":
+        if df_existing.iloc[-3,-3]=="Dimensions":
             # Appends the DataFrame to the same file without headers
             df_to_add.to_csv(csv_path, mode='a', header=False, index=False)
         else:
             # Overwrites the landmark's DataFrame
-            print(df_existing.iloc[:-3,:-4])
             df_final = pd.concat([df_existing.iloc[:-3,:-4], df_to_add])
             df_final.to_csv(csv_path, header=False, index=False)
 
 
 
-
+    def delete_useless_files(self):
+        useless_files = [os.path.join(self.nifti_output_directory, "fwd"+self.file_number+".mat"),
+                         os.path.join(self.nifti_output_directory, "fwd"+self.file_number+".nii.gz"),
+                         os.path.join(self.nifti_output_directory, "inv"+self.file_number+".mat"),
+                         os.path.join(self.nifti_output_directory, "inv"+self.file_number+".nii.gz")]
+        for file_path in useless_files:
+            if os.path.exists(file_path):
+                os.remove(file_path)
+            else:
+                print(f"The file {file_path} does not exist")
     
+
     def mca_arteries_mask(self, arterial_territories_path="mni_vascular_territories.nii.gz"):
         """
         Identify and map the Middle Cerebral Artery (MCA) territories from MNI space to patient space.
@@ -988,9 +999,9 @@ class Registration(Segmentation):
 
 
 
-id = Registration(big_output_directory="jspakoi", file_number=0, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
+id = Registration(big_output_directory="nifti", file_number=2, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
 # id.register()
-id.save_pts_to_csv()
+# id.delete_useless_files()
 id.read_transforms()
 # id.mca_arteries_mask()
 id.find_registered_lpa_rpa_nasion()
@@ -1004,7 +1015,7 @@ id.find_registered_lpa_rpa_nasion()
 # id.mca_arteries_mask()
 id.fill_cavities()
 id.find_nasion()
-id.check_nasion()
+# id.check_nasion()
 print(id.find_rpa())
 print(id.find_lpa())
 
