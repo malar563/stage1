@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import ants
 import time
+import pandas as pd
 
 
 class Segmentation:
@@ -73,8 +74,10 @@ class Segmentation:
             self.nii_path = [f for f in os.listdir(self.nifti_output_directory) if f.startswith('cropped')][0] 
             self.nii_path = os.path.join(self.nifti_output_directory, self.nii_path) # Full path to the primary NIfTI file after conversion.
             self.img = nib.load(self.nii_path)
-            self.array = img.get_fdata() # Placeholder for loaded NIfTI image data (primary NIfTI file)
-            self.resolution = np.abs(img.affine[0][0]), np.abs(img.affine[1][1]), np.abs(img.affine[2][2]) # Just in case you want to see
+            self.array = self.img.get_fdata() # Placeholder for loaded NIfTI image data (primary NIfTI file)
+            self.resolution = np.abs(self.img.affine[0][0]), np.abs(self.img.affine[1][1]), np.abs(self.img.affine[2][2])
+            # print(self.img.header)
+            self.dimension = self.img.shape
             print(f"NIfTI found : {self.nii_path}")
         except:
             print("No processed NIfTI file in the directory. Processing the specified DICOM file...")
@@ -82,6 +85,43 @@ class Segmentation:
             img = nib.load(self.nii_path)
             self.array = img.get_fdata() # Placeholder for loaded NIfTI image data (primary NIfTI file)
             self.resolution = np.abs(img.affine[0][0]), np.abs(img.affine[1][1]), np.abs(img.affine[2][2]) # Just in case you want to see
+            self.resolution = np.abs(img.affine[0][0]), np.abs(img.affine[1][1]), np.abs(img.affine[2][2])
+            self.dimension = img.shape
+        self.save_to_csv()
+
+
+    def save_to_csv(self):
+        """
+        Save image metadata to a CSV file. It contains :
+        - Voxel dimensions along the x, y, z axes
+        - Spatial resolution in millimeters
+        - Physical length of the volume in each direction (dimension × resolution)
+
+        Files Created
+        -------------
+        - points{self.file_number}.txt : CSV file containing metadata.
+
+        Notes
+        -----
+        - Axes are reordered to (x, y, z) for readability and consistency.
+        """
+        csv_path = os.path.join(self.nifti_output_directory, f"points{self.file_number}.csv")
+        data = [["","x", "y", "z"],
+                ["Dimensions", self.dimension[1], self.dimension[0], self.dimension[2]],
+                ["Resolution (mm)", self.resolution[1], self.resolution[0], self.resolution[2]],
+                ["Length (mm)", self.dimension[1]*self.resolution[1], self.dimension[0]*self.resolution[0], self.dimension[2]*self.resolution[2]]]
+        df = pd.DataFrame(data)
+        df.to_csv(csv_path, header=False, index=False)
+
+        # if os.path.exists(csv_path):
+        #     df_existing = pd.read_csv(csv_path)
+        #     df_final = pd.concat([df, df_existing[4:,4:]])
+        #     df_final.to_csv(csv_path, header=False, index=False)
+        # else:
+        #     df.to_csv(csv_path, header=False, index=False)
+
+            
+
 
     def dcm_to_nii(self, crop="yes"):
         """
@@ -123,8 +163,7 @@ class Segmentation:
             nifti_image = nib.load(nifti_path)
 
             # Crop the image depending on the resolution 
-            header = cropped_image.header
-            pix_dim, pix_z = header["pixdim"][1:4], header["pixdim"][3]
+            pix_dim, pix_z = nifti_image.header["pixdim"][1:4], nifti_image.header["pixdim"][3]
             if pix_z >= 0.6:
                 cropped_data = nifti_image.get_fdata()[:,:,-256:]
             else:
@@ -137,16 +176,6 @@ class Segmentation:
             nifti_path = os.path.join(self.nifti_output_directory, "cropped_"+nifti_files[0])
             nib.save(cropped_image, nifti_path)
             print(f"NIfTI generated : {nifti_path}")
-
-            # No other purpose than seeing it
-            shape = cropped_image.shape
-            affine = cropped_image.affine
-            data = cropped_image.get_fdata()
-            # print("Pixel dimensions :", pix_dim, pix_z)
-            # print("Dimensions :", shape)
-            # print("Entête :", header)
-            # print("Affine :", affine)
-            # print("data :", data)
 
             self.nii_path = nifti_path
 
@@ -428,6 +457,10 @@ class Segmentation:
         print(f"NIfTI generated : {nifti_path}.nii")
 
 
+
+
+
+
  
 
 
@@ -440,7 +473,8 @@ dicoms_list = ["DICOM_003/Carotid_Angio_0.625mm", "DICOM_010/COW_Angio_0.6_Hv36_
 def main(dicoms_list = dicoms_list):
     for i, dicom in enumerate(dicoms_list):
         start = time.time()
-        ct = Segmentation(dcm_path=dicom, big_output_directory="jspakoi", file_number=i) 
+        ct = Segmentation(dcm_path=dicom, big_output_directory="jspakoi", file_number=i)
+        ct.show_3D_array(ct.array) 
         ct.apply_threshold()
         ct.keep_largest_island()
         ct.fill_holes()
@@ -460,8 +494,8 @@ def main(dicoms_list = dicoms_list):
         print(f"Time to segment file {ct.nii_path} : {time.time() - start} seconds")
 
 
-# if __name__ == "__main__":
-#     main()
+if __name__ == "__main__":
+    main()
 
 
 # BIZARREEEEEEEE : S'ASSURER QUE Z=AXE0, X=AXE1 ET Y=AXE2 TEL QUE DHABITUDE : PAS LE CAS DANS LE MASQUE CI-HAUT
@@ -542,7 +576,8 @@ class Registration(Segmentation):
         self.head = np.flip(np.flip(np.transpose(np.where(self.head>=1, 1, 0), (2, 1, 0)), axis=1), axis=2)
 
         self.lpa=(0,0,2)
-        self.rpa=(0,0,9) 
+        self.rpa=(0,0,9)
+        self.nasion = (2,2,3) 
 
 
     def register(self, show=False):
@@ -856,7 +891,7 @@ class Registration(Segmentation):
         plt.show()
 
 
-    def save_pts_to_txt(self):
+    def save_pts_to_csv(self):
         """
         Save anatomical point coordinates (Nasion, LPA, RPA) in voxel space to a text file.
 
@@ -869,12 +904,25 @@ class Registration(Segmentation):
         - The file is written with voxel coordinates reordered as (X, Y, Z) for readability.
         - If the file already exists, it is overwritten.
         """
-        txt_path = os.path.join(self.nifti_output_directory, f"points{self.file_number}.txt")
-        f = open(txt_path, "w")
-        f.write("Point coordinates are given in voxels : (X, Y, Z)\n" \
-                f"Nasion : ({self.nasion[1]}, {self.nasion[2]}, {self.nasion[0]})\n" \
-                f"LPA : ({self.lpa[1]}, {self.lpa[2]}, {self.lpa[0]})\n" \
-                f"RPA : ({self.rpa[1]}, {self.rpa[2]}, {self.rpa[0]})" )
+        csv_path = os.path.join(self.nifti_output_directory, f"points{self.file_number}.csv")
+
+        df_existing = pd.read_csv(csv_path)
+        
+        data = [["Nasion", self.nasion[1], self.nasion[2], self.nasion[0]],
+                ["LPA", self.lpa[1], self.lpa[2], self.lpa[0]],
+                ["RPA", self.rpa[1], self.rpa[2], self.rpa[0]]]
+        df_to_add = pd.DataFrame(data)
+        # Checks if the existing file already has the 3 landmarks
+        if df_existing.iloc[-3,-4]=="Dimensions":
+            # Appends the DataFrame to the same file without headers
+            df_to_add.to_csv(csv_path, mode='a', header=False, index=False)
+        else:
+            # Overwrites the landmark's DataFrame
+            print(df_existing.iloc[:-3,:-4])
+            df_final = pd.concat([df_existing.iloc[:-3,:-4], df_to_add])
+            df_final.to_csv(csv_path, header=False, index=False)
+
+
 
 
     
@@ -942,8 +990,9 @@ class Registration(Segmentation):
 
 id = Registration(big_output_directory="jspakoi", file_number=0, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
 # id.register()
-
+id.save_pts_to_csv()
 id.read_transforms()
+# id.mca_arteries_mask()
 id.find_registered_lpa_rpa_nasion()
 
 # id.show_3D_array(nib.load('icbm_avg_152_t1_tal_lin.nii').get_fdata(), axis=0)
@@ -959,7 +1008,7 @@ id.check_nasion()
 print(id.find_rpa())
 print(id.find_lpa())
 
-id.save_pts_to_txt()
+id.save_pts_to_csv()
 
 id.show_3D_array(id.head, axis=2, pt=(id.registered_lpa[0], id.registered_lpa[2]))
 id.show_3D_array(id.head, axis=2, pt=(id.registered_rpa[0], id.registered_rpa[2]))
