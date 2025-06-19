@@ -60,8 +60,8 @@ class Segmentation:
         Notes
         -----
         IMPORTANT :
-            In this class, when displaying an array, note that the index order is
-            (Y, X, Z)    
+            - In this class, when displaying an array, note that the index order is (Y, X, Z)
+            - According to Nibabel, reorient automatically the image in RAS+ coordinates    
         """
 
         self.dcm_path = dcm_path # Path to the DICOM directory.
@@ -550,8 +550,13 @@ class Registration(Segmentation):
         Notes
         -----
         IMPORTANT :
-            In this class, when displaying an array, note that the index order is
-            (Z, X, Y) and NOT (Y, X, Z) as it was in the Segmentation class  
+            - In this class, when displaying an array, note that the index order is 
+              (Z, X, Y) and NOT (Y, X, Z) as it was in the Segmentation class.
+              It is to ensure consistency of the orientation (for both fixed and moving image)
+              and a better display.
+            - To get the points in the original coordinate system (mask) :
+                -> For a mask, use ants.reorient_image2(image, orientation)
+                -> For a point, use a affine matrix as found in the 
         """
         
         self.big_output_directory = big_output_directory
@@ -560,25 +565,37 @@ class Registration(Segmentation):
         self.moving_img_path = os.path.join(self.nifti_output_directory, "head"+self.file_number+".nii")
         self.fixed_img_path = fixed_img_path
 
-        self.moving_img = ants.image_read(self.moving_img_path, reorient='IAL') # Image to be registered
-        self.fixed_img = ants.image_read(fixed_img_path, reorient='IAL') # Reference image for registration
+        self.initial_moving_img = ants.image_read(self.moving_img_path) # Image provided by the mask
+        self.initial_moving_img_orientation = ants.get_orientation(self.initial_moving_img) # Orientation of the mask
+        self.moving_img = ants.image_read(self.moving_img_path, reorient="IAL") # Image to be registered
+        self.fixed_img = ants.image_read(fixed_img_path, reorient="IAL") # Reference image for registration
 
-        # Landmark coordinates determined visually
+        # Landmark coordinates determined visually (AVANT)
         self.lpa_vox_normal_space = np.array([25, 107, 6])
         self.rpa_vox_normal_space = np.array([25, 107, 173])
         self.nas_vox_normal_space = np.array([28, 4, 90])
 
-        # self.filled_y_slices = [] # Used to determine positions (lpa and rpa)
-        # mask_img = nib.load(os.path.join(self.nifti_output_directory, "mask"+self.file_number+".nii"))
-        # self.head = mask_img.get_fdata()
-        # # IMPORTANT : flipping the images for better display. 
-        # # From now on, it is [z,x,y] and not [y,x,z] as it was in the Segmentation class
-        # self.filled_head = np.flip(np.flip(np.transpose(np.where(self.head>=1, 1, 0), (2, 1, 0)), axis=1), axis=2)
-        # self.head = np.flip(np.flip(np.transpose(np.where(self.head>=1, 1, 0), (2, 1, 0)), axis=1), axis=2)
+        self.filled_y_slices = [] # Used to determine positions (lpa and rpa)
+        mask_img = nib.load(os.path.join(self.nifti_output_directory, "mask"+self.file_number+".nii"))
+        self.head = mask_img.get_fdata()
+        # IMPORTANT : flipping the images for better display. 
+        # From now on, it is [z,x,y] and not [y,x,z] as it was in the Segmentation class
+        self.filled_head = np.flip(np.flip(np.transpose(np.where(self.head>=1, 1, 0), (2, 1, 0)), axis=1), axis=2)
+        self.head = np.flip(np.flip(np.transpose(np.where(self.head>=1, 1, 0), (2, 1, 0)), axis=1), axis=2)
 
-        # self.lpa=(0,0,2)
-        # self.rpa=(0,0,9)
-        # self.nasion = (2,2,3) 
+        self.lpa=(0,0,2)
+        self.rpa=(0,0,9)
+        self.nasion = (2,2,3) 
+
+
+    
+    def reorient_point_to_original_mask(self):
+        tx = ants.registration(fixed=self.moving_img, moving=self.initial_moving_img, type_of_transform='Affine', verbose=True)
+        affine = ants.read_transform(tx['fwdtransforms'][0])
+        affine_matrix_np = affine.parameters
+        print(affine_matrix_np)
+
+        
 
 
     def register(self, show=False):
@@ -987,13 +1004,14 @@ class Registration(Segmentation):
         patient_mca_arteries = ants.apply_transforms(fixed=self.arteries, moving=normalized_mca_arteries, transformlist=[os.path.join(self.nifti_output_directory, "fwd"+self.file_number+".mat"), os.path.join(self.nifti_output_directory, "fwd"+self.file_number+".nii.gz")])
         
         self.show_3D_array(patient_mca_arteries.numpy())
-        counts_z = np.sum(patient_mca_arteries.numpy(), axis = 0) # axis=2 donne somme en y, axis=0 donne somme en z
+        counts_z = np.sum(patient_mca_arteries.numpy(), axis = 0) # axis=2 sums in y, axis=0 sums in z
         plt.imshow(counts_z, origin="lower")
         plt.show()
 
         # Nifti file with the MCA territories
         head_img =  nib.load(os.path.join(self.nifti_output_directory, "head"+self.file_number+".nii"))
-        mca_image = nib.Nifti1Image(patient_mca_arteries, head_img.affine, head_img.header) # Create a new NIfTI image
+        patient_mca_arteries = ants.reorient_image2(patient_mca_arteries, orientation=self.initial_moving_img_orientation) # Reorient accordinf to the initial mask
+        mca_image = nib.Nifti1Image(patient_mca_arteries.numpy(), head_img.affine, head_img.header) # Create a new NIfTI image
         nifti_path = os.path.join(self.nifti_output_directory, "mca_territory"+self.file_number)
         nib.save(mca_image, nifti_path)
         print(f"NIfTI generated : {nifti_path}.nii")
@@ -1006,6 +1024,9 @@ class Registration(Segmentation):
 
 
 id = Registration(big_output_directory="jspakoi", file_number=0, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
+id.reorient_point_to_original_mask()
+id.show_3D_array(id.moving_img.numpy())
+id.show_3D_array(id.fixed_img.numpy())
 # id.register()
 # id.delete_useless_files()
 id.read_transforms()
