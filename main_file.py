@@ -589,7 +589,20 @@ class Registration(Segmentation):
 
 
     
-    def reorient_point_to_original_mask(self):
+    def reorient_point_to_original_mask(self, orient_init="RPI", orient_fin="IAL"):
+        orient_init = list(orient_init)
+        orient_fin = list(orient_fin)
+
+        already_in = []
+        transpose_needed = []
+        for axis_init, element in enumerate(orient_init):
+            try:
+               already_in.append((axis_init, orient_fin.index(element))) # If already in, (initial axis number, final axis number)
+            except:
+                transpose_needed.append((element, axis_init))
+        
+
+
         tx = ants.registration(fixed=self.moving_img, moving=self.initial_moving_img, type_of_transform='Affine', verbose=True)
         affine = ants.read_transform(tx['fwdtransforms'][0])
         affine_matrix_np = affine.parameters
@@ -1024,13 +1037,13 @@ class Registration(Segmentation):
 
 
 id = Registration(big_output_directory="jspakoi", file_number=0, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
-id.reorient_point_to_original_mask()
+# id.reorient_point_to_original_mask()
 id.show_3D_array(id.moving_img.numpy())
 id.show_3D_array(id.fixed_img.numpy())
 # id.register()
 # id.delete_useless_files()
 id.read_transforms()
-id.mca_arteries_mask()
+# id.mca_arteries_mask()
 id.find_registered_lpa_rpa_nasion()
 
 # id.show_3D_array(nib.load('icbm_avg_152_t1_tal_lin.nii').get_fdata(), axis=0)

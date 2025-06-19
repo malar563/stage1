@@ -175,8 +175,67 @@ middle_index = indices_17[len(indices_17) // 2]
 
 txt = "Hello, welcome to my world."
 x = txt.startswith("Hello")
-print(x)
+# print(x)
 
+txt = "welcome to the jungle"
+x = txt.split()
+# print(x)
+
+# def reorient_point_to_original_mask(orient_init="RPI", orient_fin="IAL"):
+def reorient_point_to_original_mask(orient_init="RPI", orient_fin="AIL"):
+    orient_init = list(orient_init)
+    orient_fin = list(orient_fin)
+
+    already_in = []
+    transpose_needed = []
+    already_in = ["N", "N", "N"]
+    for axis_init, element in enumerate(orient_init):
+        try:
+            already_in[axis_init]= (axis_init, orient_fin.index(element)) # If already in, (initial axis number, final axis number)
+            # new_order[orient_fin.index(element)] = element # Place it to the final place
+        except:
+            transpose_needed.append((element, axis_init)) # Initial axis where the letter needs to be changed
+    for index, (letter, axis) in enumerate(transpose_needed):
+        if letter=="R":
+            new_letter = "L"
+        elif letter=="L":
+            new_letter = "R"
+        elif letter=="A":
+            new_letter = "P"
+        elif letter=="P":
+            new_letter = "A"
+        elif letter=="I":
+            new_letter = "S"
+        elif letter=="S":
+            new_letter = "I"
+        else:
+            print("Lettre invalide")
+        orient_init[axis] = new_letter
+    for axis_init, element in enumerate(orient_init):
+        already_in[axis_init] = (axis_init, orient_fin.index(element))
+
+    print(orient_init, orient_fin)
+    print(already_in, transpose_needed)
+
+    affine = np.zeros((4,4))
+    affine[0,already_in[0][1]] = 1
+    affine[1,already_in[1][1]] = 1
+    affine[2,already_in[2][1]] = 1
+    affine[3,3] = 1
+    resolution=512
+    for letter, initial_index in transpose_needed:
+        new_index = already_in[initial_index][1]
+        affine[new_index] = -1*affine[new_index]
+        affine[new_index,-1] = resolution-1
+    print(affine)
+
+    for element, axis_to_flip in transpose_needed:
+        arr = np.flip(arr, axis=axis_to_flip)
+    arr = np.transpose(arr, (transpose_needed[0][1], transpose_needed[1][1], transpose_needed[2][1]))
+
+    
+
+reorient_point_to_original_mask()
 
 
 
