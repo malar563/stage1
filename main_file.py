@@ -497,8 +497,8 @@ def main(dicoms_list = dicoms_list):
         print(f"Time to segment file {ct.nii_path} : {time.time() - start} seconds")
 
 
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     main()
 
 
 # BIZARREEEEEEEE : S'ASSURER QUE Z=AXE0, X=AXE1 ET Y=AXE2 TEL QUE DHABITUDE : PAS LE CAS DANS LE MASQUE CI-HAUT
@@ -569,8 +569,9 @@ class Registration(Segmentation):
 
         self.initial_moving_img = ants.image_read(self.moving_img_path) # Image provided by the mask
         self.initial_moving_img_orientation = ants.get_orientation(self.initial_moving_img) # Orientation of the mask
-        self.moving_img = ants.image_read(self.moving_img_path, reorient="IAL") # Image to be registered
-        self.fixed_img = ants.image_read(fixed_img_path, reorient="IAL") # Reference image for registration
+        self.orient_for_registration = "IAL"
+        self.moving_img = ants.image_read(self.moving_img_path, reorient=self.orient_for_registration) # Image to be registered
+        self.fixed_img = ants.image_read(fixed_img_path, reorient=self.orient_for_registration) # Reference image for registration
 
         # Landmark coordinates determined visually (AVANT)
         self.lpa_vox_normal_space = np.array([25, 107, 6])
@@ -579,11 +580,20 @@ class Registration(Segmentation):
 
         self.filled_y_slices = [] # Used to determine positions (lpa and rpa)
         mask_img = nib.load(os.path.join(self.nifti_output_directory, "mask"+self.file_number+".nii"))
+        self.mask_dimension = mask_img.shape
         self.head = mask_img.get_fdata()
         # IMPORTANT : flipping the images for better display. 
         # From now on, it is [z,x,y] and not [y,x,z] as it was in the Segmentation class
-        self.filled_head = np.flip(np.flip(np.transpose(np.where(self.head>=1, 1, 0), (2, 1, 0)), axis=1), axis=2)
-        self.head = np.flip(np.flip(np.transpose(np.where(self.head>=1, 1, 0), (2, 1, 0)), axis=1), axis=2)
+        self.filled_head = self.reorient_point_to_original_mask(object_to_reorient=np.where(self.head>=1, 1, 0), 
+                                                                initial_orient=self.initial_moving_img_orientation, 
+                                                                final_orient=self.orient_for_registration)
+        self.head = self.reorient_point_to_original_mask(object_to_reorient=np.where(self.head>=1, 1, 0), 
+                                                                initial_orient=self.initial_moving_img_orientation, 
+                                                                final_orient=self.orient_for_registration)
+
+        # self.filled_head = np.flip(np.flip(np.transpose(np.where(self.head>=1, 1, 0), (2, 1, 0)), axis=1), axis=2)
+        # self.head = np.flip(np.flip(np.transpose(np.where(self.head>=1, 1, 0), (2, 1, 0)), axis=1), axis=2)
+
 
         self.lpa=(0,0,2)
         self.rpa=(0,0,9)
@@ -591,24 +601,47 @@ class Registration(Segmentation):
 
 
     
-    def reorient_point_to_original_mask(self, orient_init="RPI", orient_fin="IAL"):
-        orient_init = list(orient_init)
-        orient_fin = list(orient_fin)
-
-        already_in = []
+    def reorient_point_to_original_mask(self, object_to_reorient=None, initial_orient="IAL", final_orient="RPI"):
+        initial_orient = list(initial_orient)
+        final_orient = list(final_orient)
+        dict_orientation = {"R":"L", "L":"R", "A":"P", "P":"A", "I":"S", "S":"I"}
         transpose_needed = []
-        for axis_init, element in enumerate(orient_init):
+        already_in = ["N", "N", "N"]
+        for initial_axis, letter in enumerate(initial_orient):
             try:
-               already_in.append((axis_init, orient_fin.index(element))) # If already in, (initial axis number, final axis number)
+                already_in[initial_axis]= (initial_axis, final_orient.index(letter)) # If already in, (initial axis number, final axis number)
             except:
-                transpose_needed.append((element, axis_init))
-        
+                transpose_needed.append((letter, initial_axis)) # Initial axis where the letter needs to be changed
+                new_letter = dict_orientation[letter]
+                initial_orient[initial_axis] = new_letter
+        for initial_axis, element in enumerate(initial_orient):
+            already_in[initial_axis] = (initial_axis, final_orient.index(element))
 
+        if isinstance(object_to_reorient, np.ndarray) and len(object_to_reorient.shape)==3:
+            for element, axis_to_flip in transpose_needed:
+                object_to_reorient = np.flip(object_to_reorient, axis=axis_to_flip)
+            object_to_reorient = np.transpose(object_to_reorient, (already_in[0][1], already_in[1][1], already_in[2][1]))
+            return object_to_reorient
 
-        tx = ants.registration(fixed=self.moving_img, moving=self.initial_moving_img, type_of_transform='Affine', verbose=True)
-        affine = ants.read_transform(tx['fwdtransforms'][0])
-        affine_matrix_np = affine.parameters
-        print(affine_matrix_np)
+        elif isinstance(object_to_reorient, (np.ndarray, dict, tuple)):
+            initial_point = object_to_reorient[0], object_to_reorient[1], object_to_reorient[2], 1
+            affine = np.zeros((4,4))
+            affine[0,already_in[0][1]] = 1
+            affine[1,already_in[1][1]] = 1
+            affine[2,already_in[2][1]] = 1
+            affine[3,3] = 1
+            for letter, initial_index in transpose_needed:
+                new_index = already_in[initial_index][1]
+                affine[new_index] = -1*affine[new_index]
+                affine[new_index,-1] = self.mask_dimension[initial_index]-1
+            # print(affine)
+            initial_point = np.array([225, 44, 259, 1])
+            initial_point = np.array([101, 50, 233, 1])
+            new_point = (affine @ initial_point)[:-1]
+            return new_point
+        else:
+            print("Invalid object")
+
 
         
 
@@ -822,7 +855,7 @@ class Registration(Segmentation):
         nasion_y_final = int(np.mean(nasion_row)) + (reg_nas_y - window)
         nasion_z_final = int(np.mean(nasion_column)) + (reg_nas_z - window)
         nasion_x_final = (2*window) - counts_x[int(np.mean(nasion_row)),int(np.mean(nasion_column))] + (reg_nas_x - window)
-
+        print(nasion_z_final, nasion_x_final, nasion_y_final)
         self.nasion = nasion_z_final, nasion_x_final, nasion_y_final # (z, x, y)
 
 
@@ -940,10 +973,16 @@ class Registration(Segmentation):
         csv_path = os.path.join(self.nifti_output_directory, f"points{self.file_number}.csv")
 
         df_existing = pd.read_csv(csv_path)
-        
-        data = [["Nasion", self.nasion[1], self.nasion[2], self.nasion[0]],
-                ["LPA", self.lpa[1], self.lpa[2], self.lpa[0]],
-                ["RPA", self.rpa[1], self.rpa[2], self.rpa[0]]]
+
+        landmarks = [self.nasion, self.lpa, self.rpa]
+        for i, point in enumerate(landmarks):
+            landmarks[i] = self.reorient_point_to_original_mask(point,
+                                                              initial_orient=self.orient_for_registration,
+                                                              final_orient=self.initial_moving_img_orientation)
+        print(landmarks)
+        data = [["Nasion", landmarks[0][1], landmarks[0][2], landmarks[0][0]],
+                ["LPA", landmarks[1][1], landmarks[1][2], landmarks[1][0]],
+                ["RPA", landmarks[2][1], landmarks[1][2], landmarks[2][0]]]
         df_to_add = pd.DataFrame(data)
         # Checks if the existing file already has the 3 landmarks
         if df_existing.iloc[-3,-3]=="Dimensions":
@@ -1057,7 +1096,7 @@ id.find_registered_lpa_rpa_nasion()
 # id.mca_arteries_mask()
 id.fill_cavities()
 id.find_nasion()
-# id.check_nasion()
+id.check_nasion()
 print(id.find_rpa())
 print(id.find_lpa())
 

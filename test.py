@@ -182,34 +182,20 @@ x = txt.split()
 # print(x)
 
 # def reorient_point_to_original_mask(orient_init="RPI", orient_fin="IAL"):
-def reorient_point_to_original_mask(orient_init="IAL", orient_fin="RPI"):
+def reorient_point_to_original_mask(orient_init="RPS", orient_fin="LPS"):
     orient_init = list(orient_init)
     orient_fin = list(orient_fin)
 
+    dict_orientation = {"R":"L", "L":"R", "A":"P", "P":"A", "I":"S", "S":"I"}
     transpose_needed = []
     already_in = ["N", "N", "N"]
-    for axis_init, element in enumerate(orient_init):
+    for axis_init, letter in enumerate(orient_init):
         try:
-            already_in[axis_init]= (axis_init, orient_fin.index(element)) # If already in, (initial axis number, final axis number)
-            # new_order[orient_fin.index(element)] = element # Place it to the final place
+            already_in[axis_init]= (axis_init, orient_fin.index(letter)) # If already in, (initial axis number, final axis number)
         except:
-            transpose_needed.append((element, axis_init)) # Initial axis where the letter needs to be changed
-    for letter, axis in transpose_needed:
-        if letter=="R":
-            new_letter = "L"
-        elif letter=="L":
-            new_letter = "R"
-        elif letter=="A":
-            new_letter = "P"
-        elif letter=="P":
-            new_letter = "A"
-        elif letter=="I":
-            new_letter = "S"
-        elif letter=="S":
-            new_letter = "I"
-        else:
-            print("Lettre invalide")
-        orient_init[axis] = new_letter
+            transpose_needed.append((letter, axis_init)) # Initial axis where the letter needs to be changed
+            new_letter = dict_orientation[letter]
+            orient_init[axis_init] = new_letter
     for axis_init, element in enumerate(orient_init):
         already_in[axis_init] = (axis_init, orient_fin.index(element))
 
@@ -233,9 +219,23 @@ def reorient_point_to_original_mask(orient_init="IAL", orient_fin="RPI"):
     new_point = (affine @ initial_point)[:-1]
     print(new_point)
 
+    arr = np.array([[[ 0.,  0.,  0.,  0.],
+          [ 0.,  1.,  0.,  0.],
+          [ 0.,  0.,  0.,  0.]],
+          [[ 0.,  0.,  0.,  0.],
+          [ 0.,  0.,  0.,  2.],
+          [ 0.,  0.,  0.,  0.]],
+          [[ 0.,  0.,  0.,  0.],
+          [ 0.,  3.,  0.,  0.],
+          [ 0.,  0.,  0.,  0.]]])
+    arr = np.array([[ 0.,  0.,  0.,  0.],
+          [ 0.,  1.,  0.,  0.],
+          [ 0.,  0.,  0.,  0.]])
+    print(isinstance(arr, np.ndarray), len(arr.shape))
     for element, axis_to_flip in transpose_needed:
         arr = np.flip(arr, axis=axis_to_flip)
-    arr = np.transpose(arr, (transpose_needed[0][1], transpose_needed[1][1], transpose_needed[2][1]))
+    arr = np.transpose(arr, (already_in[0][1], already_in[1][1], already_in[2][1]))
+    print(arr)
 
     
 
