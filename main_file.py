@@ -71,7 +71,9 @@ class Segmentation:
         
         # Checking if the DICOM has already been converted. If not, converting it.
         try:
-            self.nii_path = [f for f in os.listdir(self.nifti_output_directory) if f.startswith('cropped')][0] 
+            # Ne va pas marcher si ya pas de crop
+            self.nii_path = [f for f in os.listdir(self.nifti_output_directory) if f.startswith('cropped')][0]
+            self.not_cropped_nii_path = self.nii_path.removeprefix("cropped_")
             self.nii_path = os.path.join(self.nifti_output_directory, self.nii_path) # Full path to the primary NIfTI file after conversion.
             self.img = nib.load(self.nii_path)
             self.array = self.img.get_fdata() # Placeholder for loaded NIfTI image data (primary NIfTI file)
@@ -85,7 +87,6 @@ class Segmentation:
             img = nib.load(self.nii_path)
             self.array = img.get_fdata() # Placeholder for loaded NIfTI image data (primary NIfTI file)
             self.resolution = np.abs(img.affine[0][0]), np.abs(img.affine[1][1]), np.abs(img.affine[2][2]) # Just in case you want to see
-            self.resolution = np.abs(img.affine[0][0]), np.abs(img.affine[1][1]), np.abs(img.affine[2][2])
             self.dimension = img.shape
         self.save_to_csv()
 
@@ -110,8 +111,14 @@ class Segmentation:
                 ["Dimensions", self.dimension[1], self.dimension[0], self.dimension[2]],
                 ["Resolution (mm)", self.resolution[1], self.resolution[0], self.resolution[2]],
                 ["Length (mm)", self.dimension[1]*self.resolution[1], self.dimension[0]*self.resolution[0], self.dimension[2]*self.resolution[2]]]
-        df = pd.DataFrame(data)
-        df.to_csv(csv_path, header=False, index=False)            
+        # Ne vas pas marcher si pas de crop (deux lignes ou une à rajouter)
+        if os.path.exists(csv_path):
+            df_existing = pd.read_csv(csv_path)
+            df_existing.values[:4,:4] = np.array(data)
+            df_existing.to_csv(csv_path, index=False)
+        else:
+            df = pd.DataFrame(data)
+            df.to_csv(csv_path, index=False)             
 
 
     def dcm_to_nii(self, crop="yes"):
@@ -149,8 +156,11 @@ class Segmentation:
         nifti_path = os.path.join(self.nifti_output_directory, nifti_files[0]) # Use the first .nii.gz file found
         print(f"NIfTI generated : {nifti_path}")
 
+        self.nii_path = nifti_path
+
         if crop is not None:
             # Load the image with nibabel
+            self.not_cropped_nii_path = nifti_path
             nifti_image = nib.load(nifti_path)
 
             # Crop the image depending on the resolution 
@@ -167,6 +177,7 @@ class Segmentation:
             nifti_path = os.path.join(self.nifti_output_directory, "cropped_"+nifti_files[0])
             nib.save(cropped_image, nifti_path)
             print(f"NIfTI generated : {nifti_path}")
+
 
             self.nii_path = nifti_path
 
@@ -424,11 +435,13 @@ class Segmentation:
         - mask{file_number}.nii : Labeled mask
         """
         # Nifti file with the HU units of the whole head for the registration
-        head_img =  nib.load(self.nii_path)
-        head_array = head_img.get_fdata() # primary nifti file data
-        head_array = np.where(self.head == 1, head_array, -1000) # HU units where the mask is 1, -1000 where the mask is 0
-        head_image = nib.Nifti1Image(head_array, head_img.affine, head_img.header) # Create a new NIfTI image
-        nifti_path = os.path.join(self.nifti_output_directory, "head"+self.file_number)
+        # head_img =  nib.load(self.nii_path)
+        # head_array = head_img.get_fdata() # primary nifti file data
+        # head_array = np.where(self.head == 1, head_array, -1000) # HU units where the mask is 1, -1000 where the mask is 0
+        # head_image = nib.Nifti1Image(head_array, head_img.affine, head_img.header) # Create a new NIfTI image
+        head_array = np.where(self.head == 1, self.array, -1000) # HU units where the mask is 1, -1000 where the mask is 0
+        head_image = nib.Nifti1Image(head_array, self.img.affine, self.img.header) # Create a new NIfTI image
+        nifti_path = os.path.join(self.nifti_output_directory, "head"+self.file_number+".nii.gz")
         nib.save(head_image, nifti_path)
         print(f"NIfTI generated : {nifti_path}.nii")
 
@@ -442,13 +455,15 @@ class Segmentation:
         self.skull = self.skull + (mask_soft_tissues*mask_eroded_skull)
         total_mask = total_mask + not_included_skull
 
-        masked_image = nib.Nifti1Image(total_mask, head_img.affine, head_img.header) # Create a new NIfTI image
-        nifti_path = os.path.join(self.nifti_output_directory, "mask"+self.file_number)
+        # masked_image = nib.Nifti1Image(total_mask, head_img.affine, head_img.header) # Create a new NIfTI image
+        masked_image = nib.Nifti1Image(total_mask, self.img.affine, self.img.header) # Create a new NIfTI image
+        nifti_path = os.path.join(self.nifti_output_directory, "mask"+self.file_number+".nii.gz")
         nib.save(masked_image, nifti_path)
         print(f"NIfTI generated : {nifti_path}.nii")
     
 
     def delete_useless_files(self):
+        # Tester si marche mm si ya pas de cropped
         useless_files = [self.nii_path.removeprefix("cropped_"),
                          os.path.join(self.nifti_output_directory, "totalsegmentator"+self.file_number+".nii"),
                          os.path.join(self.nifti_output_directory, "head"+self.file_number+".nii")]
@@ -477,28 +492,28 @@ def main(dicoms_list = dicoms_list):
         start = time.time()
         ct = Segmentation(dcm_path=dicom, big_output_directory="jspakoi", file_number=i)
         ct.apply_threshold()
-        ct.show_3D_array(np.flip(np.flip(np.transpose(ct.head, (2, 1, 0)), axis=1), axis=2), axis=1)
-        ct.show_3D_array(ct.head, axis=1) 
-        # ct.keep_largest_island()
-        # ct.fill_holes()
-        # ct.remove_arteries()
+        # ct.show_3D_array(np.flip(np.flip(np.transpose(ct.head, (2, 1, 0)), axis=1), axis=2), axis=1)
+        # ct.show_3D_array(ct.head, axis=1) 
+        ct.keep_largest_island()
+        ct.fill_holes()
+        ct.remove_arteries()
 
-        # # Totalsegmentator
-        # # ct.segment_brain()
-        # ct.arteries_and_totalsegmentator_mask()
-        # ct.mask_to_nii()
-        # ct.show_3D_array(ct.skull, axis=2) # En z
+        # Totalsegmentator
+        # ct.segment_brain()
+        ct.arteries_and_totalsegmentator_mask()
+        ct.mask_to_nii()
+        ct.show_3D_array(ct.skull, axis=2) # En z
 
-        # # id = Registration(big_output_directory="nifti", file_number=2, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
-        # # # id.register()
-        # # id.read_transforms()
-        # # id.find_registered_lpa_rpa_nasion()
-        # # # AJOUTER L'AFFICHAGE DES PTS TROUVÉS
+        # id = Registration(big_output_directory="nifti", file_number=2, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
+        # # id.register()
+        # id.read_transforms()
+        # id.find_registered_lpa_rpa_nasion()
+        # # AJOUTER L'AFFICHAGE DES PTS TROUVÉS
         print(f"Time to segment file {ct.nii_path} : {time.time() - start} seconds")
 
 
-# if __name__ == "__main__":
-#     main()
+if __name__ == "__main__":
+    main()
 
 
 # BIZARREEEEEEEE : S'ASSURER QUE Z=AXE0, X=AXE1 ET Y=AXE2 TEL QUE DHABITUDE : PAS LE CAS DANS LE MASQUE CI-HAUT
@@ -587,9 +602,10 @@ class Registration(Segmentation):
         self.filled_head = self.reorient_point_to_original_mask(object_to_reorient=np.where(self.head>=1, 1, 0), 
                                                                 initial_orient=self.initial_moving_img_orientation, 
                                                                 final_orient=self.orient_for_registration)
-        self.head = self.reorient_point_to_original_mask(object_to_reorient=np.where(self.head>=1, 1, 0), 
-                                                                initial_orient=self.initial_moving_img_orientation, 
-                                                                final_orient=self.orient_for_registration)
+        # self.head = self.reorient_point_to_original_mask(object_to_reorient=np.where(self.head>=1, 1, 0), 
+        #                                                         initial_orient=self.initial_moving_img_orientation, 
+        #                                                         final_orient=self.orient_for_registration)
+        self.head = np.copy(self.filled_head)
 
         # self.filled_head = np.flip(np.flip(np.transpose(np.where(self.head>=1, 1, 0), (2, 1, 0)), axis=1), axis=2)
         # self.head = np.flip(np.flip(np.transpose(np.where(self.head>=1, 1, 0), (2, 1, 0)), axis=1), axis=2)
@@ -635,8 +651,6 @@ class Registration(Segmentation):
                 affine[new_index] = -1*affine[new_index]
                 affine[new_index,-1] = self.mask_dimension[initial_index]-1
             # print(affine)
-            initial_point = np.array([225, 44, 259, 1])
-            initial_point = np.array([101, 50, 233, 1])
             new_point = (affine @ initial_point)[:-1]
             return new_point
         else:
@@ -973,25 +987,21 @@ class Registration(Segmentation):
         csv_path = os.path.join(self.nifti_output_directory, f"points{self.file_number}.csv")
 
         df_existing = pd.read_csv(csv_path)
-
+        print(df_existing)
+        df_to_keep = df_existing.values[:4,:4].tolist()
+        print(df_to_keep)
         landmarks = [self.nasion, self.lpa, self.rpa]
         for i, point in enumerate(landmarks):
             landmarks[i] = self.reorient_point_to_original_mask(point,
                                                               initial_orient=self.orient_for_registration,
                                                               final_orient=self.initial_moving_img_orientation)
         print(landmarks)
-        data = [["Nasion", landmarks[0][1], landmarks[0][2], landmarks[0][0]],
-                ["LPA", landmarks[1][1], landmarks[1][2], landmarks[1][0]],
-                ["RPA", landmarks[2][1], landmarks[1][2], landmarks[2][0]]]
-        df_to_add = pd.DataFrame(data)
-        # Checks if the existing file already has the 3 landmarks
-        if df_existing.iloc[-3,-3]=="Dimensions":
-            # Appends the DataFrame to the same file without headers
-            df_to_add.to_csv(csv_path, mode='a', header=False, index=False)
-        else:
-            # Overwrites the landmark's DataFrame
-            df_final = pd.concat([df_existing.iloc[:-3,:-4], df_to_add])
-            df_final.to_csv(csv_path, header=False, index=False)
+        data = ["Nasion", landmarks[0][1], landmarks[0][2], landmarks[0][0]],["LPA", landmarks[1][1], landmarks[1][2], landmarks[1][0]],["RPA", landmarks[2][1], landmarks[1][2], landmarks[2][0]]
+        df_to_keep += data
+        print(df_to_keep)
+        df = pd.DataFrame(df_to_keep)
+        df.to_csv(csv_path, index=False)
+        
 
 
 
@@ -1077,8 +1087,8 @@ class Registration(Segmentation):
 
 
 
-id = Registration(big_output_directory="jspakoi", file_number=1, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
-# id.reorient_point_to_original_mask()
+id = Registration(big_output_directory="jspakoi", file_number=0, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
+id.save_pts_to_csv()
 id.show_3D_array(id.moving_img.numpy())
 id.show_3D_array(id.fixed_img.numpy())
 # id.register()

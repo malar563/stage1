@@ -237,9 +237,50 @@ def reorient_point_to_original_mask(orient_init="RPS", orient_fin="LPS"):
     arr = np.transpose(arr, (already_in[0][1], already_in[1][1], already_in[2][1]))
     print(arr)
 
-    
+# reorient_point_to_original_mask()
+def save_pts_to_csv():
+    import pandas as pd
+    import os    
+    csv_path = "test.csv"
 
-reorient_point_to_original_mask()
+    # df_existing = pd.read_csv(csv_path)
+    # print(list(df_existing.iloc[:,:]))
+
+    # list_of_rows = df_existing.values
+    # print(list_of_rows)
+
+    data = [["","x", "y", "z"],
+                ["Dimensions", 1, 1, 1],
+                ["Resolution (mm)", 2, 2, 2],
+                ["Length (mm)", 3, 3, 3]]
+    df = pd.DataFrame(data)
+    if os.path.exists(csv_path):
+        df.values[:,:4] = np.array(data)
+    df.to_csv(csv_path, index=False, header=False)
+    print(df.values)   
+# save_pts_to_csv()
+
+df_to_keep = ["asdnasjds", 5, (54,5)]
+data = ["Nasion", 1, 2, 3],["LPA", 4, 5, 6],["RPA", 7, 8, 9]
+df_to_keep += data
+# print(df_to_keep)
+
+
+import nibabel as nib
+import os
+img = nib.load("jspakoi/1/6_cow_angio__06__hv36__3.nii.gz")
+img = nib.load("jspakoi/1/cropped_6_cow_angio__06__hv36__3.nii.gz")
+path="jspakoi/1/6_cow_angio__06__hv36__3.nii.gz"
+path="jspakoi/1/cropped_6_cow_angio__06__hv36__3.nii.gz"
+# print(img.header)
+# print(path.removeprefix("cropped_"))
+# print(len([f for f in os.listdir("nifti/2") if f.startswith('cropped')]))
+# print(img.header["dim"][1:4])
+data = np.ones((32, 32, 15, 100), dtype=np.int16) # dummy data in numpy matrix
+img = nib.Nifti1Image(data, np.eye(4))  # Save axis for data (just identity)
+img.header.get_xyzt_units()
+img.to_filename('test4d.nii.gz')  # Save as NiBabel file
+
 
 
 
