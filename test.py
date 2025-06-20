@@ -182,11 +182,10 @@ x = txt.split()
 # print(x)
 
 # def reorient_point_to_original_mask(orient_init="RPI", orient_fin="IAL"):
-def reorient_point_to_original_mask(orient_init="RPI", orient_fin="AIL"):
+def reorient_point_to_original_mask(orient_init="IAL", orient_fin="RPI"):
     orient_init = list(orient_init)
     orient_fin = list(orient_fin)
 
-    already_in = []
     transpose_needed = []
     already_in = ["N", "N", "N"]
     for axis_init, element in enumerate(orient_init):
@@ -195,7 +194,7 @@ def reorient_point_to_original_mask(orient_init="RPI", orient_fin="AIL"):
             # new_order[orient_fin.index(element)] = element # Place it to the final place
         except:
             transpose_needed.append((element, axis_init)) # Initial axis where the letter needs to be changed
-    for index, (letter, axis) in enumerate(transpose_needed):
+    for letter, axis in transpose_needed:
         if letter=="R":
             new_letter = "L"
         elif letter=="L":
@@ -222,12 +221,17 @@ def reorient_point_to_original_mask(orient_init="RPI", orient_fin="AIL"):
     affine[1,already_in[1][1]] = 1
     affine[2,already_in[2][1]] = 1
     affine[3,3] = 1
-    resolution=512
+    resolution= 256, 512, 512
     for letter, initial_index in transpose_needed:
         new_index = already_in[initial_index][1]
         affine[new_index] = -1*affine[new_index]
-        affine[new_index,-1] = resolution-1
+        affine[new_index,-1] = resolution[initial_index]-1
     print(affine)
+
+    initial_point = np.array([225, 44, 259, 1])
+    initial_point = np.array([101, 50, 233, 1])
+    new_point = (affine @ initial_point)[:-1]
+    print(new_point)
 
     for element, axis_to_flip in transpose_needed:
         arr = np.flip(arr, axis=axis_to_flip)

@@ -475,28 +475,30 @@ dicoms_list = ["DICOM_003/Carotid_Angio_0.625mm", "DICOM_010/COW_Angio_0.6_Hv36_
 def main(dicoms_list = dicoms_list):
     for i, dicom in enumerate(dicoms_list):
         start = time.time()
-        ct = Segmentation(dcm_path=dicom, big_output_directory="jspakoi", file_number=i) 
+        ct = Segmentation(dcm_path=dicom, big_output_directory="jspakoi", file_number=i)
         ct.apply_threshold()
-        ct.keep_largest_island()
-        ct.fill_holes()
-        ct.remove_arteries()
+        ct.show_3D_array(np.flip(np.flip(np.transpose(ct.head, (2, 1, 0)), axis=1), axis=2), axis=1)
+        ct.show_3D_array(ct.head, axis=1) 
+        # ct.keep_largest_island()
+        # ct.fill_holes()
+        # ct.remove_arteries()
 
-        # Totalsegmentator
-        # ct.segment_brain()
-        ct.arteries_and_totalsegmentator_mask()
-        ct.mask_to_nii()
-        ct.show_3D_array(ct.skull, axis=2) # En z
+        # # Totalsegmentator
+        # # ct.segment_brain()
+        # ct.arteries_and_totalsegmentator_mask()
+        # ct.mask_to_nii()
+        # ct.show_3D_array(ct.skull, axis=2) # En z
 
-        # id = Registration(big_output_directory="nifti", file_number=2, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
-        # # id.register()
-        # id.read_transforms()
-        # id.find_registered_lpa_rpa_nasion()
-        # # AJOUTER L'AFFICHAGE DES PTS TROUVÉS
+        # # id = Registration(big_output_directory="nifti", file_number=2, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
+        # # # id.register()
+        # # id.read_transforms()
+        # # id.find_registered_lpa_rpa_nasion()
+        # # # AJOUTER L'AFFICHAGE DES PTS TROUVÉS
         print(f"Time to segment file {ct.nii_path} : {time.time() - start} seconds")
 
 
-# if __name__ == "__main__":
-#     main()
+if __name__ == "__main__":
+    main()
 
 
 # BIZARREEEEEEEE : S'ASSURER QUE Z=AXE0, X=AXE1 ET Y=AXE2 TEL QUE DHABITUDE : PAS LE CAS DANS LE MASQUE CI-HAUT
@@ -1036,7 +1038,7 @@ class Registration(Segmentation):
 
 
 
-id = Registration(big_output_directory="jspakoi", file_number=0, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
+id = Registration(big_output_directory="jspakoi", file_number=1, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
 # id.reorient_point_to_original_mask()
 id.show_3D_array(id.moving_img.numpy())
 id.show_3D_array(id.fixed_img.numpy())
