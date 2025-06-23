@@ -117,13 +117,16 @@ class Segmentation:
                 ["Resolution (mm)", self.resolution[1], self.resolution[0], self.resolution[2]],
                 ["Length (mm)", self.dimension[1]*self.resolution[1], self.dimension[0]*self.resolution[0], self.dimension[2]*self.resolution[2]]]
         if hasattr(self, 'not_cropped_nii_path'): # The variable exists — safe to use
+            not_cropped_img = nib.load(self.not_cropped_nii_path)
+            data[2][1], data[2][2], data[2][3] = not_cropped_img.shape 
             print("It exists:", self.not_cropped_nii_path)
-
+            print(data)
 
         # Ne vas pas marcher si pas de crop (deux lignes ou une à rajouter)
         if os.path.exists(csv_path):
             df_existing = pd.read_csv(csv_path)
-            df_existing.values[:4,:4] = np.array(data)
+            df_existing.values[:5,:4] = np.array(data)
+            print(df_existing.values)
             df_existing.to_csv(csv_path, index=False)
         else:
             df = pd.DataFrame(data)
@@ -539,8 +542,8 @@ def main(dicoms_list = dicoms_list):
         print(f"Time to segment file {ct.nii_path} : {time.time() - start} seconds")
 
 
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     main()
 
 
 
@@ -967,6 +970,7 @@ class Registration(Segmentation):
         rpa_y_final = self.__find_rpa_y__(rpa_y=rpa_y)
         self.registered_rpa = rpa_x, rpa_y_final, rpa_z
         print(self.registered_rpa)
+        self.rpa = self.registered_rpa
     
 
 
@@ -978,6 +982,7 @@ class Registration(Segmentation):
         # lpa_y = 97
         # lpa_z = 131
         self.registered_lpa = lpa_x, lpa_y, lpa_z
+        self.lpa = self.registered_lpa
 
         # Ya absolument rien qui marche ci-bas donc inutile
         lpa_y_final = self.__find_lpa_y__(lpa_y=lpa_y)
@@ -1016,7 +1021,7 @@ class Registration(Segmentation):
 
         df_existing = pd.read_csv(csv_path)
         print(df_existing)
-        df_to_keep = df_existing.values[:4,:4].tolist()
+        df_to_keep = df_existing.values[:5,:4].tolist()
         print(df_to_keep)
         landmarks = [self.nasion, self.lpa, self.rpa]
         for i, point in enumerate(landmarks):
@@ -1024,7 +1029,9 @@ class Registration(Segmentation):
                                                               initial_orient=self.orient_for_registration,
                                                               final_orient=self.initial_moving_img_orientation)
         print(landmarks)
-        data = ["Nasion", landmarks[0][1], landmarks[0][2], landmarks[0][0]],["LPA", landmarks[1][1], landmarks[1][2], landmarks[1][0]],["RPA", landmarks[2][1], landmarks[1][2], landmarks[2][0]]
+        data = [["Nasion", landmarks[0][1], landmarks[0][2], landmarks[0][0]],
+                ["LPA", landmarks[1][1], landmarks[1][2], landmarks[1][0]],
+                ["RPA", landmarks[2][1], landmarks[2][2], landmarks[2][0]]]
         df_to_keep += data
         print(df_to_keep)
         df = pd.DataFrame(df_to_keep)
@@ -1115,37 +1122,38 @@ class Registration(Segmentation):
 
 
 
-# id = Registration(big_output_directory="jspakoi", file_number=0, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
+id = Registration(big_output_directory="cava", file_number=0, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
 # id.save_pts_to_csv()
 # id.show_3D_array(id.moving_img.numpy())
 # id.show_3D_array(id.fixed_img.numpy())
-# # id.register()
-# # id.delete_useless_files()
+# id.delete_useless_files()
+
+id.register()
 # id.read_transforms()
-# # id.mca_arteries_mask()
-# id.find_registered_lpa_rpa_nasion()
+id.mca_arteries_mask() # Un peu redondant comme nom car a de mca est déjà pour arteries
+id.find_registered_lpa_rpa_nasion()
 
-# # id.show_3D_array(nib.load('icbm_avg_152_t1_tal_lin.nii').get_fdata(), axis=0)
-# # id.show_3D_array(nib.load('jspakoi/0/head0.nii').get_fdata(), axis=0)
-# # id.show_3D_array(id.head, axis=0)
-# # id.show_3D_array(id.moving_img.numpy(), axis=0)
-# # id.show_3D_array(id.fixed_img.numpy(), axis=0)
+# id.show_3D_array(nib.load('icbm_avg_152_t1_tal_lin.nii').get_fdata(), axis=0)
+# id.show_3D_array(nib.load('jspakoi/0/head0.nii').get_fdata(), axis=0)
+# id.show_3D_array(id.head, axis=0)
+# id.show_3D_array(id.moving_img.numpy(), axis=0)
+# id.show_3D_array(id.fixed_img.numpy(), axis=0)
 
-# # id.mca_arteries_mask()
-# id.fill_cavities()
-# id.find_nasion()
-# id.check_nasion()
-# print(id.find_rpa())
-# print(id.find_lpa())
+# id.mca_arteries_mask()
+id.fill_cavities()
+id.find_nasion()
+id.check_nasion()
+id.find_rpa()
+id.find_lpa()
 
-# id.save_pts_to_csv()
+id.save_pts_to_csv()
 
-# id.show_3D_array(id.head, axis=2, pt=(id.registered_lpa[0], id.registered_lpa[2]))
-# id.show_3D_array(id.head, axis=2, pt=(id.registered_rpa[0], id.registered_rpa[2]))
+id.show_3D_array(id.head, axis=2, pt=(id.registered_lpa[0], id.registered_lpa[2]))
+id.show_3D_array(id.head, axis=2, pt=(id.registered_rpa[0], id.registered_rpa[2]))
 
-# id.find_registered_lpa_rpa_nasion()
+id.find_registered_lpa_rpa_nasion()
 
-# # AJOUTER L'AFFICHAGE DES PTS TROUVÉS
+# AJOUTER L'AFFICHAGE DES PTS TROUVÉS
 
 
 
