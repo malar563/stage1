@@ -276,10 +276,50 @@ path="jspakoi/1/cropped_6_cow_angio__06__hv36__3.nii.gz"
 # print(path.removeprefix("cropped_"))
 # print(len([f for f in os.listdir("nifti/2") if f.startswith('cropped')]))
 # print(img.header["dim"][1:4])
-data = np.ones((32, 32, 15, 100), dtype=np.int16) # dummy data in numpy matrix
-img = nib.Nifti1Image(data, np.eye(4))  # Save axis for data (just identity)
-img.header.get_xyzt_units()
-img.to_filename('test4d.nii.gz')  # Save as NiBabel file
+
+# Lister les fichiers NIfTI dans le dossier
+nii_directory = "cava/0"
+nii_directory = "nifti/2"
+# nii_directory = "jspakoi/1"
+nii_files = [f for f in os.listdir(nii_directory) if f.endswith(".nii.gz") or f.endswith(".nii")]
+print(nii_files)
+
+# Chercher un fichier qui commence par "cropped_"
+cropped_files = [f for f in nii_files if f.startswith("cropped_")]
+print(cropped_files)
+
+if cropped_files:
+    # Si un fichier "cropped_" est trouvé, on l’utilise
+    nii_path = os.path.join(nii_directory, cropped_files[0])
+    not_cropped_nii_path = cropped_files[0].removeprefix("cropped_")
+    print(not_cropped_nii_path)
+else:
+    # Sinon, chercher le fichier sans "cropped_"
+    all_non_cropped = [f for f in nii_files if not f.startswith("cropped_")]
+    print(all_non_cropped)
+    if all_non_cropped:
+        nii_path = os.path.join(nii_directory, all_non_cropped[0])
+        not_cropped_nii_path = os.path.basename(nii_path)
+        print(not_cropped_nii_path)
+    # else:
+    #     # Si aucun NIfTI n’existe, on génère le fichier à partir du DICOM
+    #     print("No NIfTI file found. Processing the specified DICOM file...")
+    #     self.dcm_to_nii()
+    #     self.img = nib.load(self.nii_path)
+    #     self.array = self.img.get_fdata()
+    #     self.resolution = tuple(np.abs(self.img.affine[i][i]) for i in range(3))
+    #     self.dimension = self.img.shape
+    #     self.save_to_csv()
+    #     return
+
+    # Chargement du fichier trouvé
+img = nib.load(nii_path)
+array = img.get_fdata()
+resolution = tuple(np.abs(img.affine[i][i]) for i in range(3))
+dimension = img.shape
+print(f"NIfTI found: {nii_path}")
+
+# save_to_csv()
 
 
 

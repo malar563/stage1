@@ -368,7 +368,7 @@ class Segmentation:
 
         File Created
         -------------
-        - totalsegmentator{file_number}.nii : Segmented head     
+        - totalsegmentator{file_number}.nii.gz : Segmented head     
 
         Notes
         -----
@@ -384,8 +384,9 @@ class Segmentation:
             else:
                 output_img = totalsegmentator(input_img, fast=fast)
             print("Segmentation with TotalSegmentator has been completed")
-            output_path = os.path.join(self.nifti_output_directory, "totalsegmentator"+self.file_number)
+            output_path = os.path.join(self.nifti_output_directory, "totalsegmentator"+self.file_number+".nii.gz")
             nib.save(output_img, output_path)
+            print(f"NIfTI generated : {output_path}.nii.gz")
 
 
     def arteries_and_totalsegmentator_mask(self):
@@ -407,7 +408,7 @@ class Segmentation:
         self.arteries : numpy.ndarray
             Binary mask of brain arteries.
         """
-        totalsegmentator_mask = nib.load(os.path.join(self.nifti_output_directory, "totalsegmentator"+self.file_number+".nii")).get_fdata()
+        totalsegmentator_mask = nib.load(os.path.join(self.nifti_output_directory, "totalsegmentator"+self.file_number+".nii.gz")).get_fdata()
         self.brain_totalsegmentator = np.where(totalsegmentator_mask == 90, 1, 0)
         self.skull_totalsegmentator = np.where(totalsegmentator_mask == 91, 1, 0) 
         self.arteries = self.brain_totalsegmentator * self.arteries
@@ -431,8 +432,8 @@ class Segmentation:
 
         Files Created
         -------------
-        - head{file_number}.nii : Non masked head image. 
-        - mask{file_number}.nii : Labeled mask
+        - head{file_number}.nii.gz : Non masked head image. 
+        - mask{file_number}.nii.gz : Labeled mask
         """
         # Nifti file with the HU units of the whole head for the registration
         # head_img =  nib.load(self.nii_path)
@@ -443,7 +444,7 @@ class Segmentation:
         head_image = nib.Nifti1Image(head_array, self.img.affine, self.img.header) # Create a new NIfTI image
         nifti_path = os.path.join(self.nifti_output_directory, "head"+self.file_number+".nii.gz")
         nib.save(head_image, nifti_path)
-        print(f"NIfTI generated : {nifti_path}.nii")
+        print(f"NIfTI generated : {nifti_path}.nii.gz")
 
         # NIfTI file with all the masks
         total_mask = 1*self.head + 2*self.skull + 1*self.arteries
@@ -459,14 +460,14 @@ class Segmentation:
         masked_image = nib.Nifti1Image(total_mask, self.img.affine, self.img.header) # Create a new NIfTI image
         nifti_path = os.path.join(self.nifti_output_directory, "mask"+self.file_number+".nii.gz")
         nib.save(masked_image, nifti_path)
-        print(f"NIfTI generated : {nifti_path}.nii")
+        print(f"NIfTI generated : {nifti_path}.nii.gz")
     
 
     def delete_useless_files(self):
         # Tester si marche mm si ya pas de cropped
         useless_files = [self.nii_path.removeprefix("cropped_"),
-                         os.path.join(self.nifti_output_directory, "totalsegmentator"+self.file_number+".nii"),
-                         os.path.join(self.nifti_output_directory, "head"+self.file_number+".nii")]
+                         os.path.join(self.nifti_output_directory, "totalsegmentator"+self.file_number+".nii.gz"),
+                         os.path.join(self.nifti_output_directory, "head"+self.file_number+".nii.gz")]
         for file_path in useless_files:
             if os.path.exists(file_path):
                 os.remove(file_path)
@@ -490,19 +491,21 @@ dicoms_list = ["DICOM_003/Carotid_Angio_0.625mm", "DICOM_010/COW_Angio_0.6_Hv36_
 def main(dicoms_list = dicoms_list):
     for i, dicom in enumerate(dicoms_list):
         start = time.time()
-        ct = Segmentation(dcm_path=dicom, big_output_directory="jspakoi", file_number=i)
-        ct.apply_threshold()
+        ct = Segmentation(dcm_path=dicom, big_output_directory="cava", file_number=i)
+        # ct.apply_threshold()
+
         # ct.show_3D_array(np.flip(np.flip(np.transpose(ct.head, (2, 1, 0)), axis=1), axis=2), axis=1)
         # ct.show_3D_array(ct.head, axis=1) 
-        ct.keep_largest_island()
-        ct.fill_holes()
-        ct.remove_arteries()
+
+        # ct.keep_largest_island()
+        # ct.fill_holes()
+        # ct.remove_arteries()
 
         # Totalsegmentator
-        # ct.segment_brain()
-        ct.arteries_and_totalsegmentator_mask()
-        ct.mask_to_nii()
-        ct.show_3D_array(ct.skull, axis=2) # En z
+        ct.segment_brain()
+        # ct.arteries_and_totalsegmentator_mask()
+        # ct.mask_to_nii()
+        # ct.show_3D_array(ct.skull, axis=2) # En z
 
         # id = Registration(big_output_directory="nifti", file_number=2, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
         # # id.register()
@@ -514,6 +517,7 @@ def main(dicoms_list = dicoms_list):
 
 if __name__ == "__main__":
     main()
+
 
 
 # BIZARREEEEEEEE : S'ASSURER QUE Z=AXE0, X=AXE1 ET Y=AXE2 TEL QUE DHABITUDE : PAS LE CAS DANS LE MASQUE CI-HAUT
@@ -579,7 +583,7 @@ class Registration(Segmentation):
         self.big_output_directory = big_output_directory
         self.file_number = str(file_number)
         self.nifti_output_directory = os.path.join(self.big_output_directory, self.file_number)
-        self.moving_img_path = os.path.join(self.nifti_output_directory, "head"+self.file_number+".nii")
+        self.moving_img_path = os.path.join(self.nifti_output_directory, "head"+self.file_number+".nii.gz")
         self.fixed_img_path = fixed_img_path
 
         self.initial_moving_img = ants.image_read(self.moving_img_path) # Image provided by the mask
@@ -594,7 +598,7 @@ class Registration(Segmentation):
         self.nas_vox_normal_space = np.array([28, 4, 90])
 
         self.filled_y_slices = [] # Used to determine positions (lpa and rpa)
-        mask_img = nib.load(os.path.join(self.nifti_output_directory, "mask"+self.file_number+".nii"))
+        mask_img = nib.load(os.path.join(self.nifti_output_directory, "mask"+self.file_number+".nii.gz"))
         self.mask_dimension = mask_img.shape
         self.head = mask_img.get_fdata()
         # IMPORTANT : flipping the images for better display. 
@@ -1050,7 +1054,7 @@ class Registration(Segmentation):
         # self.show_3D_array(superposition)
 
         # Getting the arteries mask
-        self.arteries = ants.image_read(os.path.join(self.nifti_output_directory, "mask"+self.file_number+".nii"), reorient="IAL")
+        self.arteries = ants.image_read(os.path.join(self.nifti_output_directory, "mask"+self.file_number+".nii.gz"), reorient="IAL")
         arteries_only = np.where(self.arteries.numpy()==2,1,0)
         # arteries_only = self.arteries.numpy() # Pour mieux voir, mais ne sera pas dans la version finale
         self.arteries = self.arteries.new_image_like(arteries_only)
@@ -1073,12 +1077,12 @@ class Registration(Segmentation):
         plt.show()
 
         # Nifti file with the MCA territories
-        head_img =  nib.load(os.path.join(self.nifti_output_directory, "head"+self.file_number+".nii"))
+        head_img =  nib.load(os.path.join(self.nifti_output_directory, "head"+self.file_number+".nii.gz"))
         patient_mca_arteries = ants.reorient_image2(patient_mca_arteries, orientation=self.initial_moving_img_orientation) # Reorient accordinf to the initial mask
         mca_image = nib.Nifti1Image(patient_mca_arteries.numpy(), head_img.affine, head_img.header) # Create a new NIfTI image
-        nifti_path = os.path.join(self.nifti_output_directory, "mca_territory"+self.file_number)
+        nifti_path = os.path.join(self.nifti_output_directory, "mca_territory"+self.file_number+".nii.gz")
         nib.save(mca_image, nifti_path)
-        print(f"NIfTI generated : {nifti_path}.nii")
+        print(f"NIfTI generated : {nifti_path}.nii.gz")
 
 
                 
@@ -1087,37 +1091,37 @@ class Registration(Segmentation):
 
 
 
-id = Registration(big_output_directory="jspakoi", file_number=0, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
-id.save_pts_to_csv()
-id.show_3D_array(id.moving_img.numpy())
-id.show_3D_array(id.fixed_img.numpy())
-# id.register()
-# id.delete_useless_files()
-id.read_transforms()
-# id.mca_arteries_mask()
-id.find_registered_lpa_rpa_nasion()
+# id = Registration(big_output_directory="jspakoi", file_number=0, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
+# id.save_pts_to_csv()
+# id.show_3D_array(id.moving_img.numpy())
+# id.show_3D_array(id.fixed_img.numpy())
+# # id.register()
+# # id.delete_useless_files()
+# id.read_transforms()
+# # id.mca_arteries_mask()
+# id.find_registered_lpa_rpa_nasion()
 
-# id.show_3D_array(nib.load('icbm_avg_152_t1_tal_lin.nii').get_fdata(), axis=0)
-# id.show_3D_array(nib.load('jspakoi/0/head0.nii').get_fdata(), axis=0)
-# id.show_3D_array(id.head, axis=0)
-# id.show_3D_array(id.moving_img.numpy(), axis=0)
-# id.show_3D_array(id.fixed_img.numpy(), axis=0)
+# # id.show_3D_array(nib.load('icbm_avg_152_t1_tal_lin.nii').get_fdata(), axis=0)
+# # id.show_3D_array(nib.load('jspakoi/0/head0.nii').get_fdata(), axis=0)
+# # id.show_3D_array(id.head, axis=0)
+# # id.show_3D_array(id.moving_img.numpy(), axis=0)
+# # id.show_3D_array(id.fixed_img.numpy(), axis=0)
 
-# id.mca_arteries_mask()
-id.fill_cavities()
-id.find_nasion()
-id.check_nasion()
-print(id.find_rpa())
-print(id.find_lpa())
+# # id.mca_arteries_mask()
+# id.fill_cavities()
+# id.find_nasion()
+# id.check_nasion()
+# print(id.find_rpa())
+# print(id.find_lpa())
 
-id.save_pts_to_csv()
+# id.save_pts_to_csv()
 
-id.show_3D_array(id.head, axis=2, pt=(id.registered_lpa[0], id.registered_lpa[2]))
-id.show_3D_array(id.head, axis=2, pt=(id.registered_rpa[0], id.registered_rpa[2]))
+# id.show_3D_array(id.head, axis=2, pt=(id.registered_lpa[0], id.registered_lpa[2]))
+# id.show_3D_array(id.head, axis=2, pt=(id.registered_rpa[0], id.registered_rpa[2]))
 
-id.find_registered_lpa_rpa_nasion()
+# id.find_registered_lpa_rpa_nasion()
 
-# AJOUTER L'AFFICHAGE DES PTS TROUVÉS
+# # AJOUTER L'AFFICHAGE DES PTS TROUVÉS
 
 
 
