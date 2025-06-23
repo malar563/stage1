@@ -69,25 +69,30 @@ class Segmentation:
         self.file_number = str(file_number) # String version of the file number used in folder naming.
         self.nifti_output_directory = os.path.join(self.big_output_directory, self.file_number) # Full path to the directory where NIfTI outputs will be stored.
         
-        # Checking if the DICOM has already been converted. If not, converting it.
-        try:
-            # Ne va pas marcher si ya pas de crop
-            self.nii_path = [f for f in os.listdir(self.nifti_output_directory) if f.startswith('cropped')][0]
-            self.not_cropped_nii_path = self.nii_path.removeprefix("cropped_")
-            self.nii_path = os.path.join(self.nifti_output_directory, self.nii_path) # Full path to the primary NIfTI file after conversion.
-            self.img = nib.load(self.nii_path)
-            self.array = self.img.get_fdata() # Placeholder for loaded NIfTI image data (primary NIfTI file)
-            self.resolution = np.abs(self.img.affine[0][0]), np.abs(self.img.affine[1][1]), np.abs(self.img.affine[2][2])
-            # print(self.img.header)
-            self.dimension = self.img.shape
-            print(f"NIfTI found : {self.nii_path}")
-        except:
-            print("No processed NIfTI file in the directory. Processing the specified DICOM file...")
-            self.dcm_to_nii()
-            img = nib.load(self.nii_path)
-            self.array = img.get_fdata() # Placeholder for loaded NIfTI image data (primary NIfTI file)
-            self.resolution = np.abs(img.affine[0][0]), np.abs(img.affine[1][1]), np.abs(img.affine[2][2]) # Just in case you want to see
-            self.dimension = img.shape
+        # Listing NIfTI files in the folder
+        nii_files = [f for f in os.listdir(self.nifti_output_directory) if f.endswith(".nii") or f.endswith(".nii.gz")]
+        # Searching a file starting by "cropped_"
+        cropped_files = [f for f in nii_files if f.startswith("cropped_")]
+        if cropped_files:
+            # If "cropped_" file is found
+            self.nii_path = os.path.join(self.nifti_output_directory, cropped_files[0])
+            self.not_cropped_nii_path = cropped_files[0].removeprefix("cropped_")
+        else:
+            # Trying to find a non-cropped file 
+            all_non_cropped = [f for f in nii_files if not f.startswith("cropped_")]
+            if all_non_cropped:
+                # IMPORTANT : Only works if the desired file is the first in the alphabetic order
+                self.nii_path = os.path.join(self.nifti_output_directory, all_non_cropped[0])
+                self.not_cropped_nii_path = os.path.basename(self.nii_path)
+            else:
+                # If no file is found, generating one from the specified DICOM folder
+                print("No NIfTI file found. Processing the specified DICOM folder...")
+                self.dcm_to_nii()
+
+        self.img = nib.load(self.nii_path)
+        self.array = self.img.get_fdata()
+        self.resolution = self.img.header["pixdim"][1:4]
+        self.dimension = self.img.shape
         self.save_to_csv()
 
 
@@ -203,6 +208,8 @@ class Segmentation:
         Opens an interactive window to scroll through slices of the array.
         """
         from matplotlib.widgets import Slider
+
+        # Mettre abscisse, ordonnée, profondeur
 
         fig, ax = plt.subplots()
         plt.subplots_adjust(bottom=0.25)
@@ -492,19 +499,19 @@ def main(dicoms_list = dicoms_list):
     for i, dicom in enumerate(dicoms_list):
         start = time.time()
         ct = Segmentation(dcm_path=dicom, big_output_directory="cava", file_number=i)
-        # ct.apply_threshold()
+        ct.apply_threshold()
 
         # ct.show_3D_array(np.flip(np.flip(np.transpose(ct.head, (2, 1, 0)), axis=1), axis=2), axis=1)
         # ct.show_3D_array(ct.head, axis=1) 
 
-        # ct.keep_largest_island()
-        # ct.fill_holes()
-        # ct.remove_arteries()
+        ct.keep_largest_island()
+        ct.fill_holes()
+        ct.remove_arteries()
 
         # Totalsegmentator
-        ct.segment_brain()
-        # ct.arteries_and_totalsegmentator_mask()
-        # ct.mask_to_nii()
+        # ct.segment_brain()
+        ct.arteries_and_totalsegmentator_mask()
+        ct.mask_to_nii()
         # ct.show_3D_array(ct.skull, axis=2) # En z
 
         # id = Registration(big_output_directory="nifti", file_number=2, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
