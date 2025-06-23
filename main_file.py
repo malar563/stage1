@@ -76,14 +76,13 @@ class Segmentation:
         if cropped_files:
             # If "cropped_" file is found
             self.nii_path = os.path.join(self.nifti_output_directory, cropped_files[0])
-            self.not_cropped_nii_path = cropped_files[0].removeprefix("cropped_")
+            self.not_cropped_nii_path = os.path.join(self.nifti_output_directory, cropped_files[0].removeprefix("cropped_"))
         else:
             # Trying to find a non-cropped file 
             all_non_cropped = [f for f in nii_files if not f.startswith("cropped_")]
             if all_non_cropped:
                 # IMPORTANT : Only works if the desired file is the first in the alphabetic order
                 self.nii_path = os.path.join(self.nifti_output_directory, all_non_cropped[0])
-                self.not_cropped_nii_path = os.path.basename(self.nii_path)
             else:
                 # If no file is found, generating one from the specified DICOM folder
                 print("No NIfTI file found. Processing the specified DICOM folder...")
@@ -114,8 +113,13 @@ class Segmentation:
         csv_path = os.path.join(self.nifti_output_directory, f"points{self.file_number}.csv")
         data = [["","x", "y", "z"],
                 ["Dimensions", self.dimension[1], self.dimension[0], self.dimension[2]],
+                ["Dimensions not cropped", "-", "-", "-"],
                 ["Resolution (mm)", self.resolution[1], self.resolution[0], self.resolution[2]],
                 ["Length (mm)", self.dimension[1]*self.resolution[1], self.dimension[0]*self.resolution[0], self.dimension[2]*self.resolution[2]]]
+        if hasattr(self, 'not_cropped_nii_path'): # The variable exists — safe to use
+            print("It exists:", self.not_cropped_nii_path)
+
+
         # Ne vas pas marcher si pas de crop (deux lignes ou une à rajouter)
         if os.path.exists(csv_path):
             df_existing = pd.read_csv(csv_path)
@@ -183,12 +187,11 @@ class Segmentation:
             nib.save(cropped_image, nifti_path)
             print(f"NIfTI generated : {nifti_path}")
 
-
             self.nii_path = nifti_path
 
    
 
-    def show_3D_array(self, arr, axis=0, pt=None): # y=0, x=1, z=2
+    def show_3D_array(self, arr, axis=0, pt=None, pt_slice=None):
         """
         Display a 3D array slice-by-slice using a matplotlib slider.
 
@@ -198,51 +201,64 @@ class Segmentation:
             3D array to visualize.
 
         axis : int
-            Axis along which to slice (0=y, 1=x, 2=z).
+            Axis along which to slice.
 
         pt : tuple or None
-            Optional (x, y) coordinates to highlight on each slice.
+            Optional abscissa and ordinate coordinates to highlight (with a red dot) on a specific slice.
 
-        Notes
-        -----
-        Opens an interactive window to scroll through slices of the array.
+        pt_slice : int or None
+            The slice index along `axis` where the point should be displayed.
+            If None and pt is not None, the point will not be displayed.
         """
         from matplotlib.widgets import Slider
-
-        # Mettre abscisse, ordonnée, profondeur
-
         fig, ax = plt.subplots()
         plt.subplots_adjust(bottom=0.25)
 
         # Initial slice index
         index = arr.shape[axis] // 2
+
+        # Show initial slice
         if axis == 0:
             img = ax.imshow(arr[index, :, :], cmap="gray", origin="lower")
-            if pt is not None:
-                ax.scatter([pt[0]],[pt[1]], c="r")
+            point_plot = ax.scatter([], [], c="r")  # empty scatter initially
         elif axis == 1:
             img = ax.imshow(arr[:, index, :], cmap="gray", origin="lower")
-            if pt is not None:
-                ax.scatter([pt[0]],[pt[1]], c="r")
+            point_plot = ax.scatter([], [], c="r")
         else:
             img = ax.imshow(arr[:, :, index], cmap="gray", origin="lower")
-            if pt is not None:
-                ax.scatter([pt[0]],[pt[1]], c="r")
+            point_plot = ax.scatter([], [], c="r")
+
+        # Display point only if index == pt_slice
+        def update(val):
+            slice_idx = int(slice_slider.val)
+            if axis == 0:
+                img.set_data(arr[slice_idx, :, :])
+                if pt is not None and slice_idx == pt_slice:
+                    point_plot.set_offsets([[pt[0], pt[1]]])
+                else:
+                    point_plot.set_offsets(np.empty((0, 2)))
+            elif axis == 1:
+                img.set_data(arr[:, slice_idx, :])
+                if pt is not None and slice_idx == pt_slice:
+                    point_plot.set_offsets([[pt[0], pt[1]]])
+                else:
+                    point_plot.set_offsets(np.empty((0, 2)))
+            else:
+                img.set_data(arr[:, :, slice_idx])
+                if pt is not None and slice_idx == pt_slice:
+                    point_plot.set_offsets([[pt[0], pt[1]]])
+                else:
+                    point_plot.set_offsets(np.empty((0, 2)))
+            fig.canvas.draw_idle()
 
         # Slider setup
         ax_slider = plt.axes([0.2, 0.1, 0.65, 0.03])
         slice_slider = Slider(ax_slider, 'Slice', 0, arr.shape[axis] - 1, valinit=index, valstep=1)
-
-        def update(val):
-            if axis == 0:
-                img.set_data(arr[int(slice_slider.val), :, :])
-            elif axis == 1:
-                img.set_data(arr[:, int(slice_slider.val), :])
-            else:
-                img.set_data(arr[:, :, int(slice_slider.val)])
-            fig.canvas.draw_idle()
-
         slice_slider.on_changed(update)
+
+        # Initial update for correct point visibility
+        update(index)
+
         plt.show()
 
 
@@ -503,6 +519,7 @@ def main(dicoms_list = dicoms_list):
 
         # ct.show_3D_array(np.flip(np.flip(np.transpose(ct.head, (2, 1, 0)), axis=1), axis=2), axis=1)
         # ct.show_3D_array(ct.head, axis=1) 
+        ct.show_3D_array(ct.head, axis=0, pt=(50,42), pt_slice = 100) 
 
         ct.keep_largest_island()
         ct.fill_holes()
