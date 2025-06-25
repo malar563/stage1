@@ -7,3 +7,4 @@ nifti
 *.mat
 # On dirait que vu que j'ai mis DICOM_003, DICOM_010 et head.pickle dans mon Github avant de mettre mon .gitignore, il ne les prends pas en compte.
 *.csv
+*.json

@@ -1031,7 +1031,9 @@ class Registration(Segmentation):
         print(landmarks)
         data = [["Nasion", landmarks[0][1], landmarks[0][2], landmarks[0][0]],
                 ["LPA", landmarks[1][1], landmarks[1][2], landmarks[1][0]],
-                ["RPA", landmarks[2][1], landmarks[2][2], landmarks[2][0]]]
+                ["RPA", landmarks[2][1], landmarks[2][2], landmarks[2][0]],
+                ["If '-' appears in the line 'Dimensions not cropped', it means the original (uncropped) NIfTI file was used for the entire process."],
+                ["If the cropped NIfTI file was used, to retrieve the original coordinates of the LPA, RPA, and Nasion, subtract the z-dimension of the cropped file from that of the original file, and add the difference to the z-index. The x and y indices remain unchanged."]]
         df_to_keep += data
         print(df_to_keep)
         df = pd.DataFrame(df_to_keep)
@@ -1122,15 +1124,15 @@ class Registration(Segmentation):
 
 
 
-id = Registration(big_output_directory="cava", file_number=0, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
+id = Registration(big_output_directory="cava", file_number=1, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
 # id.save_pts_to_csv()
 # id.show_3D_array(id.moving_img.numpy())
 # id.show_3D_array(id.fixed_img.numpy())
 # id.delete_useless_files()
 
-id.register()
-# id.read_transforms()
-id.mca_arteries_mask() # Un peu redondant comme nom car a de mca est déjà pour arteries
+# id.register()
+id.read_transforms()
+# id.mca_arteries_mask() # Un peu redondant comme nom car a de mca est déjà pour arteries
 id.find_registered_lpa_rpa_nasion()
 
 # id.show_3D_array(nib.load('icbm_avg_152_t1_tal_lin.nii').get_fdata(), axis=0)
