@@ -69,24 +69,32 @@ class Segmentation:
         self.file_number = str(file_number) # String version of the file number used in folder naming.
         self.nifti_output_directory = os.path.join(self.big_output_directory, self.file_number) # Full path to the directory where NIfTI outputs will be stored.
         
-        # Listing NIfTI files in the folder
-        nii_files = [f for f in os.listdir(self.nifti_output_directory) if f.endswith(".nii") or f.endswith(".nii.gz")]
-        # Searching a file starting by "cropped_"
-        cropped_files = [f for f in nii_files if f.startswith("cropped_")]
-        if cropped_files:
-            # If "cropped_" file is found
-            self.nii_path = os.path.join(self.nifti_output_directory, cropped_files[0])
-            self.not_cropped_nii_path = os.path.join(self.nifti_output_directory, cropped_files[0].removeprefix("cropped_"))
-        else:
-            # Trying to find a non-cropped file 
-            all_non_cropped = [f for f in nii_files if not f.startswith("cropped_", "fwd", "inv", "mask", "mca_territory", "totalsegmentator")]
-            if all_non_cropped:
-                # IMPORTANT : Only works if the desired file is the first in the alphabetic order
-                self.nii_path = os.path.join(self.nifti_output_directory, all_non_cropped[0])
-            else:
+
+        # Check whether the specified path exists or not
+        isExist = os.path.exists(self.nifti_output_directory)
+        if not isExist:
                 # If no file is found, generating one from the specified DICOM folder
                 print("No NIfTI file found. Processing the specified DICOM folder...")
                 self.dcm_to_nii()
+        else:
+            # Listing NIfTI files in the folder
+            nii_files = [f for f in os.listdir(self.nifti_output_directory) if f.endswith(".nii") or f.endswith(".nii.gz")]
+            # Searching a file starting by "cropped_"
+            cropped_files = [f for f in nii_files if f.startswith("cropped_")]
+            if cropped_files:
+                # If "cropped_" file is found
+                self.nii_path = os.path.join(self.nifti_output_directory, cropped_files[0])
+                self.not_cropped_nii_path = os.path.join(self.nifti_output_directory, cropped_files[0].removeprefix("cropped_"))
+            else:
+                # Trying to find a non-cropped file 
+                all_non_cropped = [f for f in nii_files if not f.startswith("cropped_", "fwd", "inv", "mask", "mca_territory", "totalsegmentator")]
+                if all_non_cropped:
+                    # IMPORTANT : Only works if the desired file is the first in the alphabetic order
+                    self.nii_path = os.path.join(self.nifti_output_directory, all_non_cropped[0])
+                else:
+                    # If no file is found, generating one from the specified DICOM folder
+                    print("No NIfTI file found. Processing the specified DICOM folder...")
+                    self.dcm_to_nii()
 
         self.img = nib.load(self.nii_path)
         self.array = self.img.get_fdata()
@@ -159,12 +167,15 @@ class Segmentation:
 
         # Create the output_directory file
         os.makedirs(self.nifti_output_directory, exist_ok=True)
+        print("file crréé")
 
         # Convert DICOM to NIfTI (compression=False -> .nii instead of .nii.gz)
         dicom2nifti.convert_directory(self.dcm_path, self.nifti_output_directory, compression=True)
+        print("dicom convrti??")
 
         # Find the generated file in the output folder
         nifti_files = [f for f in os.listdir(self.nifti_output_directory) if f.endswith('.nii.gz')]
+        print(nifti_files)
         nifti_path = os.path.join(self.nifti_output_directory, nifti_files[0]) # Use the first .nii.gz file found
         print(f"NIfTI generated : {nifti_path}")
 
@@ -1087,7 +1098,7 @@ class Registration(Segmentation):
 
 
 # dicoms_list = ["DICOM_003/Carotid_Angio_0.625mm", "DICOM_010/COW_Angio_0.6_Hv36_3"]
-dicoms_list = ["online_patient\2.16.840.1.114274.1818.54679567684983683469916028559315183245.zip\2.16.840.1.114274.1818.54679567684983683469916028559315183245"]
+dicoms_list = ["2.16.840.1.114274.1818.46711723837672246304206241465856141463", "2.16.840.1.114274.1818.528945204283203896414435929150802789774", "2.16.840.1.114274.1818.56920369040074765021783555636978216368"]
 
 
 # CHECKER LES AXES PARTOUT POUR ÊTRE SÛR QUE C'EST CHILL
