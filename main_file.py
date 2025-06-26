@@ -79,7 +79,7 @@ class Segmentation:
             self.not_cropped_nii_path = os.path.join(self.nifti_output_directory, cropped_files[0].removeprefix("cropped_"))
         else:
             # Trying to find a non-cropped file 
-            all_non_cropped = [f for f in nii_files if not f.startswith("cropped_")]
+            all_non_cropped = [f for f in nii_files if not f.startswith("cropped_", "fwd", "inv", "mask", "mca_territory", "totalsegmentator")]
             if all_non_cropped:
                 # IMPORTANT : Only works if the desired file is the first in the alphabetic order
                 self.nii_path = os.path.join(self.nifti_output_directory, all_non_cropped[0])
@@ -510,44 +510,8 @@ class Segmentation:
 
 
 # -----------------------------------------------------------------------------------------------
-dicoms_list = ["DICOM_003/Carotid_Angio_0.625mm", "DICOM_010/COW_Angio_0.6_Hv36_3"]
 
 
-# CHECKER LES AXES PARTOUT POUR ÊTRE SÛR QUE C'EST CHILL
-def main(dicoms_list = dicoms_list):
-    for i, dicom in enumerate(dicoms_list):
-        start = time.time()
-        ct = Segmentation(dcm_path=dicom, big_output_directory="cava", file_number=i)
-        ct.apply_threshold()
-
-        # ct.show_3D_array(np.flip(np.flip(np.transpose(ct.head, (2, 1, 0)), axis=1), axis=2), axis=1)
-        # ct.show_3D_array(ct.head, axis=1) 
-        ct.show_3D_array(ct.head, axis=0, pt=(50,42), pt_slice = 100) 
-
-        ct.keep_largest_island()
-        ct.fill_holes()
-        ct.remove_arteries()
-
-        # Totalsegmentator
-        # ct.segment_brain()
-        ct.arteries_and_totalsegmentator_mask()
-        ct.mask_to_nii()
-        # ct.show_3D_array(ct.skull, axis=2) # En z
-
-        # id = Registration(big_output_directory="nifti", file_number=2, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
-        # # id.register()
-        # id.read_transforms()
-        # id.find_registered_lpa_rpa_nasion()
-        # # AJOUTER L'AFFICHAGE DES PTS TROUVÉS
-        print(f"Time to segment file {ct.nii_path} : {time.time() - start} seconds")
-
-
-# if __name__ == "__main__":
-#     main()
-
-
-
-# BIZARREEEEEEEE : S'ASSURER QUE Z=AXE0, X=AXE1 ET Y=AXE2 TEL QUE DHABITUDE : PAS LE CAS DANS LE MASQUE CI-HAUT
 
 
 
@@ -1119,6 +1083,47 @@ class Registration(Segmentation):
 
 
                 
+
+
+
+# dicoms_list = ["DICOM_003/Carotid_Angio_0.625mm", "DICOM_010/COW_Angio_0.6_Hv36_3"]
+dicoms_list = ["online_patient\2.16.840.1.114274.1818.54679567684983683469916028559315183245.zip\2.16.840.1.114274.1818.54679567684983683469916028559315183245"]
+
+
+# CHECKER LES AXES PARTOUT POUR ÊTRE SÛR QUE C'EST CHILL
+def main(dicoms_list = dicoms_list):
+    for i, dicom in enumerate(dicoms_list):
+        start = time.time()
+        ct = Segmentation(dcm_path=dicom, big_output_directory="online", file_number=i)
+        ct.apply_threshold()
+
+        # ct.show_3D_array(np.flip(np.flip(np.transpose(ct.head, (2, 1, 0)), axis=1), axis=2), axis=1)
+        # ct.show_3D_array(ct.head, axis=1) 
+        ct.show_3D_array(ct.head, axis=0, pt=(50,42), pt_slice = 100) 
+
+        ct.keep_largest_island()
+        ct.fill_holes()
+        ct.remove_arteries()
+
+        # Totalsegmentator
+        # ct.segment_brain()
+        ct.arteries_and_totalsegmentator_mask()
+        ct.mask_to_nii()
+        # ct.show_3D_array(ct.skull, axis=2) # En z
+
+
+        # # AJOUTER L'AFFICHAGE DES PTS TROUVÉS
+        print(f"Time to segment file {ct.nii_path} : {time.time() - start} seconds")
+
+
+if __name__ == "__main__":
+    main()
+
+
+
+
+
+
 
 
 
