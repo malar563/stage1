@@ -926,27 +926,28 @@ class Registration(Segmentation):
             return self.filled_y_slices[index_lpa]+1 # -1 to get the surface of the head
         
     def find_rpa(self, window=60):
-        rpa_x = 228
-        rpa_y = 399
-        rpa_z = 69
-        # rpa_x = 251 # 0625mm
-        # rpa_y = 388
-        # rpa_z = 135
-        rpa_y_final = self.__find_rpa_y__(rpa_y=rpa_y)
-        self.registered_rpa = rpa_x, rpa_y_final, rpa_z
-        print(self.registered_rpa)
+        # rpa_x = 228
+        # rpa_y = 399
+        # rpa_z = 69
+        # # rpa_x = 251 # 0625mm
+        # # rpa_y = 388
+        # # rpa_z = 135
+        # rpa_y_final = self.__find_rpa_y__(rpa_y=rpa_y)
+        # self.registered_rpa = rpa_x, rpa_y_final, rpa_z
+        # print(self.registered_rpa)
         self.rpa = self.registered_rpa
     
 
 
     def find_lpa(self, window=60):
-        lpa_x = 223
-        lpa_y = 84
-        lpa_z = 63
-        # lpa_x = 239
-        # lpa_y = 97
-        # lpa_z = 131
-        self.registered_lpa = lpa_x, lpa_y, lpa_z
+        # lpa_x = 223
+        # lpa_y = 84
+        # lpa_z = 63
+        # # lpa_x = 239
+        # # lpa_y = 97
+        # # lpa_z = 131
+        # self.registered_lpa = lpa_x, lpa_y, lpa_z
+        
         self.lpa = self.registered_lpa
 
         # # Ya absolument rien qui marche ci-bas donc inutile
@@ -1170,9 +1171,11 @@ for i, nifti in enumerate(dicoms_list):
     id.find_nasion()
     id.check_nasion()
     id.find_rpa()
-    id.show_3D_array(id.head, axis=2, pt=(id.rpa[0], id.rpa[2]), pt_slice=id.rpa[1])
+    print("rpa :", id.rpa)
+    id.show_3D_array(id.head, axis=2, pt=(id.rpa[1], id.rpa[0]), pt_slice=id.rpa[2])
     id.find_lpa()
-    id.show_3D_array(id.head, axis=2, pt=(id.lpa[0], id.lpa[2]), pt_slice=id.lpa[1])
+    print("lpa :", id.lpa)
+    id.show_3D_array(id.head, axis=2, pt=(id.lpa[1], id.lpa[0]), pt_slice=id.lpa[2])
 
     # id.save_pts_to_csv()
     # id.mca_territory_mask()
