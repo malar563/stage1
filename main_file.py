@@ -12,44 +12,74 @@ import pandas as pd
 class Segmentation:
     """Processing DICOM files, segmenting the head and storing various image masks."""
     
-    def __init__(self, dcm_path="DICOM_010/COW_Angio_0.6_Hv36_3", big_output_directory="processed_files", file_number=0):
+    def __init__(self, dcm_path="DICOM_010/COW_Angio_0.6_Hv36_3", big_output_directory="processed_files", file_number=0, crop="yes"):
         """
-        This constructor receive the path of the DICOM file to be processed,
-        sets up file paths for NIfTI outputs and initializes storage for multiple segmentation masks.
+        Initializes the Segmentation object by locating or generating a NIfTI file
+        from a DICOM folder, and setting up paths and key image attributes.
 
-        Arguments
-        ---------
-        dcm_path : string
-            Path to the directory containing the DICOM files to be processed.
+        This method either loads an existing NIfTI file (cropped or not), or converts
+        the provided DICOM folder to a NIfTI image using `dicom2nifti`, optionally cropping it
+        based on resolution.
+
+        Parameters
+        ----------
+        dcm_path : str, optional
+            Path to the directory containing DICOM files. Used only if no NIfTI exists yet.
         
-        big_output_directory : string
-            Base directory where processed NIfTI files will be saved.
+        big_output_directory : str, optional
+            Root directory where subfolders of NIfTI and mask outputs will be saved.
         
-        file_number : int
-            Integer identifier for the file being processed, used to create subdirectories.
+        file_number : int, optional
+            Identifier for the processed file. Used to name subfolders and outputs.
+        
+        crop : any type (default="yes")
+            If not None, cropping will be applied after DICOM conversion based on image resolution.
+
+        Sets
+        ----
+        - self.nii_path : path to the NIfTI image (cropped if found/generated)
+        - self.array : numpy array of image data loaded from NIfTI
+        - self.resolution : voxel spacing in mm (tuple of 3 floats)
+        - self.dimension : image shape (tuple of 3 ints)
+
+        Files Created
+        -------------
+        - If no NIfTI file is found, runs `self.dcm_to_nii()`:
+            - Generates a `.nii.gz` file from the DICOM folder
+            - Applies cropping if enabled
+        - Automatically calls `self.save_to_csv()` to save image metadata to `points<file_number>.txt`
 
         Attributes
         ----------
-        dcm_path : string
-            Path to the DICOM directory.
-
-        nii_path : string or None
-            Full path to the primary NIfTI file after conversion.
-
-        array : numpy.ndarray
-            Placeholder for the primary loaded DICOM or NIfTI image data.
-
-        resolution : tuple or None
-            Resolution information extracted from the image metadata.
-
-        big_output_directory : string
-            Path to the top-level directory for storing outputs.
-
-        file_number : string
-            String version of the file number used in folder naming.
-
-        nifti_output_directory : string
-            Full path to the directory where NIfTI outputs will be stored.
+        dcm_path : str
+            Input DICOM folder path.
+        
+        big_output_directory : str
+            Root folder for outputs.
+        
+        file_number : str
+            File identifier, formatted as string.
+        
+        nifti_output_directory : str
+            Path to the subfolder for this case’s outputs.
+        
+        nii_path : str
+            Full path to the NIfTI file used as base image.
+        
+        not_cropped_nii_path : str or None
+            Path to the uncropped image, if both exist.
+        
+        img : nibabel.Nifti1Image
+            NIfTI image object corresponding to `nii_path`.
+        
+        array : np.ndarray
+            Image voxel data.
+        
+        resolution : tuple of float
+            Voxel spacing (dy, dx, dz).
+        
+        dimension : tuple of int
+            Image dimensions (Y, X, Z).
 
         Future attributes
         -----------------
@@ -60,7 +90,7 @@ class Segmentation:
         Notes
         -----
         IMPORTANT :
-            - In this class, when displaying an array, note that the index order is (Y, X, Z)
+            - In this class, when displaying an array, the index order is (Y, X, Z)
             - According to Nibabel, reorient automatically the image in RAS+ coordinates    
         """
 
@@ -71,11 +101,11 @@ class Segmentation:
         
 
         # Check whether the specified path exists or not
-        isExist = os.path.exists(self.nifti_output_directory)
-        if not isExist:
+        exist = os.path.exists(self.nifti_output_directory)
+        if not exist:
                 # If no file is found, generating one from the specified DICOM folder
                 print("No NIfTI file found. Processing the specified DICOM folder...")
-                self.dcm_to_nii()
+                self.dcm_to_nii(crop)
         else:
             # Listing NIfTI files in the folder
             nii_files = [f for f in os.listdir(self.nifti_output_directory) if f.endswith(".nii") or f.endswith(".nii.gz")]
@@ -86,8 +116,9 @@ class Segmentation:
                 self.nii_path = os.path.join(self.nifti_output_directory, cropped_files[0])
                 self.not_cropped_nii_path = os.path.join(self.nifti_output_directory, cropped_files[0].removeprefix("cropped_"))
             else:
-                # Trying to find a non-cropped file 
-                all_non_cropped = [f for f in nii_files if not f.startswith("cropped_", "fwd", "inv", "mask", "mca_territory", "totalsegmentator")]
+                # Trying to find a non-cropped file
+                excluded_prefixes = ("cropped_", "fwd", "inv", "mask", "mca_territory", "totalsegmentator") 
+                all_non_cropped = [f for f in nii_files if not f.startswith(excluded_prefixes)]
                 if all_non_cropped:
                     # IMPORTANT : Only works if the desired file is the first in the alphabetic order
                     self.nii_path = os.path.join(self.nifti_output_directory, all_non_cropped[0])
@@ -167,11 +198,9 @@ class Segmentation:
 
         # Create the output_directory file
         os.makedirs(self.nifti_output_directory, exist_ok=True)
-        print("file crréé")
 
         # Convert DICOM to NIfTI (compression=False -> .nii instead of .nii.gz)
         dicom2nifti.convert_directory(self.dcm_path, self.nifti_output_directory, compression=True)
-        print("dicom convrti??")
 
         # Find the generated file in the output folder
         nifti_files = [f for f in os.listdir(self.nifti_output_directory) if f.endswith('.nii.gz')]
@@ -409,8 +438,8 @@ class Segmentation:
 
         Notes
         -----
-        Only runs when the script is executed directly.
-        IMPORTANT : 
+        ONLY RUNS WHEN THE SCRIPT IS EXECUTED DIRECTLY.
+        Important : 
             Brain is labeled with the number 90
             Skull is labeled with the number 91
         """
@@ -451,11 +480,10 @@ class Segmentation:
         self.arteries = self.brain_totalsegmentator * self.arteries
 
     
-
-    
     def mask_to_nii(self, iter_erosion=3):
         """
-        Save head and masks as NIfTI files, with skull refinement.
+        Save head and masks as NIfTI files.
+        Perform the final refinement of the skull mask using the output generated by TotalSegmentator.
 
         Creates two NIfTI files:
         - One containing the original image masked by the head (useful for registration).
@@ -469,23 +497,19 @@ class Segmentation:
 
         Files Created
         -------------
-        - head{file_number}.nii.gz : Non masked head image. 
+        - head{file_number}.nii.gz : Non masked head image (used for registration). 
         - mask{file_number}.nii.gz : Labeled mask
         """
         # Nifti file with the HU units of the whole head for the registration
-        # head_img =  nib.load(self.nii_path)
-        # head_array = head_img.get_fdata() # primary nifti file data
-        # head_array = np.where(self.head == 1, head_array, -1000) # HU units where the mask is 1, -1000 where the mask is 0
-        # head_image = nib.Nifti1Image(head_array, head_img.affine, head_img.header) # Create a new NIfTI image
         head_array = np.where(self.head == 1, self.array, -1000) # HU units where the mask is 1, -1000 where the mask is 0
         head_image = nib.Nifti1Image(head_array, self.img.affine, self.img.header) # Create a new NIfTI image
         nifti_path = os.path.join(self.nifti_output_directory, "head"+self.file_number+".nii.gz")
         nib.save(head_image, nifti_path)
         print(f"NIfTI generated : {nifti_path}.nii.gz")
 
-        # NIfTI file with all the masks
         total_mask = 1*self.head + 2*self.skull + 1*self.arteries
-        # Improve the mask of the skull
+
+        # Final improvement of the mask of the skull
         from scipy.ndimage import binary_erosion, generate_binary_structure
         mask_soft_tissues = np.where(total_mask == 1, 1, 0)
         mask_eroded_skull = binary_erosion(self.skull_totalsegmentator, structure=generate_binary_structure(3,1), iterations=iter_erosion)
@@ -493,7 +517,7 @@ class Segmentation:
         self.skull = self.skull + (mask_soft_tissues*mask_eroded_skull)
         total_mask = total_mask + not_included_skull
 
-        # masked_image = nib.Nifti1Image(total_mask, head_img.affine, head_img.header) # Create a new NIfTI image
+        # NIfTI file of the mask
         masked_image = nib.Nifti1Image(total_mask, self.img.affine, self.img.header) # Create a new NIfTI image
         nifti_path = os.path.join(self.nifti_output_directory, "mask"+self.file_number+".nii.gz")
         nib.save(masked_image, nifti_path)
@@ -501,7 +525,25 @@ class Segmentation:
     
 
     def delete_useless_files(self):
-        # Tester si marche mm si ya pas de cropped
+        """
+        Deletes intermediate NIfTI files from the output directory.
+
+        Specifically, removes:
+        - The original uncropped NIfTI file (if a cropped version is used)
+        - The `totalsegmentator` output file
+        - The full-head image used for registration
+
+        This helps reduce disk usage and declutter the output folder after segmentation
+        and registration steps are completed.
+
+        Notes
+        -----
+        - If a file does not exist, a message is printed instead of raising an error.
+        - Safe to call even if some files are missing.
+        IMPORTANT :
+            Must be used AFTER the registration is done
+        """
+
         useless_files = [self.nii_path.removeprefix("cropped_"),
                          os.path.join(self.nifti_output_directory, "totalsegmentator"+self.file_number+".nii.gz"),
                          os.path.join(self.nifti_output_directory, "head"+self.file_number+".nii.gz")]
@@ -512,25 +554,11 @@ class Segmentation:
                 print(f"The file {file_path} does not exist")
 
 
-
-
-
-
- 
-
-
-
-# -----------------------------------------------------------------------------------------------
-
-
-
-
-
-
-
-
-
 # ------------------------------------------------------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------------------------------------------------------
+
 
 class Registration(Segmentation):
 
@@ -660,10 +688,7 @@ class Registration(Segmentation):
             new_point = (affine @ initial_point)[:-1]
             return new_point
         else:
-            print("Invalid object")
-
-
-        
+            print("Invalid object")    
 
 
     def register(self, show=False):
@@ -1098,7 +1123,8 @@ class Registration(Segmentation):
 
 
 # dicoms_list = ["DICOM_003/Carotid_Angio_0.625mm", "DICOM_010/COW_Angio_0.6_Hv36_3"]
-dicoms_list = ["2.16.840.1.114274.1818.46711723837672246304206241465856141463", "2.16.840.1.114274.1818.528945204283203896414435929150802789774", "2.16.840.1.114274.1818.56920369040074765021783555636978216368"]
+dicoms_list = ["online_patient/2.16.840.1.114274.1818.46711723837672246304206241465856141463", "online_patient/2.16.840.1.114274.1818.528945204283203896414435929150802789774", "online_patient/2.16.840.1.114274.1818.56920369040074765021783555636978216368"]
+# dicoms_list = ["online_patient/test", "2.16.840.1.114274.1818.528945204283203896414435929150802789774", "2.16.840.1.114274.1818.56920369040074765021783555636978216368"]
 
 
 # CHECKER LES AXES PARTOUT POUR ÊTRE SÛR QUE C'EST CHILL
@@ -1106,29 +1132,27 @@ def main(dicoms_list = dicoms_list):
     for i, dicom in enumerate(dicoms_list):
         start = time.time()
         ct = Segmentation(dcm_path=dicom, big_output_directory="online", file_number=i)
-        ct.apply_threshold()
-
-        # ct.show_3D_array(np.flip(np.flip(np.transpose(ct.head, (2, 1, 0)), axis=1), axis=2), axis=1)
-        # ct.show_3D_array(ct.head, axis=1) 
-        ct.show_3D_array(ct.head, axis=0, pt=(50,42), pt_slice = 100) 
-
+        ct.apply_threshold()       
         ct.keep_largest_island()
         ct.fill_holes()
         ct.remove_arteries()
+        ct.show_3D_array(ct.skull)
 
         # Totalsegmentator
-        # ct.segment_brain()
+        ct.segment_brain()
         ct.arteries_and_totalsegmentator_mask()
         ct.mask_to_nii()
+
         # ct.show_3D_array(ct.skull, axis=2) # En z
+        # ct.show_3D_array(ct.head, axis=0, pt=(50,42), pt_slice = 100)
 
 
         # # AJOUTER L'AFFICHAGE DES PTS TROUVÉS
         print(f"Time to segment file {ct.nii_path} : {time.time() - start} seconds")
 
 
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     main()
 
 
 
@@ -1140,38 +1164,38 @@ if __name__ == "__main__":
 
 
 
-id = Registration(big_output_directory="cava", file_number=1, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
+# id = Registration(big_output_directory="cava", file_number=1, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
+# # id.save_pts_to_csv()
+# # id.show_3D_array(id.moving_img.numpy())
+# # id.show_3D_array(id.fixed_img.numpy())
+# # id.delete_useless_files()
+
+# # id.register()
+# id.read_transforms()
+# # id.mca_arteries_mask() # Un peu redondant comme nom car a de mca est déjà pour arteries
+# id.find_registered_lpa_rpa_nasion()
+
+# # id.show_3D_array(nib.load('icbm_avg_152_t1_tal_lin.nii').get_fdata(), axis=0)
+# # id.show_3D_array(nib.load('jspakoi/0/head0.nii').get_fdata(), axis=0)
+# # id.show_3D_array(id.head, axis=0)
+# # id.show_3D_array(id.moving_img.numpy(), axis=0)
+# # id.show_3D_array(id.fixed_img.numpy(), axis=0)
+
+# # id.mca_arteries_mask()
+# id.fill_cavities()
+# id.find_nasion()
+# id.check_nasion()
+# id.find_rpa()
+# id.find_lpa()
+
 # id.save_pts_to_csv()
-# id.show_3D_array(id.moving_img.numpy())
-# id.show_3D_array(id.fixed_img.numpy())
-# id.delete_useless_files()
 
-# id.register()
-id.read_transforms()
-# id.mca_arteries_mask() # Un peu redondant comme nom car a de mca est déjà pour arteries
-id.find_registered_lpa_rpa_nasion()
+# id.show_3D_array(id.head, axis=2, pt=(id.registered_lpa[0], id.registered_lpa[2]))
+# id.show_3D_array(id.head, axis=2, pt=(id.registered_rpa[0], id.registered_rpa[2]))
 
-# id.show_3D_array(nib.load('icbm_avg_152_t1_tal_lin.nii').get_fdata(), axis=0)
-# id.show_3D_array(nib.load('jspakoi/0/head0.nii').get_fdata(), axis=0)
-# id.show_3D_array(id.head, axis=0)
-# id.show_3D_array(id.moving_img.numpy(), axis=0)
-# id.show_3D_array(id.fixed_img.numpy(), axis=0)
+# id.find_registered_lpa_rpa_nasion()
 
-# id.mca_arteries_mask()
-id.fill_cavities()
-id.find_nasion()
-id.check_nasion()
-id.find_rpa()
-id.find_lpa()
-
-id.save_pts_to_csv()
-
-id.show_3D_array(id.head, axis=2, pt=(id.registered_lpa[0], id.registered_lpa[2]))
-id.show_3D_array(id.head, axis=2, pt=(id.registered_rpa[0], id.registered_rpa[2]))
-
-id.find_registered_lpa_rpa_nasion()
-
-# AJOUTER L'AFFICHAGE DES PTS TROUVÉS
+# # AJOUTER L'AFFICHAGE DES PTS TROUVÉS
 
 
 
