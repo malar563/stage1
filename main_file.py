@@ -522,36 +522,6 @@ class Segmentation:
         nifti_path = os.path.join(self.nifti_output_directory, "mask"+self.file_number+".nii.gz")
         nib.save(masked_image, nifti_path)
         print(f"NIfTI generated : {nifti_path}.nii.gz")
-    
-
-    def delete_useless_files(self):
-        """
-        Deletes intermediate NIfTI files from the output directory.
-
-        Specifically, removes:
-        - The original uncropped NIfTI file (if a cropped version is used)
-        - The `totalsegmentator` output file
-        - The full-head image used for registration
-
-        This helps reduce disk usage and declutter the output folder after segmentation
-        and registration steps are completed.
-
-        Notes
-        -----
-        - If a file does not exist, a message is printed instead of raising an error.
-        - Safe to call even if some files are missing.
-        IMPORTANT :
-            Must be used AFTER the registration is done
-        """
-
-        useless_files = [self.nii_path.removeprefix("cropped_"),
-                         os.path.join(self.nifti_output_directory, "totalsegmentator"+self.file_number+".nii.gz"),
-                         os.path.join(self.nifti_output_directory, "head"+self.file_number+".nii.gz")]
-        for file_path in useless_files:
-            if os.path.exists(file_path):
-                os.remove(file_path)
-            else:
-                print(f"The file {file_path} does not exist")
 
 
 # ------------------------------------------------------------------------------------------------------------------------------
@@ -618,11 +588,11 @@ class Registration(Segmentation):
 
         self.initial_moving_img = ants.image_read(self.moving_img_path) # Image provided by the mask
         self.initial_moving_img_orientation = ants.get_orientation(self.initial_moving_img) # Orientation of the mask
-        self.orient_for_registration = "IAL"
+        self.orient_for_registration = "IAL" # Chosen orientation (easier to visualize). Do not change it : the nasion won't be improved
         self.moving_img = ants.image_read(self.moving_img_path, reorient=self.orient_for_registration) # Image to be registered
         self.fixed_img = ants.image_read(fixed_img_path, reorient=self.orient_for_registration) # Reference image for registration
 
-        # Landmark coordinates determined visually (AVANT)
+        # Landmark coordinates determined visually in the normalized space
         self.lpa_vox_normal_space = np.array([25, 107, 6])
         self.rpa_vox_normal_space = np.array([25, 107, 173])
         self.nas_vox_normal_space = np.array([28, 4, 90])
@@ -630,9 +600,8 @@ class Registration(Segmentation):
         self.filled_y_slices = [] # Used to determine positions (lpa and rpa)
         mask_img = nib.load(os.path.join(self.nifti_output_directory, "mask"+self.file_number+".nii.gz"))
         self.mask_dimension = mask_img.shape
-        self.head = mask_img.get_fdata()
-        # IMPORTANT : flipping the images for better display. 
-        # From now on, it is [z,x,y] and not [y,x,z] as it was in the Segmentation class
+        self.head = mask_img.get_fdata() 
+        # IMPORTANT : from now on, it is [z,x,y] and not [y,x,z] as it was in the Segmentation class
         self.filled_head = self.reorient_point_to_original_mask(object_to_reorient=np.where(self.head>=1, 1, 0), 
                                                                 initial_orient=self.initial_moving_img_orientation, 
                                                                 final_orient=self.orient_for_registration)
@@ -644,10 +613,6 @@ class Registration(Segmentation):
         # self.filled_head = np.flip(np.flip(np.transpose(np.where(self.head>=1, 1, 0), (2, 1, 0)), axis=1), axis=2)
         # self.head = np.flip(np.flip(np.transpose(np.where(self.head>=1, 1, 0), (2, 1, 0)), axis=1), axis=2)
 
-
-        self.lpa=(0,0,2)
-        self.rpa=(0,0,9)
-        self.nasion = (2,2,3) 
 
 
     
@@ -803,7 +768,7 @@ class Registration(Segmentation):
         lpa_pt_patient_space = ants.apply_ants_transform_to_point(self.fwd_a_transform, lpa_pt_patient_space)
         lpa_vox_patient_space =  ants.transform_physical_point_to_index(self.moving_img, lpa_pt_patient_space)
         self.registered_lpa = round(lpa_vox_patient_space[0]), round(lpa_vox_patient_space[1]), round(lpa_vox_patient_space[2])
-        print('Voxel final', self.registered_lpa) # (z,x,y)
+        print('registered LPA', self.registered_lpa) # (z,x,y)
 
         # RPA : automatically identify on patient
         rpa_pt_normal_space = ants.transform_index_to_physical_point(self.fixed_img, self.rpa_vox_normal_space)
@@ -811,7 +776,7 @@ class Registration(Segmentation):
         rpa_pt_patient_space = ants.apply_ants_transform_to_point(self.fwd_a_transform, rpa_pt_patient_space)
         rpa_vox_patient_space = ants.transform_physical_point_to_index(self.moving_img, rpa_pt_patient_space)
         self.registered_rpa = round(rpa_vox_patient_space[0]), round(rpa_vox_patient_space[1]), round(rpa_vox_patient_space[2])
-        print('Voxel final', self.registered_rpa) # (z,x,y)
+        print('registered RPA', self.registered_rpa) # (z,x,y)
 
         # nasion : automatically identify on patient
         nas_pt_normal_space = ants.transform_index_to_physical_point(self.fixed_img, self.nas_vox_normal_space)
@@ -819,7 +784,7 @@ class Registration(Segmentation):
         nas_pt_patient_space = ants.apply_ants_transform_to_point(self.fwd_a_transform, nas_pt_patient_space)
         nas_vox_patient_space = ants.transform_physical_point_to_index(self.moving_img, nas_pt_patient_space)
         self.registered_nasion = round(nas_vox_patient_space[0]), round(nas_vox_patient_space[1]), round(nas_vox_patient_space[2])
-        print('Voxel final', self.registered_nasion) # (z,x,y)
+        print('registered nasion', self.registered_nasion) # (z,x,y)
 
 
     def fill_cavities(self):
@@ -850,7 +815,7 @@ class Registration(Segmentation):
                 self.filled_y_slices.append(i)
             self.filled_head[:,:,i] = filled # Assumes equal dimensions in x and y
             self.filled_head[:,i,:] = binary_fill_holes(self.filled_head[:,i,:]) 
-        print(self.filled_y_slices)
+        # print(self.filled_y_slices)
         for i in range(0, len(self.filled_head[:,1,1])):
             # Fill holes in the x-y plane
             self.filled_head[i,:,:] = binary_fill_holes(self.filled_head[i,:,:])
@@ -984,24 +949,24 @@ class Registration(Segmentation):
         self.registered_lpa = lpa_x, lpa_y, lpa_z
         self.lpa = self.registered_lpa
 
-        # Ya absolument rien qui marche ci-bas donc inutile
-        lpa_y_final = self.__find_lpa_y__(lpa_y=lpa_y)
-        print(lpa_y_final)
-        ROI_lpa = self.head[lpa_z-window:lpa_z+window,lpa_x-window:lpa_x+window,lpa_y_final-window:lpa_y_final+window]
-        # frame_before_filling = self.head[lpa_z-window:lpa_z+window,lpa_x-window:lpa_x+window,lpa_y_final]
-        # frame_start_filling = self.head[lpa_z-window:lpa_z+window,lpa_x-window:lpa_x+window,lpa_y_final+1]
-        frame_before_filling = self.head[:,:,lpa_y_final]
-        frame_start_filling = self.head[:,:,lpa_y_final+1]
-        intersection = ~frame_before_filling & frame_start_filling
-        plt.imshow(intersection, origin="lower")
-        plt.scatter([lpa_x], [lpa_z], c="r")
-        plt.show()
+        # # Ya absolument rien qui marche ci-bas donc inutile
+        # lpa_y_final = self.__find_lpa_y__(lpa_y=lpa_y)
+        # print(lpa_y_final)
+        # ROI_lpa = self.head[lpa_z-window:lpa_z+window,lpa_x-window:lpa_x+window,lpa_y_final-window:lpa_y_final+window]
+        # # frame_before_filling = self.head[lpa_z-window:lpa_z+window,lpa_x-window:lpa_x+window,lpa_y_final]
+        # # frame_start_filling = self.head[lpa_z-window:lpa_z+window,lpa_x-window:lpa_x+window,lpa_y_final+1]
+        # frame_before_filling = self.head[:,:,lpa_y_final]
+        # frame_start_filling = self.head[:,:,lpa_y_final+1]
+        # intersection = ~frame_before_filling & frame_start_filling
+        # plt.imshow(intersection, origin="lower")
+        # plt.scatter([lpa_x], [lpa_z], c="r")
+        # plt.show()
 
         
-        self.show_3D_array(ROI_lpa, axis=2)
-        counts_x = np.sum(ROI_lpa, axis=2) # axis=2 donne somme en y, axis=0 donne somme en z
-        plt.imshow(counts_x, origin="lower")
-        plt.show()
+        # self.show_3D_array(ROI_lpa, axis=2)
+        # counts_x = np.sum(ROI_lpa, axis=2) # axis=2 donne somme en y, axis=0 donne somme en z
+        # plt.imshow(counts_x, origin="lower")
+        # plt.show()
 
 
     def save_pts_to_csv(self):
@@ -1043,10 +1008,31 @@ class Registration(Segmentation):
 
 
     def delete_useless_files(self):
+        """
+        Deletes intermediate NIfTI files from the output directory.
+
+        Specifically, removes:
+        - The original uncropped NIfTI file (if a cropped version is used)
+        - The `totalsegmentator` output file
+        - The full-head image used for registration
+
+        This helps reduce disk usage and declutter the output folder after segmentation
+        and registration steps are completed.
+
+        Notes
+        -----
+        - If a file does not exist, a message is printed instead of raising an error.
+        - Safe to call even if some files are missing.
+        IMPORTANT :
+            Must be used AFTER the registration is done
+        """
         useless_files = [os.path.join(self.nifti_output_directory, "fwd"+self.file_number+".mat"),
                          os.path.join(self.nifti_output_directory, "fwd"+self.file_number+".nii.gz"),
                          os.path.join(self.nifti_output_directory, "inv"+self.file_number+".mat"),
-                         os.path.join(self.nifti_output_directory, "inv"+self.file_number+".nii.gz")]
+                         os.path.join(self.nifti_output_directory, "inv"+self.file_number+".nii.gz"),
+                         os.path.join(self.nifti_output_directory, "totalsegmentator"+self.file_number+".nii.gz"),
+                         os.path.join(self.nifti_output_directory, "head"+self.file_number+".nii.gz")]
+        # self.nii_path.removeprefix("cropped_")
         for file_path in useless_files:
             if os.path.exists(file_path):
                 os.remove(file_path)
@@ -1054,7 +1040,7 @@ class Registration(Segmentation):
                 print(f"The file {file_path} does not exist")
     
 
-    def mca_arteries_mask(self, arterial_territories_path="mni_vascular_territories.nii.gz"):
+    def mca_territory_mask(self, arterial_territories_path="mni_vascular_territories.nii.gz"):
         """
         Identify and map the Middle Cerebral Artery (MCA) territories from MNI space to patient space.
 
@@ -1136,19 +1122,30 @@ def main(dicoms_list = dicoms_list):
         ct.keep_largest_island()
         ct.fill_holes()
         ct.remove_arteries()
-        ct.show_3D_array(ct.skull)
 
         # Totalsegmentator
-        ct.segment_brain()
+        # ct.segment_brain()
         ct.arteries_and_totalsegmentator_mask()
         ct.mask_to_nii()
 
         # ct.show_3D_array(ct.skull, axis=2) # En z
         # ct.show_3D_array(ct.head, axis=0, pt=(50,42), pt_slice = 100)
 
-
-        # # AJOUTER L'AFFICHAGE DES PTS TROUVÉS
         print(f"Time to segment file {ct.nii_path} : {time.time() - start} seconds")
+
+    # start = time.time()
+    # ct = Segmentation(dcm_path="online_patient/2.16.840.1.114274.1818.56920369040074765021783555636978216368", big_output_directory="online", file_number=2)
+    # ct.apply_threshold()       
+    # ct.keep_largest_island()
+    # ct.fill_holes()
+    # ct.remove_arteries()
+
+    # # Totalsegmentator
+    # # ct.segment_brain()
+    # ct.arteries_and_totalsegmentator_mask()
+    # ct.mask_to_nii()
+
+    # print(f"Time to segment file {ct.nii_path} : {time.time() - start} seconds")
 
 
 # if __name__ == "__main__":
@@ -1161,41 +1158,44 @@ def main(dicoms_list = dicoms_list):
 
 
 
+for i, nifti in enumerate(dicoms_list):
+
+    id = Registration(big_output_directory="online", file_number=i, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
+
+    # id.register(show=True)
+    id.read_transforms()
+
+    id.find_registered_lpa_rpa_nasion()
+    id.fill_cavities()
+    id.find_nasion()
+    id.check_nasion()
+    id.find_rpa()
+    id.show_3D_array(id.head, axis=2, pt=(id.rpa[0], id.rpa[2]), pt_slice=id.rpa[1])
+    id.find_lpa()
+    id.show_3D_array(id.head, axis=2, pt=(id.lpa[0], id.lpa[2]), pt_slice=id.lpa[1])
+
+    # id.save_pts_to_csv()
+    # id.mca_territory_mask()
 
 
 
-# id = Registration(big_output_directory="cava", file_number=1, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
-# # id.save_pts_to_csv()
-# # id.show_3D_array(id.moving_img.numpy())
-# # id.show_3D_array(id.fixed_img.numpy())
-# # id.delete_useless_files()
 
-# # id.register()
-# id.read_transforms()
-# # id.mca_arteries_mask() # Un peu redondant comme nom car a de mca est déjà pour arteries
-# id.find_registered_lpa_rpa_nasion()
 
-# # id.show_3D_array(nib.load('icbm_avg_152_t1_tal_lin.nii').get_fdata(), axis=0)
-# # id.show_3D_array(nib.load('jspakoi/0/head0.nii').get_fdata(), axis=0)
-# # id.show_3D_array(id.head, axis=0)
-# # id.show_3D_array(id.moving_img.numpy(), axis=0)
-# # id.show_3D_array(id.fixed_img.numpy(), axis=0)
+    # id.show_3D_array(id.moving_img.numpy())
+    # id.show_3D_array(id.fixed_img.numpy())
 
-# # id.mca_arteries_mask()
-# id.fill_cavities()
-# id.find_nasion()
-# id.check_nasion()
-# id.find_rpa()
-# id.find_lpa()
+    # id.show_3D_array(nib.load('icbm_avg_152_t1_tal_lin.nii').get_fdata(), axis=0)
+    # id.show_3D_array(nib.load('jspakoi/0/head0.nii').get_fdata(), axis=0)
+    # id.show_3D_array(id.head, axis=0)
+    # id.show_3D_array(id.moving_img.numpy(), axis=0)
+    # id.show_3D_array(id.fixed_img.numpy(), axis=0)
 
-# id.save_pts_to_csv()
+    # id.show_3D_array(id.head, axis=2, pt=(id.registered_lpa[0], id.registered_lpa[2]))
+    # id.show_3D_array(id.head, axis=2, pt=(id.registered_rpa[0], id.registered_rpa[2]))
 
-# id.show_3D_array(id.head, axis=2, pt=(id.registered_lpa[0], id.registered_lpa[2]))
-# id.show_3D_array(id.head, axis=2, pt=(id.registered_rpa[0], id.registered_rpa[2]))
 
-# id.find_registered_lpa_rpa_nasion()
 
-# # AJOUTER L'AFFICHAGE DES PTS TROUVÉS
+    # AJOUTER L'AFFICHAGE DES PTS TROUVÉS
 
 
 
