@@ -873,6 +873,7 @@ class Registration(Segmentation):
             nasion_y_final = reg_nas_y
         if np.any(nasion_column == 0) or np.any(nasion_column == (window*2) - 1):
             nasion_z_final = reg_nas_z
+
         nasion_x_final = np.nonzero(self.filled_head[nasion_z_final,:,nasion_y_final])[0][0]
         print(nasion_z_final, nasion_x_final, nasion_y_final)
         self.nasion = nasion_z_final, nasion_x_final, nasion_y_final # (z, x, y)
@@ -944,7 +945,8 @@ class Registration(Segmentation):
         # rpa_y_final = self.__find_rpa_y__(rpa_y=rpa_y)
         # self.registered_rpa = rpa_x, rpa_y_final, rpa_z
         # print(self.registered_rpa)
-        self.rpa = self.registered_rpa
+        rpa_y_final = np.nonzero(self.filled_head[self.registered_rpa[0],self.registered_rpa[1],:])[0][-1]
+        self.rpa = self.registered_rpa[0], self.registered_rpa[1], rpa_y_final
     
 
 
@@ -956,8 +958,10 @@ class Registration(Segmentation):
         # # lpa_y = 97
         # # lpa_z = 131
         # self.registered_lpa = lpa_x, lpa_y, lpa_z
-        
-        self.lpa = self.registered_lpa
+        lpa_y_final = np.nonzero(self.filled_head[self.registered_lpa[0],self.registered_lpa[1],:])[0][0]
+        self.lpa = self.registered_lpa[0], self.registered_lpa[1], lpa_y_final
+
+        # self.lpa = self.registered_lpa
 
         # # Ya absolument rien qui marche ci-bas donc inutile
         # lpa_y_final = self.__find_lpa_y__(lpa_y=lpa_y)
