@@ -120,7 +120,6 @@ class Segmentation:
                 excluded_prefixes = ("cropped_", "fwd", "inv", "mask", "mca_territory", "totalsegmentator") 
                 all_non_cropped = [f for f in nii_files if not f.startswith(excluded_prefixes)]
                 if all_non_cropped:
-                    # IMPORTANT : Only works if the desired file is the first in the alphabetic order
                     self.nii_path = os.path.join(self.nifti_output_directory, all_non_cropped[0])
                 else:
                     # If no file is found, generating one from the specified DICOM folder
@@ -1040,18 +1039,26 @@ class Registration(Segmentation):
         IMPORTANT :
             Must be used AFTER the registration is done
         """
+        # Listing NIfTI files in the folder
         useless_files = [os.path.join(self.nifti_output_directory, "fwd"+self.file_number+".mat"),
                          os.path.join(self.nifti_output_directory, "fwd"+self.file_number+".nii.gz"),
                          os.path.join(self.nifti_output_directory, "inv"+self.file_number+".mat"),
                          os.path.join(self.nifti_output_directory, "inv"+self.file_number+".nii.gz"),
                          os.path.join(self.nifti_output_directory, "totalsegmentator"+self.file_number+".nii.gz"),
                          os.path.join(self.nifti_output_directory, "head"+self.file_number+".nii.gz")]
-        # self.nii_path.removeprefix("cropped_")
-        for file_path in useless_files:
-            if os.path.exists(file_path):
-                os.remove(file_path)
-            else:
-                print(f"The file {file_path} does not exist")
+        
+        nii_files = [f for f in os.listdir(self.nifti_output_directory) if f.endswith(".nii") or f.endswith(".nii.gz")]
+        cropped_files = [f for f in nii_files if f.startswith("cropped_")]
+        if len(cropped_files)>=1:
+            excluded_prefixes = ("cropped_", "fwd", "inv", "mask", "mca_territory", "totalsegmentator") 
+            non_cropped = [f for f in nii_files if not f.startswith(excluded_prefixes)][0]
+            useless_files.append(os.path.join(self.nifti_output_directory,non_cropped))
+        print(useless_files)
+        # for file_path in useless_files:
+        #     if os.path.exists(file_path):
+        #         os.remove(file_path)
+        #     else:
+        #         print(f"The file {file_path} does not exist")
     
 
     def mca_territory_mask(self, arterial_territories_path="mni_vascular_territories.nii.gz"):
@@ -1213,6 +1220,7 @@ id.find_lpa()
 print("lpa :", id.lpa)
 id.show_3D_array(id.head, axis=2, pt=(id.lpa[1], id.lpa[0]), pt_slice=id.lpa[2])
 
+id.delete_useless_files()
 id.save_pts_to_csv()
 # id.mca_territory_mask()
 
