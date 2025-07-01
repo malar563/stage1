@@ -814,6 +814,7 @@ class Registration(Segmentation):
             if not np.array_equal(original,filled): # Check if the slice has been filled
                 self.filled_y_slices.append(i)
             self.filled_head[:,:,i] = filled # Assumes equal dimensions in x and y
+        for i in range(0, len(self.filled_head[1,:,1])):
             self.filled_head[:,i,:] = binary_fill_holes(self.filled_head[:,i,:]) 
         # print(self.filled_y_slices)
         for i in range(0, len(self.filled_head[:,1,1])):
@@ -853,6 +854,7 @@ class Registration(Segmentation):
         # Index of the maximal values for rows and minimal values for columns
         max_index_row = (np.argmin(counts_x, axis=0))
         min_index_column = (np.argmax(counts_x, axis=1))
+        print(max_index_row, min_index_column)
 
         optimize_minmax = []
         for column, position_min_in_column in enumerate(min_index_column):
@@ -862,9 +864,16 @@ class Registration(Segmentation):
         j = min_index_column[i]
         nasion_row = np.where(counts_x[i,:] == np.max(counts_x[i,:]))[0] 
         nasion_column = np.where(counts_x[:,j] == np.min(counts_x[:,j]))[0]
+
         nasion_y_final = int(np.mean(nasion_row)) + (reg_nas_y - window)
         nasion_z_final = int(np.mean(nasion_column)) + (reg_nas_z - window)
-        nasion_x_final = (2*window) - counts_x[int(np.mean(nasion_row)),int(np.mean(nasion_column))] + (reg_nas_x - window)
+        # nasion_x_final = ((2*window) - counts_x[int(np.mean(nasion_row)),int(np.mean(nasion_column))]) + (reg_nas_x - window)
+
+        if np.any(nasion_row == 0) or np.any(nasion_row == (window*2) - 1):
+            nasion_y_final = reg_nas_y
+        if np.any(nasion_column == 0) or np.any(nasion_column == (window*2) - 1):
+            nasion_z_final = reg_nas_z
+        nasion_x_final = np.nonzero(self.filled_head[nasion_z_final,:,nasion_y_final])[0][0]
         print(nasion_z_final, nasion_x_final, nasion_y_final)
         self.nasion = nasion_z_final, nasion_x_final, nasion_y_final # (z, x, y)
 
@@ -1159,26 +1168,49 @@ def main(dicoms_list = dicoms_list):
 
 
 
-for i, nifti in enumerate(dicoms_list):
+# for i, nifti in enumerate(dicoms_list):
 
-    id = Registration(big_output_directory="online", file_number=i, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
+#     id = Registration(big_output_directory="online", file_number=i, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
 
-    # id.register(show=True)
-    id.read_transforms()
+#     # id.register(show=True)
+#     id.read_transforms()
 
-    id.find_registered_lpa_rpa_nasion()
-    id.fill_cavities()
-    id.find_nasion()
-    id.check_nasion()
-    id.find_rpa()
-    print("rpa :", id.rpa)
-    id.show_3D_array(id.head, axis=2, pt=(id.rpa[1], id.rpa[0]), pt_slice=id.rpa[2])
-    id.find_lpa()
-    print("lpa :", id.lpa)
-    id.show_3D_array(id.head, axis=2, pt=(id.lpa[1], id.lpa[0]), pt_slice=id.lpa[2])
+#     id.find_registered_lpa_rpa_nasion()
+#     id.fill_cavities()
+#     id.find_nasion()
+#     id.check_nasion()
+#     id.find_rpa()
+#     print("rpa :", id.rpa)
+#     id.show_3D_array(id.head, axis=2, pt=(id.rpa[1], id.rpa[0]), pt_slice=id.rpa[2])
+#     id.find_lpa()
+#     print("lpa :", id.lpa)
+#     id.show_3D_array(id.head, axis=2, pt=(id.lpa[1], id.lpa[0]), pt_slice=id.lpa[2])
 
-    # id.save_pts_to_csv()
-    # id.mca_territory_mask()
+#     # id.save_pts_to_csv()
+#     # id.mca_territory_mask()
+
+
+
+
+
+id = Registration(big_output_directory="online", file_number=1, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
+
+# id.register(show=True)
+id.read_transforms()
+
+id.find_registered_lpa_rpa_nasion()
+id.fill_cavities()
+id.find_nasion()
+id.check_nasion()
+id.find_rpa()
+print("rpa :", id.rpa)
+id.show_3D_array(id.head, axis=2, pt=(id.rpa[1], id.rpa[0]), pt_slice=id.rpa[2])
+id.find_lpa()
+print("lpa :", id.lpa)
+id.show_3D_array(id.head, axis=2, pt=(id.lpa[1], id.lpa[0]), pt_slice=id.lpa[2])
+
+id.save_pts_to_csv()
+# id.mca_territory_mask()
 
 
 
