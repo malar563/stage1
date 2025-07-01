@@ -3,19 +3,36 @@ import numpy as np
 # x, y, z
 # LPA : 6_cow_hv36
 resolution = [0.486328125, 0.486328125, 0.6000000238418579]
-pt_registre = (223, 82, 63)
-pt_estime = (237, 82, 57)
+pt_registre = (223, 84, 62)
+pt_estime = (237, 82, 57) # <-----
 # RPA : 6_cow_hv36
-pt_registre = (228, 404, 69)
-pt_estime = (237, 404, 70)
+pt_registre = (228, 399, 70)
+pt_estime = (237, 404, 70) # <-----
 
-# LPA : 301_carotid_0625mm
-resolution = [0.4882810115814209, 0.4882810115814209, 0.3125]
-# Parfaitement placé
-# RPA : 301_carotid_0625mm
-pt_registre = (251, 401, 135)
-pt_estime = (265, 399, 130)
+# # LPA : 301_carotid_0625mm
+# resolution = [0.4882810115814209, 0.4882810115814209, 0.3125]
+# # Parfaitement placé
+# # RPA : 301_carotid_0625mm
+# pt_registre = (251, 401, 135)
+# pt_estime = (265, 399, 130)
 
+# 01-07-2025 (z,x,y)
+
+# 301_carotid_angion_0625mm
+# rpa_reg : (122, 252, 397) -> rpa_amélioré : (122, 252, 399) -------- PARFAIT avec amélioration
+# lpa_reg : (122, 233, 88) -> rpa_amélioré : (122, 233, 59) -------- PARFAIT avec registré (oreille pliée)
+
+# 6_cow_angio__06__hv36__3
+# rpa_reg : (70, 228, 399) -> rpa_amélioré : (70, 228, 400) -------- MIEUX avec amélioration
+# lpa_reg : (62, 223, 84) -> rpa_amélioré : (62, 223, 86) -------- MIEUX avec registré
+
+# 605_sag_1mm CONTINUER ICIIII
+# rpa_reg : (70, 228, 399) -> rpa_amélioré : (70, 228, 400) -------- MIEUX avec amélioration
+# lpa_reg : (62, 223, 84) -> rpa_amélioré : (62, 223, 86) -------- MIEUX avec registré
+
+# 6_cta_thins
+# rpa_reg : (70, 228, 399) -> rpa_amélioré : (70, 228, 400) -------- MIEUX avec amélioration
+# lpa_reg : (62, 223, 84) -> rpa_amélioré : (62, 223, 86) -------- MIEUX avec registré
 
 
 def compute_3D_distance(res=resolution, pt_reg=pt_registre, pt_est=pt_estime):

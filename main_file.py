@@ -157,8 +157,6 @@ class Segmentation:
         if hasattr(self, 'not_cropped_nii_path'): # The variable exists — safe to use
             not_cropped_img = nib.load(self.not_cropped_nii_path)
             data[2][1], data[2][2], data[2][3] = not_cropped_img.shape 
-            print("It exists:", self.not_cropped_nii_path)
-            print(data)
 
         # Ne vas pas marcher si pas de crop (deux lignes ou une à rajouter)
         if os.path.exists(csv_path):
@@ -587,7 +585,7 @@ class Registration(Segmentation):
 
         self.initial_moving_img = ants.image_read(self.moving_img_path) # Image provided by the mask
         self.initial_moving_img_orientation = ants.get_orientation(self.initial_moving_img) # Orientation of the mask
-        self.orient_for_registration = "IAL" # Chosen orientation (easier to visualize). Do not change it : the nasion won't be improved
+        self.orient_for_registration = "IAL" # Chosen orientation (easier to visualize). Do not change it : all the following code rely on this
         self.moving_img = ants.image_read(self.moving_img_path, reorient=self.orient_for_registration) # Image to be registered
         self.fixed_img = ants.image_read(fixed_img_path, reorient=self.orient_for_registration) # Reference image for registration
 
@@ -604,15 +602,7 @@ class Registration(Segmentation):
         self.filled_head = self.reorient_point_to_original_mask(object_to_reorient=np.where(self.head>=1, 1, 0), 
                                                                 initial_orient=self.initial_moving_img_orientation, 
                                                                 final_orient=self.orient_for_registration)
-        # self.head = self.reorient_point_to_original_mask(object_to_reorient=np.where(self.head>=1, 1, 0), 
-        #                                                         initial_orient=self.initial_moving_img_orientation, 
-        #                                                         final_orient=self.orient_for_registration)
         self.head = np.copy(self.filled_head)
-
-        # self.filled_head = np.flip(np.flip(np.transpose(np.where(self.head>=1, 1, 0), (2, 1, 0)), axis=1), axis=2)
-        # self.head = np.flip(np.flip(np.transpose(np.where(self.head>=1, 1, 0), (2, 1, 0)), axis=1), axis=2)
-
-
 
     
     def reorient_point_to_original_mask(self, object_to_reorient=None, initial_orient="IAL", final_orient="RPI"):
@@ -1053,12 +1043,12 @@ class Registration(Segmentation):
             excluded_prefixes = ("cropped_", "fwd", "inv", "mask", "mca_territory", "totalsegmentator") 
             non_cropped = [f for f in nii_files if not f.startswith(excluded_prefixes)][0]
             useless_files.append(os.path.join(self.nifti_output_directory,non_cropped))
-        print(useless_files)
-        # for file_path in useless_files:
-        #     if os.path.exists(file_path):
-        #         os.remove(file_path)
-        #     else:
-        #         print(f"The file {file_path} does not exist")
+        
+        for file_path in useless_files:
+            if os.path.exists(file_path):
+                os.remove(file_path)
+            else:
+                print(f"The file {file_path} does not exist")
     
 
     def mca_territory_mask(self, arterial_territories_path="mni_vascular_territories.nii.gz"):
@@ -1132,13 +1122,13 @@ class Registration(Segmentation):
 # dicoms_list = ["DICOM_003/Carotid_Angio_0.625mm", "DICOM_010/COW_Angio_0.6_Hv36_3"]
 dicoms_list = ["online_patient/2.16.840.1.114274.1818.46711723837672246304206241465856141463", "online_patient/2.16.840.1.114274.1818.528945204283203896414435929150802789774", "online_patient/2.16.840.1.114274.1818.56920369040074765021783555636978216368"]
 # dicoms_list = ["online_patient/test", "2.16.840.1.114274.1818.528945204283203896414435929150802789774", "2.16.840.1.114274.1818.56920369040074765021783555636978216368"]
-
+dicoms_list = ["ct_enligne/1", "ct_enligne/2","ct_enligne/4","ct_enligne/5", "ct_enligne/6", "ct_enligne/7"]
 
 # CHECKER LES AXES PARTOUT POUR ÊTRE SÛR QUE C'EST CHILL
 def main(dicoms_list = dicoms_list):
     for i, dicom in enumerate(dicoms_list):
         start = time.time()
-        ct = Segmentation(dcm_path=dicom, big_output_directory="online", file_number=i)
+        ct = Segmentation(dcm_path=dicom, big_output_directory="ct_enligne_nifti", file_number=i)
         ct.apply_threshold()       
         ct.keep_largest_island()
         ct.fill_holes()
@@ -1204,7 +1194,7 @@ def main(dicoms_list = dicoms_list):
 
 
 
-id = Registration(big_output_directory="online", file_number=1, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
+id = Registration(big_output_directory="cava", file_number=1, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
 
 # id.register(show=True)
 id.read_transforms()
@@ -1215,14 +1205,18 @@ id.find_nasion()
 id.check_nasion()
 id.find_rpa()
 print("rpa :", id.rpa)
+print("registered_rpa :", id.registered_rpa)
 id.show_3D_array(id.head, axis=2, pt=(id.rpa[1], id.rpa[0]), pt_slice=id.rpa[2])
+id.show_3D_array(id.head, axis=2, pt=(id.registered_rpa[1], id.registered_rpa[0]), pt_slice=id.registered_rpa[2])
 id.find_lpa()
 print("lpa :", id.lpa)
+print("registered_rpa :", id.registered_lpa)
 id.show_3D_array(id.head, axis=2, pt=(id.lpa[1], id.lpa[0]), pt_slice=id.lpa[2])
+id.show_3D_array(id.head, axis=2, pt=(id.registered_lpa[1], id.registered_lpa[0]), pt_slice=id.registered_lpa[2])
 
-id.delete_useless_files()
-id.save_pts_to_csv()
-# id.mca_territory_mask()
+# id.delete_useless_files()
+# id.save_pts_to_csv()
+# # id.mca_territory_mask()
 
 
 
