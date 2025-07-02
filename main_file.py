@@ -154,7 +154,7 @@ class Segmentation:
                 ["Dimensions not cropped", "-", "-", "-"],
                 ["Resolution (mm)", self.resolution[1], self.resolution[0], self.resolution[2]],
                 ["Length (mm)", self.dimension[1]*self.resolution[1], self.dimension[0]*self.resolution[0], self.dimension[2]*self.resolution[2]]]
-        if hasattr(self, 'not_cropped_nii_path'): # The variable exists — safe to use
+        if hasattr(self, 'not_cropped_nii_path'): # check  if the variable exists
             not_cropped_img = nib.load(self.not_cropped_nii_path)
             data[2][1], data[2][2], data[2][3] = not_cropped_img.shape 
 
@@ -494,7 +494,7 @@ class Segmentation:
 
         Files Created
         -------------
-        - head{file_number}.nii.gz : Non masked head image (used for registration). 
+        - head{file_number}.nii.gz : Non-masked head image (used for registration). 
         - mask{file_number}.nii.gz : Labeled mask
         """
         # Nifti file with the HU units of the whole head for the registration
@@ -540,8 +540,10 @@ class Registration(Segmentation):
         ----------
         big_output_directory : str
             Directory where processed folder of files are stored.
+
         file_number : int
             Identifier used to locate the directory, load specific NIfTI and mask files.
+
         fixed_img_path : str
             Path to the fixed atlas image used for registration.
 
@@ -549,12 +551,16 @@ class Registration(Segmentation):
         ----------
         moving_img : ants.ANTsImage
             Patient image to be registered.
+
         fixed_img : ants.ANTsImage
             Atlas image used as reference.
+
         lpa_vox_normal_space, rpa_vox_normal_space, nas_vox_normal_space : np.ndarray
             Landmark coordinates in the normalized space (they were determined visually on the fixed_img).
+
         head, filled_head : np.ndarray
             Processed head mask arrays, flipped and transposed for display.
+
         resolution : tuple of float
             Spatial resolution (voxel spacing) in mm along each axis.
 
@@ -606,11 +612,49 @@ class Registration(Segmentation):
 
     
     def reorient_point_to_original_mask(self, object_to_reorient=None, initial_orient="IAL", final_orient="RPI"):
+        """
+        Reorients a 3D array or a 3D point from one coordinate system to another 
+        by applying axis transpositions and flips based on orientation codes.
+
+        Parameters
+        ----------
+        object_to_reorient : np.ndarray or tuple
+            The object to reorient. Can be either:
+            - A 3D NumPy array (volume) with shape,
+            - A 3-element tuple/list or dictionary representing a 3D point.
+
+        initial_orient : str
+            A 3-letter orientation code representing the current axis directions 
+            (e.g., "IAL" = Inferior, Anterior, Left).
+
+        final_orient : str
+            A 3-letter orientation code representing the desired axis directions 
+            (e.g., "RPI" = Right, Posterior, Inferior).
+
+        Returns
+        -------
+        object_reoriented : same type as input
+            - If a volume is passed, returns the array reoriented (flipped and/or transposed).
+            - If a point is passed, returns the coordinates mapped to the new orientation system.
+
+        Notes
+        -----
+        - Orientation codes use the anatomical directions: 
+          'R'=Right, 'L'=Left, 'A'=Anterior, 'P'=Posterior, 'I'=Inferior, 'S'=Superior.
+        - Axis flips are performed if the direction in the initial orientation is opposite 
+          to the one in the target orientation.
+        - Axis reordering is performed if axes are permuted between orientations.
+        - This method assumes the internal attribute `self.mask_dimension` is defined 
+          when flipping a point.
+        """
+        # Initialization
         initial_orient = list(initial_orient)
         final_orient = list(final_orient)
         dict_orientation = {"R":"L", "L":"R", "A":"P", "P":"A", "I":"S", "S":"I"}
         transpose_needed = []
         already_in = ["N", "N", "N"]
+
+        # Determining transforms to apply
         for initial_axis, letter in enumerate(initial_orient):
             try:
                 already_in[initial_axis]= (initial_axis, final_orient.index(letter)) # If already in, (initial axis number, final axis number)
@@ -621,12 +665,14 @@ class Registration(Segmentation):
         for initial_axis, element in enumerate(initial_orient):
             already_in[initial_axis] = (initial_axis, final_orient.index(element))
 
+        # Reorienting a volume
         if isinstance(object_to_reorient, np.ndarray) and len(object_to_reorient.shape)==3:
             for element, axis_to_flip in transpose_needed:
                 object_to_reorient = np.flip(object_to_reorient, axis=axis_to_flip)
             object_to_reorient = np.transpose(object_to_reorient, (already_in[0][1], already_in[1][1], already_in[2][1]))
             return object_to_reorient
 
+        # Reorienting a point
         elif isinstance(object_to_reorient, (np.ndarray, dict, tuple)):
             initial_point = object_to_reorient[0], object_to_reorient[1], object_to_reorient[2], 1
             affine = np.zeros((4,4))
@@ -641,6 +687,8 @@ class Registration(Segmentation):
             # print(affine)
             new_point = (affine @ initial_point)[:-1]
             return new_point
+        
+        # Dealing with exeptions
         else:
             print("Invalid object")    
 
@@ -789,10 +837,6 @@ class Registration(Segmentation):
             Modified binary head mask with filled cavities.
         self.filled_y_slices : list[int]
             Indices of y-slices where cavities were filled in the x-z plane.
-
-        Notes
-        -----
-        Assumes that the image has equal dimensions in x and y
         """        
         from scipy.ndimage import binary_fill_holes
 
@@ -802,7 +846,7 @@ class Registration(Segmentation):
             filled = binary_fill_holes(self.filled_head[:,:,i])
             if not np.array_equal(original,filled): # Check if the slice has been filled
                 self.filled_y_slices.append(i)
-            self.filled_head[:,:,i] = filled # Assumes equal dimensions in x and y
+            self.filled_head[:,:,i] = filled
         for i in range(0, len(self.filled_head[1,:,1])):
             self.filled_head[:,i,:] = binary_fill_holes(self.filled_head[:,i,:]) 
         # print(self.filled_y_slices)
@@ -811,7 +855,7 @@ class Registration(Segmentation):
             self.filled_head[i,:,:] = binary_fill_holes(self.filled_head[i,:,:])
     
 
-    def find_nasion(self, window=20):
+    def find_nasion(self, window=5):
         """
         Refine the position of the nasion using local anatomical data in the filled head mask.
 
@@ -835,10 +879,9 @@ class Registration(Segmentation):
         ROI_nas = self.filled_head[reg_nas_z-window:reg_nas_z+window,
                                    reg_nas_x-window:reg_nas_x+window,
                                    reg_nas_y-window:reg_nas_y+window]
+        self.show_3D_array(ROI_nas)
         # Sum up one values of the binary mask on the x axis (3D array -> 2D array)
         counts_x = np.sum(ROI_nas, axis = 1) # axis=2 sums in y, axis=0 sums in z
-        # plt.imshow(counts_x, origin="lower")
-        # plt.show()
 
         # Index of the maximal values for rows and minimal values for columns
         max_index_row = (np.argmin(counts_x, axis=0))
@@ -876,7 +919,7 @@ class Registration(Segmentation):
         both the refined nasion (in red) and the registered nasion (in blue) to assess the
         accuracy of the correction.
         """
-        # # Si l'axe x passe à travers le nasion et règle de la main droite
+        # # x-axis goes through the nasion
         # # Axial view : fixed z-value
         plt.imshow(self.head[self.nasion[0],:,:], origin="lower")
         plt.scatter([self.nasion[2]], [self.nasion[1]], c="r")
@@ -894,82 +937,20 @@ class Registration(Segmentation):
         plt.show()
 
 
-    def __find_lpa_y__(self, lpa_y):
-        self.filled_y_slices = np.array(self.filled_y_slices)
-
-        if lpa_y in self.filled_y_slices:
-            print(self.filled_y_slices)   
-            index_lpa_y = np.where(self.filled_y_slices == lpa_y)[0][0]
-            print(index_lpa_y)
-            for i in range(1, index_lpa_y):
-                if self.filled_y_slices[index_lpa_y-i] != lpa_y-i:
-                    return self.filled_y_slices[index_lpa_y-i+1]-1 # -1 to get the surface of the head
-            return self.filled_y_slices[0] - 1 # -1 to get the surface of the head
-        else:
-            index_lpa = np.argmin(np.abs(self.filled_y_slices-lpa_y))
-            return self.filled_y_slices[index_lpa]-1 # -1 to get the surface of the head
         
-    def __find_rpa_y__(self, rpa_y):
-        self.filled_y_slices = np.array(self.filled_y_slices)
 
-        if rpa_y in self.filled_y_slices:
-            print(self.filled_y_slices)   
-            index_rpa_y = np.where(self.filled_y_slices == rpa_y)[0][0]
-            print(index_rpa_y)
-            for i in range(1, len(self.filled_y_slices)-index_rpa_y):
-                if self.filled_y_slices[index_rpa_y+i] != rpa_y+i:
-                    return self.filled_y_slices[index_rpa_y+i-1]+1 # -1 to get the surface of the head
-            return self.filled_y_slices[-1] + 1 # -1 to get the surface of the head
-        else:
-            index_lpa = np.argmin(np.abs(self.filled_y_slices-rpa_y))
-            return self.filled_y_slices[index_lpa]+1 # -1 to get the surface of the head
-        
     def find_rpa(self, window=60):
-        # rpa_x = 228
-        # rpa_y = 399
-        # rpa_z = 69
-        # # rpa_x = 251 # 0625mm
-        # # rpa_y = 388
-        # # rpa_z = 135
-        # rpa_y_final = self.__find_rpa_y__(rpa_y=rpa_y)
-        # self.registered_rpa = rpa_x, rpa_y_final, rpa_z
-        # print(self.registered_rpa)
         rpa_y_final = np.nonzero(self.filled_head[self.registered_rpa[0],self.registered_rpa[1],:])[0][-1]
         self.rpa = self.registered_rpa[0], self.registered_rpa[1], rpa_y_final
     
 
 
     def find_lpa(self, window=60):
-        # lpa_x = 223
-        # lpa_y = 84
-        # lpa_z = 63
-        # # lpa_x = 239
-        # # lpa_y = 97
-        # # lpa_z = 131
         # self.registered_lpa = lpa_x, lpa_y, lpa_z
         lpa_y_final = np.nonzero(self.filled_head[self.registered_lpa[0],self.registered_lpa[1],:])[0][0]
         self.lpa = self.registered_lpa[0], self.registered_lpa[1], lpa_y_final
 
-        # self.lpa = self.registered_lpa
 
-        # # Ya absolument rien qui marche ci-bas donc inutile
-        # lpa_y_final = self.__find_lpa_y__(lpa_y=lpa_y)
-        # print(lpa_y_final)
-        # ROI_lpa = self.head[lpa_z-window:lpa_z+window,lpa_x-window:lpa_x+window,lpa_y_final-window:lpa_y_final+window]
-        # # frame_before_filling = self.head[lpa_z-window:lpa_z+window,lpa_x-window:lpa_x+window,lpa_y_final]
-        # # frame_start_filling = self.head[lpa_z-window:lpa_z+window,lpa_x-window:lpa_x+window,lpa_y_final+1]
-        # frame_before_filling = self.head[:,:,lpa_y_final]
-        # frame_start_filling = self.head[:,:,lpa_y_final+1]
-        # intersection = ~frame_before_filling & frame_start_filling
-        # plt.imshow(intersection, origin="lower")
-        # plt.scatter([lpa_x], [lpa_z], c="r")
-        # plt.show()
-
-        
-        # self.show_3D_array(ROI_lpa, axis=2)
-        # counts_x = np.sum(ROI_lpa, axis=2) # axis=2 donne somme en y, axis=0 donne somme en z
-        # plt.imshow(counts_x, origin="lower")
-        # plt.show()
 
 
     def save_pts_to_csv(self):
@@ -1018,6 +999,7 @@ class Registration(Segmentation):
         - The original uncropped NIfTI file (if a cropped version is used)
         - The `totalsegmentator` output file
         - The full-head image used for registration
+        - The forward and inverse transform files
 
         This helps reduce disk usage and declutter the output folder after segmentation
         and registration steps are completed.
@@ -1037,6 +1019,7 @@ class Registration(Segmentation):
                          os.path.join(self.nifti_output_directory, "totalsegmentator"+self.file_number+".nii.gz"),
                          os.path.join(self.nifti_output_directory, "head"+self.file_number+".nii.gz")]
         
+        # Finds if a cropped file exists, and delete the original one in that case
         nii_files = [f for f in os.listdir(self.nifti_output_directory) if f.endswith(".nii") or f.endswith(".nii.gz")]
         cropped_files = [f for f in nii_files if f.startswith("cropped_")]
         if len(cropped_files)>=1:
@@ -1079,9 +1062,6 @@ class Registration(Segmentation):
         # Resample to target image (the atlas is supposed to be in the same space than the normalized MRI)
         mri = ants.image_read(self.fixed_img_path, reorient='IAL')
         resampled_mca_territories = ants.resample_image_to_target(mca_territories, mri, verbose=True)
-        # # Seeing the superposition between the 2 images
-        # superposition = (arterial_territories.numpy()[:-1,:-1,:-1]/np.max(arterial_territories.numpy()))+(irm.numpy()/np.max(irm.numpy()))
-        # self.show_3D_array(superposition)
 
         # Getting the arteries mask
         self.arteries = ants.image_read(os.path.join(self.nifti_output_directory, "mask"+self.file_number+".nii.gz"), reorient="IAL")
@@ -1123,24 +1103,44 @@ class Registration(Segmentation):
 dicoms_list = ["online_patient/2.16.840.1.114274.1818.46711723837672246304206241465856141463", "online_patient/2.16.840.1.114274.1818.528945204283203896414435929150802789774", "online_patient/2.16.840.1.114274.1818.56920369040074765021783555636978216368"]
 # dicoms_list = ["online_patient/test", "2.16.840.1.114274.1818.528945204283203896414435929150802789774", "2.16.840.1.114274.1818.56920369040074765021783555636978216368"]
 dicoms_list = ["ct_enligne/1", "ct_enligne/2","ct_enligne/4","ct_enligne/5", "ct_enligne/6", "ct_enligne/7"]
+dicoms_list = ["ct_enligne/6", "ct_enligne/7"]
 
 # CHECKER LES AXES PARTOUT POUR ÊTRE SÛR QUE C'EST CHILL
 def main(dicoms_list = dicoms_list):
     for i, dicom in enumerate(dicoms_list):
         start = time.time()
-        ct = Segmentation(dcm_path=dicom, big_output_directory="ct_enligne_nifti", file_number=i)
+        ct = Segmentation(dcm_path=dicom, big_output_directory="ct_enligne_nifti", file_number=i+4)
         ct.apply_threshold()       
         ct.keep_largest_island()
         ct.fill_holes()
         ct.remove_arteries()
 
         # Totalsegmentator
-        # ct.segment_brain()
+        ct.segment_brain()
         ct.arteries_and_totalsegmentator_mask()
         ct.mask_to_nii()
 
         # ct.show_3D_array(ct.skull, axis=2) # En z
         # ct.show_3D_array(ct.head, axis=0, pt=(50,42), pt_slice = 100)
+        id = Registration(big_output_directory="ct_enligne_nifti", file_number=i+4, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
+
+        id.register(show=True)
+        # id.read_transforms()
+
+        id.find_registered_lpa_rpa_nasion()
+        id.fill_cavities()
+        id.find_nasion()
+        id.check_nasion()
+        id.find_rpa()
+        print("rpa :", id.rpa)
+        print("registered_rpa :", id.registered_rpa)
+        id.show_3D_array(id.head, axis=2, pt=(id.rpa[1], id.rpa[0]), pt_slice=id.rpa[2])
+        id.show_3D_array(id.head, axis=2, pt=(id.registered_rpa[1], id.registered_rpa[0]), pt_slice=id.registered_rpa[2])
+        id.find_lpa()
+        print("lpa :", id.lpa)
+        print("registered_rpa :", id.registered_lpa)
+        id.show_3D_array(id.head, axis=2, pt=(id.lpa[1], id.lpa[0]), pt_slice=id.lpa[2])
+        id.show_3D_array(id.head, axis=2, pt=(id.registered_lpa[1], id.registered_lpa[0]), pt_slice=id.registered_lpa[2])
 
         print(f"Time to segment file {ct.nii_path} : {time.time() - start} seconds")
 
@@ -1194,14 +1194,14 @@ def main(dicoms_list = dicoms_list):
 
 
 
-id = Registration(big_output_directory="cava", file_number=1, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
+id = Registration(big_output_directory="ct_enligne_nifti", file_number=3, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
 
 # id.register(show=True)
 id.read_transforms()
 
 id.find_registered_lpa_rpa_nasion()
 id.fill_cavities()
-id.find_nasion()
+id.find_nasion(window=5)
 id.check_nasion()
 id.find_rpa()
 print("rpa :", id.rpa)

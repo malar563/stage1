@@ -1,6 +1,5 @@
 DICOM_003
 DICOM_010
-nifti
 *.pickle
 *.nii
 *.nii.gz
@@ -9,5 +8,4 @@ nifti
 *.csv
 *.json
 *.pdf
-online_patient
-ct_enligne
+INUTILE
