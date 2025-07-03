@@ -601,7 +601,8 @@ class Registration(Segmentation):
 
         self.filled_y_slices = [] # Used to determine positions (lpa and rpa)
         mask_img = nib.load(os.path.join(self.nifti_output_directory, "mask"+self.file_number+".nii.gz"))
-        self.mask_dimension = mask_img.shape
+        self.moving_img_dimension = mask_img.shape
+        # self.mask_dimension = self.mask_dimension[2], self.mask_dimension[1], self.mask_dimension[0]
         self.head = mask_img.get_fdata() 
         # IMPORTANT : from now on, it is [z,x,y] and not [y,x,z] as it was in the Segmentation class
         self.filled_head = self.reorient_point_to_original_mask(object_to_reorient=np.where(self.head>=1, 1, 0), 
@@ -652,6 +653,7 @@ class Registration(Segmentation):
         dict_orientation = {"R":"L", "L":"R", "A":"P", "P":"A", "I":"S", "S":"I"}
         transpose_needed = []
         already_in = ["N", "N", "N"]
+        self.switch_lpa_rpa = False
 
         # Determining transforms to apply
         for initial_axis, letter in enumerate(initial_orient):
@@ -660,6 +662,9 @@ class Registration(Segmentation):
             except:
                 transpose_needed.append((letter, initial_axis)) # Initial axis where the letter needs to be changed
                 new_letter = dict_orientation[letter]
+                if new_letter == "L" or new_letter == "R":
+                    self.switch_lpa_rpa = True
+                    print(self.switch_lpa_rpa)
                 initial_orient[initial_axis] = new_letter
         for initial_axis, element in enumerate(initial_orient):
             already_in[initial_axis] = (initial_axis, final_orient.index(element))
@@ -672,19 +677,29 @@ class Registration(Segmentation):
             return object_to_reorient
 
         # Reorienting a point
-        elif isinstance(object_to_reorient, (np.ndarray, dict, tuple)):
+        elif isinstance(object_to_reorient, (np.ndarray, list, tuple)):
+            # Checking if the dimensions are fitting with the orientation
+            if self.initial_moving_img_orientation != initial_orient:
+                initial_dimensions = self.moving_img_dimension[already_in[0][1]], self.moving_img_dimension[already_in[1][1]], self.moving_img_dimension[already_in[2][1]]
+            else:
+                initial_dimensions = self.moving_img_dimension
+
             initial_point = object_to_reorient[0], object_to_reorient[1], object_to_reorient[2], 1
             affine = np.zeros((4,4))
+            # Place ones at the right place to transpose
             affine[0,already_in[0][1]] = 1
             affine[1,already_in[1][1]] = 1
             affine[2,already_in[2][1]] = 1
             affine[3,3] = 1
+            # Flip axis
             for letter, initial_index in transpose_needed:
                 new_index = already_in[initial_index][1]
                 affine[new_index] = -1*affine[new_index]
-                affine[new_index,-1] = self.mask_dimension[initial_index]-1
-            # print(affine)
+                affine[new_index,-1] = initial_dimensions[initial_index]-1
+            print(affine)
+            print(initial_point)
             new_point = (affine @ initial_point)[:-1]
+            print(new_point)
             return new_point
         
         # Dealing with exeptions
@@ -878,7 +893,6 @@ class Registration(Segmentation):
         ROI_nas = self.filled_head[reg_nas_z-window:reg_nas_z+window,
                                    reg_nas_x-window:reg_nas_x+window,
                                    reg_nas_y-window:reg_nas_y+window]
-        self.show_3D_array(ROI_nas)
         # Sum up one values of the binary mask on the x axis (3D array -> 2D array)
         counts_x = np.sum(ROI_nas, axis = 1) # axis=2 sums in y, axis=0 sums in z
 
@@ -993,9 +1007,7 @@ class Registration(Segmentation):
         csv_path = os.path.join(self.nifti_output_directory, f"points{self.file_number}.csv")
 
         df_existing = pd.read_csv(csv_path)
-        print(df_existing)
         df_to_keep = df_existing.values[:5,:4].tolist()
-        print(df_to_keep)
         improved_landmarks = [self.nasion, self.lpa, self.rpa]
         registered_landmarks = [self.registered_nasion, self.registered_lpa, self.registered_rpa]
         for i, point in enumerate(improved_landmarks):
@@ -1007,16 +1019,20 @@ class Registration(Segmentation):
                                                               initial_orient=self.orient_for_registration,
                                                               final_orient=self.initial_moving_img_orientation)
         print(improved_landmarks)
-        data = [["Nasion improved (voxel)", improved_landmarks[0][1], improved_landmarks[0][2], improved_landmarks[0][0]],
-                ["Nasion registered (voxel)", registered_landmarks[0][1], registered_landmarks[0][2], registered_landmarks[0][0]],
-                ["LPA improved (voxel)", improved_landmarks[1][1], improved_landmarks[1][2], improved_landmarks[1][0]],
-                ["LPA registered (voxel)", registered_landmarks[1][1], registered_landmarks[1][2], registered_landmarks[1][0]],
-                ["RPA improved (voxel)", improved_landmarks[2][1], improved_landmarks[2][2], improved_landmarks[2][0]],
-                ["RPA registered (voxel)", registered_landmarks[2][1], registered_landmarks[2][2], registered_landmarks[2][0]],
+        data = [["Nasion improved (voxel)", improved_landmarks[0][1], improved_landmarks[0][0], improved_landmarks[0][2]],
+                ["Nasion registered (voxel)", registered_landmarks[0][1], registered_landmarks[0][0], registered_landmarks[0][2]],
+                ["LPA improved (voxel)", improved_landmarks[1][1], improved_landmarks[1][0], improved_landmarks[1][2]],
+                ["LPA registered (voxel)", registered_landmarks[1][1], registered_landmarks[1][0], registered_landmarks[1][2]],
+                ["RPA improved (voxel)", improved_landmarks[2][1], improved_landmarks[2][0], improved_landmarks[2][2]],
+                ["RPA registered (voxel)", registered_landmarks[2][1], registered_landmarks[2][0], registered_landmarks[2][2]],
                 ["If '-' appears in the line 'Dimensions not cropped', it means the original (uncropped) NIfTI file was used for the entire process."],
                 ["If the cropped NIfTI file was used to retrieve the original coordinates of the LPA RPA and Nasion : subtract the z-dimension of the cropped file from that of the original file, and add the difference to the z-index. The x and y indices remain unchanged."]]
+        if self.switch_lpa_rpa: # ICII CONTINUERRRRR
+            new_rpa = data[1:4][2:]
+            new_lpa = data[3:6][2:]
+
+            print(new_rpa, new_lpa)
         df_to_keep += data
-        print(df_to_keep)
         df = pd.DataFrame(df_to_keep)
         df.to_csv(csv_path, index=False)
         
@@ -1224,7 +1240,7 @@ def main(dicoms_list = dicoms_list):
 
 
 
-# 6_cta_thins
+# 6_cta_thins # online_angio no.2
 id = Registration(big_output_directory="online_angio", file_number=2, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
 
 # id.register(show=True)
@@ -1233,7 +1249,7 @@ id.read_transforms()
 id.find_registered_lpa_rpa_nasion()
 id.fill_cavities()
 id.find_nasion(window=5)
-id.check_nasion()
+# id.check_nasion()
 id.improve_lpa_rpa()
 print("rpa :", id.rpa)
 print("registered_rpa :", id.registered_rpa)
@@ -1248,6 +1264,24 @@ id.show_3D_array(id.head, axis=2, pts=[((id.lpa[1], id.lpa[0]),id.lpa[2], "red")
 # id.delete_useless_files()
 id.save_pts_to_csv()
 # # id.mca_territory_mask()
+
+
+# Check if the registration is fine
+csv_path = os.path.join(id.nifti_output_directory, "points"+id.file_number+".csv")
+df = pd.read_csv(csv_path, sep=",")
+array = df.iloc[5:11,1:].values.astype(float)
+print(array)
+reg_nas = array[1]
+reg_lpa = array[3]
+reg_rpa = array[5]
+print(reg_nas, reg_lpa, reg_rpa)
+
+img = nib.load(id.moving_img_path)
+img = img.get_fdata()
+id.show_3D_array(img, axis=0, pts=[ ((reg_lpa[2],reg_lpa[0]),reg_lpa[1],"blue"),  ((reg_rpa[2],reg_rpa[0]),reg_rpa[1],"red")])
+id.show_3D_array(img, axis=1, pts=[ ((reg_nas[2],reg_nas[1]),reg_nas[0],"red") ])
+
+
 
 
 
