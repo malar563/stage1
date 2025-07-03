@@ -230,8 +230,7 @@ class Segmentation:
             self.nii_path = nifti_path
 
    
-
-    def show_3D_array(self, arr, axis=0, pt=None, pt_slice=None):
+    def show_3D_array(self, arr, axis=0, pts=None):
         """
         Display a 3D array slice-by-slice using a matplotlib slider.
 
@@ -243,62 +242,62 @@ class Segmentation:
         axis : int
             Axis along which to slice.
 
-        pt : tuple or None
-            Optional abscissa and ordinate coordinates to highlight (with a red dot) on a specific slice.
-
-        pt_slice : int or None
-            The slice index along `axis` where the point should be displayed.
-            If None and pt is not None, the point will not be displayed.
+        pts : list of ((x, y), slice_idx, color) tuples
+            Points to highlight on specific slices, each with a custom color.
         """
         from matplotlib.widgets import Slider
+        import numpy as np
+        import matplotlib.pyplot as plt
+
         fig, ax = plt.subplots()
         plt.subplots_adjust(bottom=0.25)
 
-        # Initial slice index
         index = arr.shape[axis] // 2
 
-        # Show initial slice
         if axis == 0:
             img = ax.imshow(arr[index, :, :], cmap="gray", origin="lower")
-            point_plot = ax.scatter([], [], c="r")  # empty scatter initially
         elif axis == 1:
             img = ax.imshow(arr[:, index, :], cmap="gray", origin="lower")
-            point_plot = ax.scatter([], [], c="r")
         else:
             img = ax.imshow(arr[:, :, index], cmap="gray", origin="lower")
-            point_plot = ax.scatter([], [], c="r")
 
-        # Display point only if index == pt_slice
+        # Initialize scatter plot (empty)
+        point_plot = ax.scatter([], [], c=[], marker='o', s=80, edgecolors='none')
+
         def update(val):
             slice_idx = int(slice_slider.val)
+
+            # Update image
             if axis == 0:
                 img.set_data(arr[slice_idx, :, :])
-                if pt is not None and slice_idx == pt_slice:
-                    point_plot.set_offsets([[pt[0], pt[1]]])
-                else:
-                    point_plot.set_offsets(np.empty((0, 2)))
             elif axis == 1:
                 img.set_data(arr[:, slice_idx, :])
-                if pt is not None and slice_idx == pt_slice:
-                    point_plot.set_offsets([[pt[0], pt[1]]])
-                else:
-                    point_plot.set_offsets(np.empty((0, 2)))
             else:
                 img.set_data(arr[:, :, slice_idx])
-                if pt is not None and slice_idx == pt_slice:
-                    point_plot.set_offsets([[pt[0], pt[1]]])
+
+            # Filter points on current slice
+            if pts is not None:
+                current_pts = [(xy, color) for (xy, sl, color) in pts if sl == slice_idx]
+                if current_pts:
+                    coords = [xy for xy, _ in current_pts]
+                    colors = [c for _, c in current_pts]
+                    point_plot.set_offsets(coords)
+                    point_plot.set_color(colors)
                 else:
                     point_plot.set_offsets(np.empty((0, 2)))
+                    point_plot.set_color([])
+            else:
+                point_plot.set_offsets(np.empty((0, 2)))
+                point_plot.set_color([])
+
             fig.canvas.draw_idle()
 
-        # Slider setup
+        # Slider
         ax_slider = plt.axes([0.2, 0.1, 0.65, 0.03])
         slice_slider = Slider(ax_slider, 'Slice', 0, arr.shape[axis] - 1, valinit=index, valstep=1)
         slice_slider.on_changed(update)
 
-        # Initial update for correct point visibility
         update(index)
-
         plt.show()
 
 
@@ -939,16 +938,41 @@ class Registration(Segmentation):
 
         
 
-    def find_rpa(self, window=60):
-        rpa_y_final = np.nonzero(self.filled_head[self.registered_rpa[0],self.registered_rpa[1],:])[0][-1]
-        self.rpa = self.registered_rpa[0], self.registered_rpa[1], rpa_y_final
+    def find_depth_rpa(self):
+        nonzero = np.nonzero(self.filled_head[self.registered_rpa[0],self.registered_rpa[1],:])[0]
+        if self.registered_rpa[2] in nonzero:
+            print(nonzero)   
+            index_rpa_y = np.where(nonzero == self.registered_rpa[2])[0][0]
+            print(index_rpa_y)
+            for i in range(1, len(nonzero)-index_rpa_y):
+                if nonzero[index_rpa_y+i] != self.registered_rpa[2]+i:
+                    return nonzero[index_rpa_y+i-1] # gets the surface of the head
+            return nonzero[-1] # gets the surface of the head
+        else:
+            index_lpa = np.argmin(np.abs(nonzero-self.registered_rpa[2]))
+            return nonzero[index_lpa] # gets the surface of the head
+        
+
+
+    def find_depth_lpa(self):
+        nonzero = np.nonzero(self.filled_head[self.registered_lpa[0],self.registered_lpa[1],:])[0]
+        if self.registered_lpa[2] in nonzero:
+            print(nonzero)   
+            index_lpa_y = np.where(nonzero == self.registered_lpa[2])[0][0]
+            print(index_lpa_y)
+            for i in range(1, index_lpa_y):
+                if nonzero[index_lpa_y-i] != self.registered_lpa[2]-i:
+                    return nonzero[index_lpa_y-i+1] # gets the surface of the head
+            return nonzero[0] # gets the surface of the head
+        else:
+            index_lpa = np.argmin(np.abs(nonzero-self.registered_lpa[2]))
+            return nonzero[index_lpa] # gets the surface of the head
+        
     
+    def improve_lpa_rpa(self):
+        self.lpa = self.registered_lpa[0], self.registered_lpa[1], self.find_depth_lpa()
+        self.rpa = self.registered_rpa[0], self.registered_rpa[1], self.find_depth_rpa()
 
-
-    def find_lpa(self, window=60):
-        # self.registered_lpa = lpa_x, lpa_y, lpa_z
-        lpa_y_final = np.nonzero(self.filled_head[self.registered_lpa[0],self.registered_lpa[1],:])[0][0]
-        self.lpa = self.registered_lpa[0], self.registered_lpa[1], lpa_y_final
 
 
 
@@ -972,17 +996,25 @@ class Registration(Segmentation):
         print(df_existing)
         df_to_keep = df_existing.values[:5,:4].tolist()
         print(df_to_keep)
-        landmarks = [self.nasion, self.lpa, self.rpa]
-        for i, point in enumerate(landmarks):
-            landmarks[i] = self.reorient_point_to_original_mask(point,
+        improved_landmarks = [self.nasion, self.lpa, self.rpa]
+        registered_landmarks = [self.registered_nasion, self.registered_lpa, self.registered_rpa]
+        for i, point in enumerate(improved_landmarks):
+            improved_landmarks[i] = self.reorient_point_to_original_mask(point,
                                                               initial_orient=self.orient_for_registration,
                                                               final_orient=self.initial_moving_img_orientation)
-        print(landmarks)
-        data = [["Nasion", landmarks[0][1], landmarks[0][2], landmarks[0][0]],
-                ["LPA", landmarks[1][1], landmarks[1][2], landmarks[1][0]],
-                ["RPA", landmarks[2][1], landmarks[2][2], landmarks[2][0]],
+        for i, point in enumerate(registered_landmarks):
+            registered_landmarks[i] = self.reorient_point_to_original_mask(point,
+                                                              initial_orient=self.orient_for_registration,
+                                                              final_orient=self.initial_moving_img_orientation)
+        print(improved_landmarks)
+        data = [["Nasion improved (voxel)", improved_landmarks[0][1], improved_landmarks[0][2], improved_landmarks[0][0]],
+                ["Nasion registered (voxel)", registered_landmarks[0][1], registered_landmarks[0][2], registered_landmarks[0][0]],
+                ["LPA improved (voxel)", improved_landmarks[1][1], improved_landmarks[1][2], improved_landmarks[1][0]],
+                ["LPA registered (voxel)", registered_landmarks[1][1], registered_landmarks[1][2], registered_landmarks[1][0]],
+                ["RPA improved (voxel)", improved_landmarks[2][1], improved_landmarks[2][2], improved_landmarks[2][0]],
+                ["RPA registered (voxel)", registered_landmarks[2][1], registered_landmarks[2][2], registered_landmarks[2][0]],
                 ["If '-' appears in the line 'Dimensions not cropped', it means the original (uncropped) NIfTI file was used for the entire process."],
-                ["If the cropped NIfTI file was used, to retrieve the original coordinates of the LPA, RPA, and Nasion, subtract the z-dimension of the cropped file from that of the original file, and add the difference to the z-index. The x and y indices remain unchanged."]]
+                ["If the cropped NIfTI file was used to retrieve the original coordinates of the LPA RPA and Nasion : subtract the z-dimension of the cropped file from that of the original file, and add the difference to the z-index. The x and y indices remain unchanged."]]
         df_to_keep += data
         print(df_to_keep)
         df = pd.DataFrame(df_to_keep)
@@ -1192,9 +1224,8 @@ def main(dicoms_list = dicoms_list):
 
 
 
-
-
-id = Registration(big_output_directory="ct_enligne_nifti", file_number=3, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
+# 6_cta_thins
+id = Registration(big_output_directory="online_angio", file_number=2, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
 
 # id.register(show=True)
 id.read_transforms()
@@ -1203,19 +1234,19 @@ id.find_registered_lpa_rpa_nasion()
 id.fill_cavities()
 id.find_nasion(window=5)
 id.check_nasion()
-id.find_rpa()
+id.improve_lpa_rpa()
 print("rpa :", id.rpa)
 print("registered_rpa :", id.registered_rpa)
-id.show_3D_array(id.head, axis=2, pt=(id.rpa[1], id.rpa[0]), pt_slice=id.rpa[2])
-id.show_3D_array(id.head, axis=2, pt=(id.registered_rpa[1], id.registered_rpa[0]), pt_slice=id.registered_rpa[2])
-id.find_lpa()
+id.show_3D_array(id.head, axis=2, pts=[((id.rpa[1], id.rpa[0]),id.rpa[2], "red"), ((id.registered_rpa[1], id.registered_rpa[0]),id.registered_rpa[2], "green")])
+# id.show_3D_array(id.head, axis=2, pt=(id.registered_rpa[1], id.registered_rpa[0]), pt_slice=id.registered_rpa[2])
 print("lpa :", id.lpa)
 print("registered_rpa :", id.registered_lpa)
-id.show_3D_array(id.head, axis=2, pt=(id.lpa[1], id.lpa[0]), pt_slice=id.lpa[2])
-id.show_3D_array(id.head, axis=2, pt=(id.registered_lpa[1], id.registered_lpa[0]), pt_slice=id.registered_lpa[2])
+id.show_3D_array(id.head, axis=2, pts=[((id.lpa[1], id.lpa[0]),id.lpa[2], "red"), ((id.registered_lpa[1], id.registered_lpa[0]),id.registered_lpa[2], "green")])
+# id.show_3D_array(id.head, axis=2, pt=(id.lpa[1], id.lpa[0]), pt_slice=id.lpa[2])
+# id.show_3D_array(id.head, axis=2, pt=(id.registered_lpa[1], id.registered_lpa[0]), pt_slice=id.registered_lpa[2])
 
 # id.delete_useless_files()
-# id.save_pts_to_csv()
+id.save_pts_to_csv()
 # # id.mca_territory_mask()
 
 

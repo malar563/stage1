@@ -266,60 +266,102 @@ df_to_keep += data
 # print(df_to_keep)
 
 
-import nibabel as nib
-import os
-img = nib.load("jspakoi/1/6_cow_angio__06__hv36__3.nii.gz")
-img = nib.load("jspakoi/1/cropped_6_cow_angio__06__hv36__3.nii.gz")
-path="jspakoi/1/6_cow_angio__06__hv36__3.nii.gz"
-path="jspakoi/1/cropped_6_cow_angio__06__hv36__3.nii.gz"
-# print(img.header)
-# print(path.removeprefix("cropped_"))
-# print(len([f for f in os.listdir("nifti/2") if f.startswith('cropped')]))
-# print(img.header["dim"][1:4])
+# import nibabel as nib
+# import os
+# img = nib.load("jspakoi/1/6_cow_angio__06__hv36__3.nii.gz")
+# img = nib.load("jspakoi/1/cropped_6_cow_angio__06__hv36__3.nii.gz")
+# path="jspakoi/1/6_cow_angio__06__hv36__3.nii.gz"
+# path="jspakoi/1/cropped_6_cow_angio__06__hv36__3.nii.gz"
+# # print(img.header)
+# # print(path.removeprefix("cropped_"))
+# # print(len([f for f in os.listdir("nifti/2") if f.startswith('cropped')]))
+# # print(img.header["dim"][1:4])
 
-# Lister les fichiers NIfTI dans le dossier
-nii_directory = "cava/0"
-nii_directory = "nifti/2"
-# nii_directory = "jspakoi/1"
-nii_files = [f for f in os.listdir(nii_directory) if f.endswith(".nii.gz") or f.endswith(".nii")]
-print(nii_files)
+# # Lister les fichiers NIfTI dans le dossier
+# nii_directory = "cava/0"
+# nii_directory = "nifti/2"
+# # nii_directory = "jspakoi/1"
+# nii_files = [f for f in os.listdir(nii_directory) if f.endswith(".nii.gz") or f.endswith(".nii")]
+# print(nii_files)
 
-# Chercher un fichier qui commence par "cropped_"
-cropped_files = [f for f in nii_files if f.startswith("cropped_")]
-print(cropped_files)
+# # Chercher un fichier qui commence par "cropped_"
+# cropped_files = [f for f in nii_files if f.startswith("cropped_")]
+# print(cropped_files)
 
-if cropped_files:
-    # Si un fichier "cropped_" est trouvé, on l’utilise
-    nii_path = os.path.join(nii_directory, cropped_files[0])
-    not_cropped_nii_path = cropped_files[0].removeprefix("cropped_")
-    print(not_cropped_nii_path)
-else:
-    # Sinon, chercher le fichier sans "cropped_"
-    all_non_cropped = [f for f in nii_files if not f.startswith("cropped_")]
-    print(all_non_cropped)
-    if all_non_cropped:
-        nii_path = os.path.join(nii_directory, all_non_cropped[0])
-        not_cropped_nii_path = os.path.basename(nii_path)
-        print(not_cropped_nii_path)
-    # else:
-    #     # Si aucun NIfTI n’existe, on génère le fichier à partir du DICOM
-    #     print("No NIfTI file found. Processing the specified DICOM file...")
-    #     self.dcm_to_nii()
-    #     self.img = nib.load(self.nii_path)
-    #     self.array = self.img.get_fdata()
-    #     self.resolution = tuple(np.abs(self.img.affine[i][i]) for i in range(3))
-    #     self.dimension = self.img.shape
-    #     self.save_to_csv()
-    #     return
+# if cropped_files:
+#     # Si un fichier "cropped_" est trouvé, on l’utilise
+#     nii_path = os.path.join(nii_directory, cropped_files[0])
+#     not_cropped_nii_path = cropped_files[0].removeprefix("cropped_")
+#     print(not_cropped_nii_path)
+# else:
+#     # Sinon, chercher le fichier sans "cropped_"
+#     all_non_cropped = [f for f in nii_files if not f.startswith("cropped_")]
+#     print(all_non_cropped)
+#     if all_non_cropped:
+#         nii_path = os.path.join(nii_directory, all_non_cropped[0])
+#         not_cropped_nii_path = os.path.basename(nii_path)
+#         print(not_cropped_nii_path)
+#     # else:
+#     #     # Si aucun NIfTI n’existe, on génère le fichier à partir du DICOM
+#     #     print("No NIfTI file found. Processing the specified DICOM file...")
+#     #     self.dcm_to_nii()
+#     #     self.img = nib.load(self.nii_path)
+#     #     self.array = self.img.get_fdata()
+#     #     self.resolution = tuple(np.abs(self.img.affine[i][i]) for i in range(3))
+#     #     self.dimension = self.img.shape
+#     #     self.save_to_csv()
+#     #     return
 
-    # Chargement du fichier trouvé
-img = nib.load(nii_path)
-array = img.get_fdata()
-resolution = tuple(np.abs(img.affine[i][i]) for i in range(3))
-dimension = img.shape
-print(f"NIfTI found: {nii_path}")
+#     # Chargement du fichier trouvé
+# img = nib.load(nii_path)
+# array = img.get_fdata()
+# resolution = tuple(np.abs(img.affine[i][i]) for i in range(3))
+# dimension = img.shape
+# # print(f"NIfTI found: {nii_path}")
 
-# save_to_csv()
+# # save_to_csv()
+
+
+
+
+
+x = np.array([0,0,0,1,1,0,0,0,0,0,1,1,1,1,1,1,0,1,0,1,0,0,1,1,1,1,1,1,1,1,0,0,0,1,0,1,1,0,0,0,0,0])
+nonzero = np.nonzero(x)[0]
+print(nonzero)
+filled_y_slices = np.array([2,3,4,5,6,7,8,9,10,11,12,13,14,15])
+lpa_y = 20
+rpa_y = 24
+
+
+def find_depth_lpa():
+    if lpa_y in nonzero:
+        print(nonzero)   
+        index_lpa_y = np.where(nonzero == lpa_y)[0][0]
+        print(index_lpa_y)
+        for i in range(1, index_lpa_y):
+            if nonzero[index_lpa_y-i] != lpa_y-i:
+                return nonzero[index_lpa_y-i+1] # gets the surface of the head
+        return nonzero[0] # gets the surface of the head
+    else:
+        index_lpa = np.argmin(np.abs(nonzero-lpa_y))
+        return nonzero[index_lpa] # gets the surface of the head
+    
+# print(find_depth_lpa())
+
+def find_depth_rpa():
+    if rpa_y in nonzero:
+        print(nonzero)   
+        index_rpa_y = np.where(nonzero == rpa_y)[0][0]
+        print(index_rpa_y)
+        for i in range(1, len(nonzero)-index_rpa_y):
+            if nonzero[index_rpa_y+i] != rpa_y+i:
+                return nonzero[index_rpa_y+i-1] # gets the surface of the head
+        return nonzero[-1] # gets the surface of the head
+    else:
+        index_lpa = np.argmin(np.abs(nonzero-rpa_y))
+        return nonzero[index_lpa] # gets the surface of the head
+    
+print(find_depth_rpa())
 
 
 
