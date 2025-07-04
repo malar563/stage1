@@ -1157,7 +1157,7 @@ dicoms_list = ["ct_enligne/1", "ct_enligne/2","ct_enligne/4","ct_enligne/5", "ct
 dicoms_list = ["ct_enligne/6", "ct_enligne/7"]
 
 # CHECKER LES AXES PARTOUT POUR ÊTRE SÛR QUE C'EST CHILL
-def main(dicoms_list = dicoms_list):
+def run_everything(dicoms_list = dicoms_list):
     for i, dicom in enumerate(dicoms_list):
         try:
             start = time.time()
@@ -1215,7 +1215,7 @@ def main(dicoms_list = dicoms_list):
 
 
 # if __name__ == "__main__":
-#     main()
+#     run_everything()
 
 
 
