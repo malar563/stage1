@@ -1028,10 +1028,23 @@ class Registration(Segmentation):
                 ["If '-' appears in the line 'Dimensions not cropped', it means the original (uncropped) NIfTI file was used for the entire process."],
                 ["If the cropped NIfTI file was used to retrieve the original coordinates of the LPA RPA and Nasion : subtract the z-dimension of the cropped file from that of the original file, and add the difference to the z-index. The x and y indices remain unchanged."]]
         if self.switch_lpa_rpa: # ICII CONTINUERRRRR
-            new_rpa = data[1:4][2:]
-            new_lpa = data[3:6][2:]
+            new_rpa = data[2:4]
+            print("new rpa",new_rpa)
+            new_lpa = data[4:6]
+            print("new lpa",new_lpa)
+            print(data)
+            data[2][1:] = new_lpa[0][1:]
+            print(new_lpa[0])
+            data[3][1:] = new_lpa[1][1:]
+            print(new_lpa[1])
+            data[4][1:] = new_rpa[0][1:]
+            print(new_rpa[0])
+            data[5][1:] = new_rpa[1][1:]
+            print(new_rpa[1])
+            print(data)
+            # data[2] = new_rpa 
 
-            print(new_rpa, new_lpa)
+            # print(new_rpa, new_lpa)
         df_to_keep += data
         df = pd.DataFrame(df_to_keep)
         df.to_csv(csv_path, index=False)
