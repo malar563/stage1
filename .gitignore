@@ -2,10 +2,17 @@ DICOM_003
 DICOM_010
 *.pickle
 *.nii
+!icbm_avg_152_t1_tal_lin.nii
 *.nii.gz
+!mni_vascular_territories.nii.gz
 *.mat
 # On dirait que vu que j'ai mis DICOM_003, DICOM_010 et head.pickle dans mon Github avant de mettre mon .gitignore, il ne les prends pas en compte.
 *.csv
 *.json
 *.pdf
 INUTILE
+nifti
+jspakoi
+cava
+online_angio
+online_pas_angio
