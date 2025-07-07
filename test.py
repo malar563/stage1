@@ -327,7 +327,7 @@ df_to_keep += data
 
 x = np.array([0,0,0,1,1,0,0,0,0,0,1,1,1,1,1,1,0,1,0,1,0,0,1,1,1,1,1,1,1,1,0,0,0,1,0,1,1,0,0,0,0,0])
 nonzero = np.nonzero(x)[0]
-print(nonzero)
+# print(nonzero)
 filled_y_slices = np.array([2,3,4,5,6,7,8,9,10,11,12,13,14,15])
 lpa_y = 20
 rpa_y = 24
@@ -361,7 +361,19 @@ def find_depth_rpa():
         index_lpa = np.argmin(np.abs(nonzero-rpa_y))
         return nonzero[index_lpa] # gets the surface of the head
     
-print(find_depth_rpa())
+# print(find_depth_rpa())
+
+
+import os
+directory = "nifti"
+for root, dirs, files in os.walk(directory):
+    print("Root:", root)
+    print("Directories:", dirs)
+    print("Files:", files)
+    # Si yen a un seul (qui va contenir des centaines de dicoms), le prendre tel quel
+    # Sinon, dans les noms de DOSSIER (avant d'arriver aux .dcm), rechercher celui qui contient les mots clés thin/THIN, le chiffre le plus petit
+    print("-" * 30)
+
 
 
 
