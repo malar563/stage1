@@ -368,25 +368,21 @@ import os
 import re
 
 
-
-def get_dicom_folder(directory="nifti", green_words = ["THIN", "thin"]):
+def get_dicom_folders(directory="nifti", green_words = ["THIN", "thin"]):
 
     folders = [f for f in os.listdir(directory) if os.path.isdir(os.path.join(directory, f))]
-    print(folders)
-    print("\n ----------------")
     final_folders = []
     dict_resolution = {}
-
 
     for folder in folders:
         dcm_folders = []
         print("new dcm folder")
         for root, dirs, files in os.walk(os.path.join(directory,folder)):
-            print("Root:", root)
-            print("Directories:", dirs)
-            print("Files:", files)
-            # Sinon, dans les noms de DOSSIER (avant d'arriver aux .dcm), rechercher celui qui contient les mots clés thin/THIN, le chiffre le plus petit
-            print("-" * 30)
+            # print("Root:", root)
+            # print("Directories:", dirs)
+            # print("Files:", files)
+
+            # Only takes folders with no subfolders
             if len(dirs) == 0:
                 dcm_folders.append(root)
 
@@ -405,18 +401,12 @@ def get_dicom_folder(directory="nifti", green_words = ["THIN", "thin"]):
                 basename = os.path.basename(dcm_folder_path)
                 number_str = re.findall(r"[-+]?(?:\d*\.*\d+)", basename)
                 number = [float(i) for i in number_str]
-                print("number", number)
-                # Mettre qu'il ne prend pas les no. de dossier
                 if len(number) != 0:
                     dict_resolution[number[0]] = dcm_folder_path
-                    print(number[0])
-                    print(dict_resolution[number[0]])
-            print("dictionnaire",dict_resolution)
-            print("minimum dictionnaire",dict_resolution[min(dict_resolution.keys)])
             try:
-                final_folders.append(dict_resolution[min(dict_resolution.keys)])
+                final_folders.append(dict_resolution[min(dict_resolution.keys())])
             except:
-                final_folders.append(None)
+                pass # Can't put final_folders.append(None) here because it will appear if there is a green word too
         else:
             final_folders.append(None)
 
@@ -424,7 +414,7 @@ def get_dicom_folder(directory="nifti", green_words = ["THIN", "thin"]):
                 
 
 
-print(get_dicom_folder())
+print(get_dicom_folders())
 
 
 

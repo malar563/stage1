@@ -1173,14 +1173,16 @@ class Registration(Segmentation):
 
 
                 
-
+from automatically_get_dicom_folders import get_dicom_folders
+print("import fait")
+dicoms_list = get_dicom_folders(directory="cava")
+print(dicoms_list)
 
 
 # dicoms_list = ["DICOM_003/Carotid_Angio_0.625mm", "DICOM_010/COW_Angio_0.6_Hv36_3"]
 dicoms_list = ["online_patient/2.16.840.1.114274.1818.46711723837672246304206241465856141463", "online_patient/2.16.840.1.114274.1818.528945204283203896414435929150802789774", "online_patient/2.16.840.1.114274.1818.56920369040074765021783555636978216368"]
 # dicoms_list = ["online_patient/test", "2.16.840.1.114274.1818.528945204283203896414435929150802789774", "2.16.840.1.114274.1818.56920369040074765021783555636978216368"]
 dicoms_list = ["ct_enligne/1", "ct_enligne/2","ct_enligne/4","ct_enligne/5", "ct_enligne/6", "ct_enligne/7"]
-dicoms_list = ["ct_enligne/6", "ct_enligne/7"]
 
 # CHECKER LES AXES PARTOUT POUR ÊTRE SÛR QUE C'EST CHILL
 def run_everything(dicoms_list = dicoms_list):
@@ -1203,7 +1205,7 @@ def run_everything(dicoms_list = dicoms_list):
             id = Registration(big_output_directory="ct_enligne_nifti", file_number=i+4, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
 
             id.register(show=True)
-            # id.read_transforms()
+            # id.read_transforms()   
 
             id.find_registered_lpa_rpa_nasion()
             id.fill_cavities()
@@ -1225,6 +1227,18 @@ def run_everything(dicoms_list = dicoms_list):
             with open(os.path.join(ct.big_output_directory, 'error.txt'), 'a') as file:
                 file.write(f"{ct.nii_path} : {e}\n")
 
+
+# if __name__ == "__main__":
+#     run_everything()
+
+
+
+
+
+
+
+
+
     # start = time.time()
     # ct = Segmentation(dcm_path="online_patient/2.16.840.1.114274.1818.56920369040074765021783555636978216368", big_output_directory="online", file_number=2)
     # ct.apply_threshold()       
@@ -1238,11 +1252,6 @@ def run_everything(dicoms_list = dicoms_list):
     # ct.mask_to_nii()
 
     # print(f"Time to segment file {ct.nii_path} : {time.time() - start} seconds")
-
-
-# if __name__ == "__main__":
-#     run_everything()
-
 
 
 
