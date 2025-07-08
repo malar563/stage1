@@ -365,14 +365,70 @@ def find_depth_rpa():
 
 
 import os
-directory = "nifti"
-for root, dirs, files in os.walk(directory):
-    print("Root:", root)
-    print("Directories:", dirs)
-    print("Files:", files)
-    # Si yen a un seul (qui va contenir des centaines de dicoms), le prendre tel quel
-    # Sinon, dans les noms de DOSSIER (avant d'arriver aux .dcm), rechercher celui qui contient les mots clés thin/THIN, le chiffre le plus petit
-    print("-" * 30)
+import re
+
+
+
+def get_dicom_folder(directory="nifti", green_words = ["THIN", "thin"]):
+
+    folders = [f for f in os.listdir(directory) if os.path.isdir(os.path.join(directory, f))]
+    print(folders)
+    print("\n ----------------")
+    final_folders = []
+    dict_resolution = {}
+
+
+    for folder in folders:
+        dcm_folders = []
+        print("new dcm folder")
+        for root, dirs, files in os.walk(os.path.join(directory,folder)):
+            print("Root:", root)
+            print("Directories:", dirs)
+            print("Files:", files)
+            # Sinon, dans les noms de DOSSIER (avant d'arriver aux .dcm), rechercher celui qui contient les mots clés thin/THIN, le chiffre le plus petit
+            print("-" * 30)
+            if len(dirs) == 0:
+                dcm_folders.append(root)
+
+        # If there is only one file containing dicoms, directly takes it
+        if len(dcm_folders) == 1:
+            final_folders.append(dcm_folders[0])
+        
+        elif len(dcm_folders) > 1:
+            for dcm_folder_path in dcm_folders:
+                
+                # If a green word is found in the name of the path, directly takes it
+                if any(green_word in dcm_folder_path for green_word in green_words):
+                    final_folders.append(dcm_folder_path)
+
+                # Takes the file with the smallest number (resolution) mentionned
+                basename = os.path.basename(dcm_folder_path)
+                number_str = re.findall(r"[-+]?(?:\d*\.*\d+)", basename)
+                number = [float(i) for i in number_str]
+                print("number", number)
+                # Mettre qu'il ne prend pas les no. de dossier
+                if len(number) != 0:
+                    dict_resolution[number[0]] = dcm_folder_path
+                    print(number[0])
+                    print(dict_resolution[number[0]])
+            print("dictionnaire",dict_resolution)
+            print("minimum dictionnaire",dict_resolution[min(dict_resolution.keys)])
+            try:
+                final_folders.append(dict_resolution[min(dict_resolution.keys)])
+            except:
+                final_folders.append(None)
+        else:
+            final_folders.append(None)
+
+    return final_folders
+                
+
+
+print(get_dicom_folder())
+
+
+
+        
 
 
 
