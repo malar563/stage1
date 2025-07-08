@@ -225,7 +225,6 @@ class Identification:
                 new_letter = dict_orientation[letter]
                 if new_letter == "L" or new_letter == "R":
                     self.switch_lpa_rpa = True
-                    print(self.switch_lpa_rpa)
                 initial_orient[initial_axis] = new_letter
         for initial_axis, element in enumerate(initial_orient):
             already_in[initial_axis] = (initial_axis, final_orient.index(element))
@@ -257,10 +256,8 @@ class Identification:
                 new_index = already_in[initial_index][1]
                 affine[new_index] = -1*affine[new_index]
                 affine[new_index,-1] = initial_dimensions[initial_index]-1
-            print(affine)
-            print(initial_point)
+            # print(affine)
             new_point = (affine @ initial_point)[:-1]
-            print(new_point)
             return new_point
         
         # Dealing with exeptions
@@ -380,7 +377,7 @@ class Identification:
         lpa_pt_patient_space = ants.apply_ants_transform_to_point(self.fwd_a_transform, lpa_pt_patient_space)
         lpa_vox_patient_space =  ants.transform_physical_point_to_index(self.moving_img, lpa_pt_patient_space)
         self.registered_lpa = round(lpa_vox_patient_space[0]), round(lpa_vox_patient_space[1]), round(lpa_vox_patient_space[2])
-        print('registered LPA', self.registered_lpa) # (z,x,y)
+        # print('registered LPA', self.registered_lpa) # (z,x,y)
 
         # RPA : automatically identify on patient
         rpa_pt_normal_space = ants.transform_index_to_physical_point(self.fixed_img, self.rpa_vox_normal_space)
@@ -388,7 +385,7 @@ class Identification:
         rpa_pt_patient_space = ants.apply_ants_transform_to_point(self.fwd_a_transform, rpa_pt_patient_space)
         rpa_vox_patient_space = ants.transform_physical_point_to_index(self.moving_img, rpa_pt_patient_space)
         self.registered_rpa = round(rpa_vox_patient_space[0]), round(rpa_vox_patient_space[1]), round(rpa_vox_patient_space[2])
-        print('registered RPA', self.registered_rpa) # (z,x,y)
+        # print('registered RPA', self.registered_rpa) # (z,x,y)
 
         # nasion : automatically identify on patient
         nas_pt_normal_space = ants.transform_index_to_physical_point(self.fixed_img, self.nas_vox_normal_space)
@@ -396,7 +393,7 @@ class Identification:
         nas_pt_patient_space = ants.apply_ants_transform_to_point(self.fwd_a_transform, nas_pt_patient_space)
         nas_vox_patient_space = ants.transform_physical_point_to_index(self.moving_img, nas_pt_patient_space)
         self.registered_nasion = round(nas_vox_patient_space[0]), round(nas_vox_patient_space[1]), round(nas_vox_patient_space[2])
-        print('registered nasion', self.registered_nasion) # (z,x,y)
+        # print('registered nasion', self.registered_nasion) # (z,x,y)
 
 
     def fill_cavities(self):
@@ -449,6 +446,8 @@ class Identification:
         self.nasion : tuple[int, int, int]
             Refined voxel coordinates of the nasion (z, x, y).
         """
+        self.fill_cavities()
+
         reg_nas_z, reg_nas_x, reg_nas_y = self.registered_nasion
 
         ROI_nas = self.filled_head[reg_nas_z-window:reg_nas_z+window,
@@ -460,7 +459,6 @@ class Identification:
         # Index of the maximal values for rows and minimal values for columns
         max_index_row = (np.argmin(counts_x, axis=0))
         min_index_column = (np.argmax(counts_x, axis=1))
-        print(max_index_row, min_index_column)
 
         optimize_minmax = []
         for column, position_min_in_column in enumerate(min_index_column):
@@ -481,7 +479,6 @@ class Identification:
             nasion_z_final = reg_nas_z
 
         nasion_x_final = np.nonzero(self.filled_head[nasion_z_final,:,nasion_y_final])[0][0]
-        print(nasion_z_final, nasion_x_final, nasion_y_final)
         self.nasion = nasion_z_final, nasion_x_final, nasion_y_final # (z, x, y)
 
 
@@ -515,10 +512,8 @@ class Identification:
 
     def find_depth_rpa(self):
         nonzero = np.nonzero(self.filled_head[self.registered_rpa[0],self.registered_rpa[1],:])[0]
-        if self.registered_rpa[2] in nonzero:
-            print(nonzero)   
+        if self.registered_rpa[2] in nonzero:   
             index_rpa_y = np.where(nonzero == self.registered_rpa[2])[0][0]
-            print(index_rpa_y)
             for i in range(1, len(nonzero)-index_rpa_y):
                 if nonzero[index_rpa_y+i] != self.registered_rpa[2]+i:
                     return nonzero[index_rpa_y+i-1] # gets the surface of the head
@@ -531,10 +526,8 @@ class Identification:
 
     def find_depth_lpa(self):
         nonzero = np.nonzero(self.filled_head[self.registered_lpa[0],self.registered_lpa[1],:])[0]
-        if self.registered_lpa[2] in nonzero:
-            print(nonzero)   
+        if self.registered_lpa[2] in nonzero:  
             index_lpa_y = np.where(nonzero == self.registered_lpa[2])[0][0]
-            print(index_lpa_y)
             for i in range(1, index_lpa_y):
                 if nonzero[index_lpa_y-i] != self.registered_lpa[2]-i:
                     return nonzero[index_lpa_y-i+1] # gets the surface of the head
@@ -579,7 +572,6 @@ class Identification:
             registered_landmarks[i] = self.reorient_point_to_original_mask(point,
                                                               initial_orient=self.orient_for_registration,
                                                               final_orient=self.initial_moving_img_orientation)
-        print(improved_landmarks)
         data = [["Nasion improved (voxel)", improved_landmarks[0][1], improved_landmarks[0][0], improved_landmarks[0][2]],
                 ["Nasion registered (voxel)", registered_landmarks[0][1], registered_landmarks[0][0], registered_landmarks[0][2]],
                 ["LPA improved (voxel)", improved_landmarks[1][1], improved_landmarks[1][0], improved_landmarks[1][2]],

@@ -15,7 +15,7 @@ import pandas as pd
 
 
 
-from identification import Registration
+from class_identification import Registration
 # for i, nifti in enumerate(dicoms_list):
 
 #     id = Registration(big_output_directory="online", file_number=i, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')

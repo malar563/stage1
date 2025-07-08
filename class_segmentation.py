@@ -113,12 +113,14 @@ class Segmentation:
                 # If "cropped_" file is found
                 self.nii_path = os.path.join(self.nifti_output_directory, cropped_files[0])
                 self.not_cropped_nii_path = os.path.join(self.nifti_output_directory, cropped_files[0].removeprefix("cropped_"))
+                print("NIfTI file found. No DICOM processing will be done.")
             else:
                 # Trying to find a non-cropped file
                 excluded_prefixes = ("cropped_", "fwd", "inv", "mask", "mca_territory", "totalsegmentator") 
                 all_non_cropped = [f for f in nii_files if not f.startswith(excluded_prefixes)]
                 if all_non_cropped:
                     self.nii_path = os.path.join(self.nifti_output_directory, all_non_cropped[0])
+                    print("NIfTI file found. No DICOM processing will be done.")
                 else:
                     # If no file is found, generating one from the specified DICOM folder
                     print("No NIfTI file found. Processing the specified DICOM folder...")
@@ -160,7 +162,6 @@ class Segmentation:
         if os.path.exists(csv_path):
             df_existing = pd.read_csv(csv_path)
             df_existing.values[:5,:4] = np.array(data)
-            print(df_existing.values)
             df_existing.to_csv(csv_path, index=False)
         else:
             df = pd.DataFrame(data)
@@ -525,7 +526,7 @@ class Segmentation:
         head_image = nib.Nifti1Image(head_array, self.img.affine, self.img.header) # Create a new NIfTI image
         nifti_path = os.path.join(self.nifti_output_directory, "head"+self.file_number+".nii.gz")
         nib.save(head_image, nifti_path)
-        print(f"NIfTI generated : {nifti_path}.nii.gz")
+        print(f"NIfTI generated : {nifti_path}")
 
         total_mask = 1*self.head + 2*self.skull + 1*self.arteries
 
@@ -541,4 +542,4 @@ class Segmentation:
         masked_image = nib.Nifti1Image(total_mask, self.img.affine, self.img.header) # Create a new NIfTI image
         nifti_path = os.path.join(self.nifti_output_directory, "mask"+self.file_number+".nii.gz")
         nib.save(masked_image, nifti_path)
-        print(f"NIfTI generated : {nifti_path}.nii.gz")
+        print(f"NIfTI generated : {nifti_path}")

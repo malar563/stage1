@@ -2,7 +2,7 @@ import os
 import re
 
 
-def get_dicom_folders(directory="jspakoi", green_words = ["THIN", "thin"]):
+def create_dicom_list(directory="jspakoi", green_words = ["THIN", "thin"]):
     # print("function called")
     folders = [f for f in os.listdir(directory) if os.path.isdir(os.path.join(directory, f))]
     final_folders = []
@@ -48,4 +48,4 @@ def get_dicom_folders(directory="jspakoi", green_words = ["THIN", "thin"]):
                 
 
 if __name__ == "__main__":
-    get_dicom_folders
+    create_dicom_list
