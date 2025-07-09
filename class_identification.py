@@ -15,33 +15,48 @@ class Identification:
         Loads moving (patient) and fixed (atlas) images, prepares file paths, loads head/mask data, 
         and precomputes resolution and flipped/transposed arrays for visualization or processing.
 
-        Arguments
+        Parameters
         ----------
         big_output_directory : str
-            Directory where processed folder of files are stored.
+            Directory where processed folders and files are stored.
 
         file_number : int
-            Identifier used to locate the directory, load specific NIfTI and mask files.
+            Identifier used to locate the directory and specific NIfTI and mask files.
 
         fixed_img_path : str
-            Path to the fixed atlas image used for registration.
+            Path to the fixed (atlas) image used for registration.
 
         Attributes
         ----------
         moving_img : ants.ANTsImage
-            Patient image to be registered.
+            Reoriented patient image to be registered.
 
         fixed_img : ants.ANTsImage
-            Atlas image used as reference.
+            Reoriented atlas image used as reference.
+
+        moving_img_path : str
+            Path to the original moving (patient) image file.
+
+        initial_moving_img_orientation : str
+            Orientation code (e.g., "RPI", "IAL") of the original mask before reorientation.
+
+        orient_for_registration : str
+            Orientation ("IAL") chosen as standard for registration and visualization.
 
         lpa_vox_normal_space, rpa_vox_normal_space, nas_vox_normal_space : np.ndarray
-            Landmark coordinates in the normalized space (they were determined visually on the fixed_img).
+            Landmark coordinates in voxel space, manually identified in the normalized (atlas) image.
 
-        head, filled_head : np.ndarray
-            Processed head mask arrays, flipped and transposed for display.
+        head : np.ndarray
+            Binary head mask array in (Z, X, Y) order, reoriented for display and registration.
 
-        resolution : tuple of float
-            Spatial resolution (voxel spacing) in mm along each axis.
+        filled_head : np.ndarray
+            Same as `head`, explicitly named to indicate post-reorientation binary filling.
+
+        moving_img_dimension : tuple of int
+            Original image dimensions from the loaded mask (before reorientation).
+
+        filled_y_slices : list
+            Used to help identify LPA and RPA positions based on filled slices.
 
         Future attributes
         -----------------
@@ -57,9 +72,9 @@ class Identification:
               (Z, X, Y) and NOT (Y, X, Z) as it was in the Segmentation class.
               It is to ensure consistency of the orientation (for both fixed and moving image)
               and a better display.
-            - To get the points in the original coordinate system (mask) :
-                -> For a mask, use ants.reorient_image2(image, orientation)
-                -> For a point, use a affine matrix as found in the 
+            - If you need to reorient an object :
+                -> For a mask, use ants.reorient_image2(image, orientation) or reorient_to_original_masks
+                -> For a point, use a affine matrix as found in the reorient_to_original_masks function
         """
         
         self.big_output_directory = big_output_directory
@@ -74,10 +89,19 @@ class Identification:
         self.moving_img = ants.image_read(self.moving_img_path, reorient=self.orient_for_registration) # Image to be registered
         self.fixed_img = ants.image_read(fixed_img_path, reorient=self.orient_for_registration) # Reference image for registration
 
-        # Landmark coordinates determined visually in the normalized space
+        # Landmark coordinates determined visually in the normalized space (irm)
         self.lpa_vox_normal_space = np.array([25, 107, 6])
         self.rpa_vox_normal_space = np.array([25, 107, 173])
         self.nas_vox_normal_space = np.array([28, 4, 90])
+        # Vrai ct scan
+        # print(ants.get_orientation(self.moving_img), ants.get_orientation(self.fixed_img))
+        # self.show_3D_array(self.moving_img.numpy(), axis=2)
+        # self.show_3D_array(self.fixed_img.numpy(), axis=2, pts=[((147, 102),136, "red"), ((292, 59),205, "green"), ((276, 71),52, "blue")])
+        # self.show_3D_array(self.moving_img.numpy(), axis=1)
+        # self.show_3D_array(self.fixed_img.numpy(), axis=1)
+        # self.lpa_vox_normal_space = np.array([71, 276, 52])
+        # self.rpa_vox_normal_space = np.array([59, 292, 205])
+        # self.nas_vox_normal_space = np.array([102, 147, 136])
 
         self.filled_y_slices = [] # Used to determine positions (lpa and rpa)
         mask_img = nib.load(os.path.join(self.nifti_output_directory, "mask"+self.file_number+".nii.gz"))
@@ -85,7 +109,7 @@ class Identification:
         # self.mask_dimension = self.mask_dimension[2], self.mask_dimension[1], self.mask_dimension[0]
         self.head = mask_img.get_fdata() 
         # IMPORTANT : from now on, it is [z,x,y] and not [y,x,z] as it was in the Segmentation class
-        self.filled_head = self.reorient_point_to_original_mask(object_to_reorient=np.where(self.head>=1, 1, 0), 
+        self.filled_head = self.reorient_to_original_masks(object_to_reorient=np.where(self.head>=1, 1, 0), 
                                                                 initial_orient=self.initial_moving_img_orientation, 
                                                                 final_orient=self.orient_for_registration)
         self.head = np.copy(self.filled_head)
@@ -172,41 +196,42 @@ class Identification:
         plt.show()
 
     
-    def reorient_point_to_original_mask(self, object_to_reorient=None, initial_orient="IAL", final_orient="RPI"):
+    def reorient_to_original_masks(self, object_to_reorient=None, initial_orient="IAL", final_orient="RPI"):
         """
-        Reorients a 3D array or a 3D point from one coordinate system to another 
-        by applying axis transpositions and flips based on orientation codes.
+        Reorients a 3D volume or a point from one orientation code to another,
+        by applying flips and axis transpositions based on direction labels.
 
         Parameters
         ----------
-        object_to_reorient : np.ndarray or tuple
+        object_to_reorient : np.ndarray, list, or tuple
             The object to reorient. Can be either:
-            - A 3D NumPy array (volume) with shape,
-            - A 3-element tuple/list or dictionary representing a 3D point.
+            - A 3D NumPy array (volume),
+            - A 3-element tuple/list/array representing a 3D point.
 
         initial_orient : str
-            A 3-letter orientation code representing the current axis directions 
-            (e.g., "IAL" = Inferior, Anterior, Left).
+            Orientation code of the input data (e.g., "IAL" = Inferior-Anterior-Left).
 
         final_orient : str
-            A 3-letter orientation code representing the desired axis directions 
-            (e.g., "RPI" = Right, Posterior, Inferior).
+            Target orientation code to reorient to (e.g., "RPI" = Right-Posterior-Inferior).
 
         Returns
         -------
         object_reoriented : same type as input
-            - If a volume is passed, returns the array reoriented (flipped and/or transposed).
-            - If a point is passed, returns the coordinates mapped to the new orientation system.
+            - If a 3D array is passed, returns the reoriented volume.
+            - If a point is passed, returns the mapped coordinates in the new orientation.
+
+        Side Effects
+        ------------
+        self.switch_lpa_rpa : bool
+            Set to True if reorientation involves a Left-Right flip. Useful for landmark relabeling.
 
         Notes
         -----
-        - Orientation codes use the anatomical directions: 
-          'R'=Right, 'L'=Left, 'A'=Anterior, 'P'=Posterior, 'I'=Inferior, 'S'=Superior.
-        - Axis flips are performed if the direction in the initial orientation is opposite 
-          to the one in the target orientation.
-        - Axis reordering is performed if axes are permuted between orientations.
-        - This method assumes the internal attribute `self.mask_dimension` is defined 
-          when flipping a point.
+        - Orientation codes use anatomical directions:
+            'R' = Right, 'L' = Left, 'A' = Anterior, 'P' = Posterior, 'I' = Inferior, 'S' = Superior.
+        - A flip is applied if a direction in the `initial_orient` needs to be reversed to match `final_orient`.
+        - Axes are reordered if orientation letters are on different axes.
+        - Assumes `self.moving_img_dimension` and `self.initial_moving_img_orientation` are defined.
         """
         # Initialization
         initial_orient = list(initial_orient)
@@ -427,7 +452,7 @@ class Identification:
             self.filled_head[i,:,:] = binary_fill_holes(self.filled_head[i,:,:])
     
 
-    def find_nasion(self, window=5):
+    def find_nasion(self, window=10):
         """
         Refine the position of the nasion using local anatomical data in the filled head mask.
 
@@ -565,11 +590,11 @@ class Identification:
         improved_landmarks = [self.nasion, self.lpa, self.rpa]
         registered_landmarks = [self.registered_nasion, self.registered_lpa, self.registered_rpa]
         for i, point in enumerate(improved_landmarks):
-            improved_landmarks[i] = self.reorient_point_to_original_mask(point,
+            improved_landmarks[i] = self.reorient_to_original_masks(point,
                                                               initial_orient=self.orient_for_registration,
                                                               final_orient=self.initial_moving_img_orientation)
         for i, point in enumerate(registered_landmarks):
-            registered_landmarks[i] = self.reorient_point_to_original_mask(point,
+            registered_landmarks[i] = self.reorient_to_original_masks(point,
                                                               initial_orient=self.orient_for_registration,
                                                               final_orient=self.initial_moving_img_orientation)
         data = [["Nasion improved (voxel)", improved_landmarks[0][1], improved_landmarks[0][0], improved_landmarks[0][2]],

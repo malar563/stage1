@@ -14,38 +14,39 @@ def run_everything(dicoms_list, big_output_directory="cava", verbose=True):
 
             ct = Segmentation(dcm_path=dicom, big_output_directory=big_output_directory, file_number=i)
 
-            ct.apply_threshold()
-            if verbose:
-                print("Thresholds applied")
+            # ct.apply_threshold()
+            # if verbose:
+            #     print("Thresholds applied")
 
-            ct.keep_largest_island()
-            if verbose:
-                print("Kept largest island")
+            # ct.keep_largest_island()
+            # if verbose:
+            #     print("Kept largest island")
 
-            ct.show_3D_array(ct.skull, axis=2) 
-            ct.fill_holes()
-            if verbose:
-                print("Holes filled")
+            # ct.show_3D_array(ct.skull, axis=2) 
+            # ct.fill_holes()
+            # if verbose:
+            #     print("Holes filled")
 
-            ct.remove_arteries()
-            if verbose:
-                print("Distance arteries removed")
-            # Totalsegmentator
-            ct.segment_brain()
-            if verbose:
-                print("Head segmented (TotalSegmentator)")
+            # ct.remove_arteries()
+            # if verbose:
+            #     print("Distance arteries removed")
+            # # Totalsegmentator
+            # ct.segment_brain()
+            # if verbose:
+            #     print("Head segmented (TotalSegmentator)")
 
-            ct.arteries_and_totalsegmentator_mask()
-            if verbose:
-                print("TotalSegmentator masks created")
+            # ct.arteries_and_totalsegmentator_mask()
+            # if verbose:
+            #     print("TotalSegmentator masks created")
 
-            ct.mask_to_nii()
-            if verbose:
-                print(f"Segmentation complete: {ct.nii_path}")
+            # ct.mask_to_nii()
+            # if verbose:
+            #     print(f"Segmentation complete: {ct.nii_path}")
 
-            # ct.show_3D_array(ct.skull, axis=2) # En z
-            # ct.show_3D_array(ct.head, axis=0, pt=(50,42), pt_slice = 100)
-            id = Identification(big_output_directory=big_output_directory, file_number=i, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
+            # # ct.show_3D_array(ct.skull, axis=2) # En z
+            # # ct.show_3D_array(ct.head, axis=0, pt=(50,42), pt_slice = 100)
+
+            id = Identification(big_output_directory=big_output_directory, file_number=i, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')#"head1.nii.gz""cropped_605_sag_1mm.nii.gz" 'icbm_avg_152_t1_tal_lin.nii'
 
             # id.register(show=True)
             # if verbose:
@@ -58,23 +59,25 @@ def run_everything(dicoms_list, big_output_directory="cava", verbose=True):
             id.find_registered_lpa_rpa_nasion()
             if verbose:
                 print("Registered LPA, RPA, and Nasion located")
+            print("registered_rpa :", id.registered_rpa)
+            print("registered_rpa :", id.registered_lpa)
+            id.show_3D_array(id.head, axis=2, pts=[((id.registered_rpa[1], id.registered_rpa[0]),id.registered_rpa[2], "red"), ((id.registered_lpa[1], id.registered_lpa[0]),id.registered_lpa[2], "green")])
 
             id.find_nasion()
             if verbose:
                 print("Nasion refined")
+            id.check_nasion()
 
             id.improve_lpa_rpa()
             if verbose:
                 print("LPA and RPA refined")
 
-            id.check_nasion()
             print("rpa :", id.rpa)
-            print("registered_rpa :", id.registered_rpa)
-            id.show_3D_array(id.head, axis=2, pts=[((id.rpa[1], id.rpa[0]),id.rpa[2], "red"), ((id.registered_rpa[1], id.registered_rpa[0]),id.registered_rpa[2], "green")])
-            
             print("lpa :", id.lpa)
+            print("registered_rpa :", id.registered_rpa)
             print("registered_rpa :", id.registered_lpa)
-            id.show_3D_array(id.head, axis=2, pts=[((id.lpa[1], id.lpa[0]),id.lpa[2], "red"), ((id.registered_lpa[1], id.registered_lpa[0]),id.registered_lpa[2], "green")])
+            id.show_3D_array(id.head, axis=2, pts=[((id.rpa[1], id.rpa[0]),id.rpa[2], "red"), ((id.registered_rpa[1], id.registered_rpa[0]),id.registered_rpa[2], "green"), ((id.lpa[1], id.lpa[0]),id.lpa[2], "blue"), ((id.registered_lpa[1], id.registered_lpa[0]),id.registered_lpa[2], "green")])
+            
 
             print(f"Time to segment file {ct.nii_path} : {time.time() - start} seconds")
 
@@ -87,12 +90,10 @@ if __name__ == "__main__":
 
     from automatically_get_dicom_folders import create_dicom_list
 
-    dicoms_list = ["ct_enligne/1", "ct_enligne/2","ct_enligne/4","ct_enligne/5", "ct_enligne/6", "ct_enligne/7"]
+    dicoms_list = ["ct_enligne/1", "ct_enligne/2"]
     # dicoms_list = create_dicom_list(directory="nifti")
 
-    run_everything(dicoms_list=dicoms_list, big_output_directory="cava")
-
-
+    run_everything(dicoms_list=dicoms_list, big_output_directory="reg_avec_irm")
 
 
 
