@@ -90,18 +90,18 @@ class Identification:
         self.fixed_img = ants.image_read(fixed_img_path, reorient=self.orient_for_registration) # Reference image for registration
 
         # Landmark coordinates determined visually in the normalized space (irm)
-        self.lpa_vox_normal_space = np.array([25, 107, 6])
-        self.rpa_vox_normal_space = np.array([25, 107, 173])
-        self.nas_vox_normal_space = np.array([28, 4, 90])
+        # self.lpa_vox_normal_space = np.array([25, 107, 6])
+        # self.rpa_vox_normal_space = np.array([25, 107, 173])
+        # self.nas_vox_normal_space = np.array([28, 4, 90])
         # Vrai ct scan
-        # print(ants.get_orientation(self.moving_img), ants.get_orientation(self.fixed_img))
-        # self.show_3D_array(self.moving_img.numpy(), axis=2)
-        # self.show_3D_array(self.fixed_img.numpy(), axis=2, pts=[((147, 102),136, "red"), ((292, 59),205, "green"), ((276, 71),52, "blue")])
-        # self.show_3D_array(self.moving_img.numpy(), axis=1)
-        # self.show_3D_array(self.fixed_img.numpy(), axis=1)
-        # self.lpa_vox_normal_space = np.array([71, 276, 52])
-        # self.rpa_vox_normal_space = np.array([59, 292, 205])
-        # self.nas_vox_normal_space = np.array([102, 147, 136])
+        print(ants.get_orientation(self.moving_img), ants.get_orientation(self.fixed_img))
+        self.show_3D_array(self.moving_img.numpy(), axis=2)
+        self.show_3D_array(self.fixed_img.numpy(), axis=2, pts=[((147, 102),136, "red"), ((292, 59),205, "green"), ((276, 71),52, "blue")])
+        self.show_3D_array(self.moving_img.numpy(), axis=1)
+        self.show_3D_array(self.fixed_img.numpy(), axis=1)
+        self.lpa_vox_normal_space = np.array([57, 236, 83]) # de 6_cow_angio_06_hv36
+        self.rpa_vox_normal_space = np.array([69, 236, 403])
+        self.nas_vox_normal_space = np.array([101, 50, 238])
 
         self.filled_y_slices = [] # Used to determine positions (lpa and rpa)
         mask_img = nib.load(os.path.join(self.nifti_output_directory, "mask"+self.file_number+".nii.gz"))

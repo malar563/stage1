@@ -46,7 +46,7 @@ def run_everything(dicoms_list, big_output_directory="cava", verbose=True):
             # # ct.show_3D_array(ct.skull, axis=2) # En z
             # # ct.show_3D_array(ct.head, axis=0, pt=(50,42), pt_slice = 100)
 
-            id = Identification(big_output_directory=big_output_directory, file_number=i, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')#"head1.nii.gz""cropped_605_sag_1mm.nii.gz" 'icbm_avg_152_t1_tal_lin.nii'
+            id = Identification(big_output_directory=big_output_directory, file_number=i, fixed_img_path="head1.nii.gz")#"head1.nii.gz""cropped_605_sag_1mm.nii.gz" 'icbm_avg_152_t1_tal_lin.nii'
 
             # id.register(show=True)
             # if verbose:
