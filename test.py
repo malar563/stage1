@@ -423,12 +423,8 @@ def save_pts_to_csv(register_with_CT_not_normalized=True):
     csv_path = "points0.csv"
 
     df_existing = pd.read_csv(csv_path)
-    df_to_keep = np.array(df_existing.values[:5,:4].tolist())
-    df_is_exist = np.array(df_existing.values[6:22,:4].tolist())
-    print(len(np.array(df_existing.values[6:22,:4].tolist())))
-    print(df_to_keep)
-    print(df_to_keep.tolist())
-
+    df_to_keep = df_existing.values[:5,:4].tolist()
+    df_is_exist = np.array(df_existing.values[5:22,:4].tolist())
     
     if register_with_CT_not_normalized:
         mri_improved_landmarks = [("-","-","-"), ("-","-","-"), ("-","-","-")]
@@ -441,43 +437,47 @@ def save_pts_to_csv(register_with_CT_not_normalized=True):
         ct_improved_landmarks = [("-","-","-"), ("-","-","-"), ("-","-","-")]
         ct_registered_landmarks = [("-","-","-"), ("-","-","-"), ("-","-","-")]
 
-    # if len(df_is_exist) != 0:
-    
-
-
-    data = np.array([["----------Landmarks found with normalized MRI----------"],
+    data = np.array([["----------Landmarks found with normalized MRI----------","nan","nan","nan"],
                 ["Nasion improved (voxel)", mri_improved_landmarks[0][1], mri_improved_landmarks[0][0], mri_improved_landmarks[0][2]],
                 ["Nasion registered (voxel)", mri_registered_landmarks[0][1], mri_registered_landmarks[0][0], mri_registered_landmarks[0][2]],
                 ["LPA improved (voxel)", mri_improved_landmarks[1][1], mri_improved_landmarks[1][0], mri_improved_landmarks[1][2]],
                 ["LPA registered (voxel)", mri_registered_landmarks[1][1], mri_registered_landmarks[1][0], mri_registered_landmarks[1][2]],
                 ["RPA improved (voxel)", mri_improved_landmarks[2][1], mri_improved_landmarks[2][0], mri_improved_landmarks[2][2]],
                 ["RPA registered (voxel)", mri_registered_landmarks[2][1], mri_registered_landmarks[2][0], mri_registered_landmarks[2][2]],
-                ["----------Landmarks found with non-normalized CT scan----------"],
+                ["----------Landmarks found with non-normalized CT scan----------","nan","nan","nan"],
                 ["Nasion improved (voxel)", ct_improved_landmarks[0][1], ct_improved_landmarks[0][0], ct_improved_landmarks[0][2]],
                 ["Nasion registered (voxel)", ct_registered_landmarks[0][1], ct_registered_landmarks[0][0], ct_registered_landmarks[0][2]],
                 ["LPA improved (voxel)", ct_improved_landmarks[1][1], ct_improved_landmarks[1][0], ct_improved_landmarks[1][2]],
                 ["LPA registered (voxel)", ct_registered_landmarks[1][1], ct_registered_landmarks[1][0], ct_registered_landmarks[1][2]],
                 ["RPA improved (voxel)", ct_improved_landmarks[2][1], ct_improved_landmarks[2][0], ct_improved_landmarks[2][2]],
                 ["RPA registered (voxel)", ct_registered_landmarks[2][1], ct_registered_landmarks[2][0], ct_registered_landmarks[2][2]],
-                ["If '-' appears in the line 'Dimensions not cropped', it means the original (uncropped) NIfTI file was used for the entire process."],
-                ["If the cropped NIfTI file was used to retrieve the original coordinates of the LPA RPA and Nasion : subtract the z-dimension of the cropped file from that of the original file, and add the difference to the z-index. The x and y indices remain unchanged."]])
+                ["If '-' appears in the line 'Dimensions not cropped', it means the original (uncropped) NIfTI file was used for the entire process.","nan","nan","nan"],
+                ["If the cropped NIfTI file was used to retrieve the original coordinates of the LPA RPA and Nasion : subtract the z-dimension of the cropped file from that of the original file, and add the difference to the z-index. The x and y indices remain unchanged.","nan","nan","nan"]])
+    
+    if len(df_is_exist) != 0:
+        if register_with_CT_not_normalized:
+            data[1:7,:] = df_is_exist[1:7,:]
+        else:
+            data[8:14,:] = df_is_exist[8:14,:]
+    
     if True: # Switches LPA and RPA if this axis was flipped during the identification process
         # mettre que ça switch le bon
-        new_lpa = [row.copy() for row in data[4:6]]
-        new_rpa = [row.copy() for row in data[2:4]]
-        data[2][1:] = new_lpa[0][1:]
-        data[3][1:] = new_lpa[1][1:]
-        data[4][1:] = new_rpa[0][1:]
-        data[5][1:] = new_rpa[1][1:]
-    
-    print(data)
-        
-    # if self.register_with_CT_not_normalized:
-    #     df_to_keep = df_existing.values[:12,:4].tolist()
+        if register_with_CT_not_normalized:
+            new_lpa = data[12:14,1:].copy()
+            new_rpa = data[10:12,1:].copy()
+            data[12:14,1:] = new_rpa
+            data[10:12,1:] = new_lpa
+        else:
+            new_lpa = data[5:7,1:].copy()
+            new_rpa = data[3:5,1:].copy()
+            data[5:7,1:] = new_rpa
+            data[3:5,1:] = new_lpa
 
-    # df_to_keep += data
-    # df = pd.DataFrame(df_to_keep)
-    # df.to_csv(csv_path, index=False)
+    data = data.tolist()
+    df_to_keep += data
+
+    df = pd.DataFrame(df_to_keep)
+    df.to_csv("test_2_registration.csv", index=False)
 
 save_pts_to_csv()
 
