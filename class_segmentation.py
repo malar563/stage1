@@ -158,7 +158,6 @@ class Segmentation:
             not_cropped_img = nib.load(self.not_cropped_nii_path)
             data[2][1], data[2][2], data[2][3] = not_cropped_img.shape 
 
-        # Ne vas pas marcher si pas de crop (deux lignes ou une à rajouter)
         if os.path.exists(csv_path):
             df_existing = pd.read_csv(csv_path)
             df_existing.values[:5,:4] = np.array(data)

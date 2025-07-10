@@ -8,7 +8,7 @@ import pandas as pd
 
 class Identification:
 
-    def __init__(self, big_output_directory="processed_files", file_number=0, fixed_img_path='icbm_avg_152_t1_tal_lin.nii'):
+    def __init__(self, big_output_directory="processed_files", file_number=0, fixed_img_path='icbm_avg_152_t1_tal_lin.nii', register_with_CT_not_normalized = False):
         """
         Initialize the Identification class for image alignment and landmark localization.
 
@@ -83,25 +83,33 @@ class Identification:
         self.moving_img_path = os.path.join(self.nifti_output_directory, "head"+self.file_number+".nii.gz")
         self.fixed_img_path = fixed_img_path
 
+        self.register_with_CT_not_normalized = register_with_CT_not_normalized
+
         self.initial_moving_img = ants.image_read(self.moving_img_path) # Image provided by the mask
         self.initial_moving_img_orientation = ants.get_orientation(self.initial_moving_img) # Orientation of the mask
         self.orient_for_registration = "IAL" # Chosen orientation (easier to visualize). Do not change it : all the following code rely on this
         self.moving_img = ants.image_read(self.moving_img_path, reorient=self.orient_for_registration) # Image to be registered
         self.fixed_img = ants.image_read(fixed_img_path, reorient=self.orient_for_registration) # Reference image for registration
 
-        # Landmark coordinates determined visually in the normalized space (irm)
-        # self.lpa_vox_normal_space = np.array([25, 107, 6])
-        # self.rpa_vox_normal_space = np.array([25, 107, 173])
-        # self.nas_vox_normal_space = np.array([28, 4, 90])
+        # Landmark coordinates determined visually in the normalized space (mri)
+        self.lpa_vox_normal_space = np.array([25, 107, 6])
+        self.rpa_vox_normal_space = np.array([25, 107, 173])
+        self.nas_vox_normal_space = np.array([28, 4, 90])
+        self.fwd_name = "mri_fwd"+self.file_number
+        self.inv_name = "mri_inv"+self.file_number
+        
         # Vrai ct scan
         print(ants.get_orientation(self.moving_img), ants.get_orientation(self.fixed_img))
         self.show_3D_array(self.moving_img.numpy(), axis=2)
-        self.show_3D_array(self.fixed_img.numpy(), axis=2, pts=[((147, 102),136, "red"), ((292, 59),205, "green"), ((276, 71),52, "blue")])
+        self.show_3D_array(self.fixed_img.numpy(), axis=2, pts=[((236, 69),403, "red"), ((50, 101),238, "green"), ((236, 57),83, "blue")])
         self.show_3D_array(self.moving_img.numpy(), axis=1)
         self.show_3D_array(self.fixed_img.numpy(), axis=1)
-        self.lpa_vox_normal_space = np.array([57, 236, 83]) # de 6_cow_angio_06_hv36
-        self.rpa_vox_normal_space = np.array([69, 236, 403])
-        self.nas_vox_normal_space = np.array([101, 50, 238])
+        if self.register_with_CT_not_normalized:
+            self.lpa_vox_normal_space = np.array([57, 236, 83]) # de 6_cow_angio_06_hv36
+            self.rpa_vox_normal_space = np.array([69, 236, 403])
+            self.nas_vox_normal_space = np.array([101, 50, 238])
+            self.fwd_name = "ct_fwd"+self.file_number
+            self.inv_name = "ct_inv"+self.file_number
 
         self.filled_y_slices = [] # Used to determine positions (lpa and rpa)
         mask_img = nib.load(os.path.join(self.nifti_output_directory, "mask"+self.file_number+".nii.gz"))
@@ -329,10 +337,10 @@ class Identification:
 
         # Save the transforms in the working directory
         import shutil
-        shutil.copy(transformation['fwdtransforms'][0], os.path.join(self.nifti_output_directory, "fwd"+self.file_number+".nii.gz"))
-        ants.write_transform(transform=ants.read_transform(transformation['fwdtransforms'][1]), filename=os.path.join(self.nifti_output_directory, "fwd"+self.file_number+".mat"))
-        ants.write_transform(transform=ants.invert_ants_transform(ants.read_transform(transformation['invtransforms'][0])), filename=os.path.join(self.nifti_output_directory, "inv"+self.file_number+".mat"))
-        shutil.copy(transformation['invtransforms'][1], os.path.join(self.nifti_output_directory, "inv"+self.file_number+".nii.gz"))
+        shutil.copy(transformation['fwdtransforms'][0], os.path.join(self.nifti_output_directory, self.fwd_name+".nii.gz"))
+        ants.write_transform(transform=ants.read_transform(transformation['fwdtransforms'][1]), filename=os.path.join(self.nifti_output_directory, self.fwd_name+".mat"))
+        ants.write_transform(transform=ants.invert_ants_transform(ants.read_transform(transformation['invtransforms'][0])), filename=os.path.join(self.nifti_output_directory, self.inv_name+".mat"))
+        shutil.copy(transformation['invtransforms'][1], os.path.join(self.nifti_output_directory, self.inv_name+".nii.gz"))
 
         # Associate it to a variable for later use
         self.fwd_df_transform = ants.read_transform(transformation['fwdtransforms'][0]) # .nii.gz -> deformation field (df) : fwd_df_transform != inv_df_transform
@@ -366,10 +374,10 @@ class Identification:
         self.inv_df_transform : ants.ANTsTransform
             Inverse deformation field (.nii.gz).
         """
-        self.fwd_df_transform = ants.read_transform(os.path.join(self.nifti_output_directory, "fwd"+self.file_number+".nii.gz")) # .nii.gz -> deformation field (df) fwd_df_transform != inv_df_transform
-        self.fwd_a_transform = ants.read_transform(os.path.join(self.nifti_output_directory, "fwd"+self.file_number+".mat")) # .mat -> affine transform (a) fwd_a_transform = inv_a_transform 
-        self.inv_a_transform = ants.read_transform(os.path.join(self.nifti_output_directory, "inv"+self.file_number+".mat")) # .mat -> affine transform (a) 
-        self.inv_df_transform = ants.read_transform(os.path.join(self.nifti_output_directory, "inv"+self.file_number+".nii.gz")) # .nii.gz -> deformation field (df)
+        self.fwd_df_transform = ants.read_transform(os.path.join(self.nifti_output_directory, self.fwd_name+".nii.gz")) # .nii.gz -> deformation field (df) fwd_df_transform != inv_df_transform
+        self.fwd_a_transform = ants.read_transform(os.path.join(self.nifti_output_directory, self.fwd_name+".mat")) # .mat -> affine transform (a) fwd_a_transform = inv_a_transform 
+        self.inv_a_transform = ants.read_transform(os.path.join(self.nifti_output_directory, self.inv_name+".mat")) # .mat -> affine transform (a) 
+        self.inv_df_transform = ants.read_transform(os.path.join(self.nifti_output_directory, self.inv_name+".nii.gz")) # .nii.gz -> deformation field (df)
 
 
     def find_registered_lpa_rpa_nasion(self):
@@ -567,9 +575,6 @@ class Identification:
         self.rpa = self.registered_rpa[0], self.registered_rpa[1], self.find_depth_rpa()
 
 
-
-
-
     def save_pts_to_csv(self):
         """
         Save anatomical point coordinates (Nasion, LPA, RPA) in voxel space to a text file.
@@ -587,6 +592,7 @@ class Identification:
 
         df_existing = pd.read_csv(csv_path)
         df_to_keep = df_existing.values[:5,:4].tolist()
+
         improved_landmarks = [self.nasion, self.lpa, self.rpa]
         registered_landmarks = [self.registered_nasion, self.registered_lpa, self.registered_rpa]
         for i, point in enumerate(improved_landmarks):
@@ -597,7 +603,8 @@ class Identification:
             registered_landmarks[i] = self.reorient_to_original_masks(point,
                                                               initial_orient=self.orient_for_registration,
                                                               final_orient=self.initial_moving_img_orientation)
-        data = [["Nasion improved (voxel)", improved_landmarks[0][1], improved_landmarks[0][0], improved_landmarks[0][2]],
+        data = [["----------Landmarks found with normalized MRI----------"],
+                ["Nasion improved (voxel)", improved_landmarks[0][1], improved_landmarks[0][0], improved_landmarks[0][2]],
                 ["Nasion registered (voxel)", registered_landmarks[0][1], registered_landmarks[0][0], registered_landmarks[0][2]],
                 ["LPA improved (voxel)", improved_landmarks[1][1], improved_landmarks[1][0], improved_landmarks[1][2]],
                 ["LPA registered (voxel)", registered_landmarks[1][1], registered_landmarks[1][0], registered_landmarks[1][2]],
@@ -612,6 +619,9 @@ class Identification:
             data[3][1:] = new_lpa[1][1:]
             data[4][1:] = new_rpa[0][1:]
             data[5][1:] = new_rpa[1][1:]
+        
+        if self.register_with_CT_not_normalized:
+            df_to_keep = df_existing.values[:12,:4].tolist()
 
         df_to_keep += data
         df = pd.DataFrame(df_to_keep)
@@ -641,10 +651,10 @@ class Identification:
             Must be used AFTER the registration is done
         """
         # Listing NIfTI files in the folder
-        useless_files = [os.path.join(self.nifti_output_directory, "fwd"+self.file_number+".mat"),
-                         os.path.join(self.nifti_output_directory, "fwd"+self.file_number+".nii.gz"),
-                         os.path.join(self.nifti_output_directory, "inv"+self.file_number+".mat"),
-                         os.path.join(self.nifti_output_directory, "inv"+self.file_number+".nii.gz"),
+        useless_files = [os.path.join(self.nifti_output_directory, self.fwd_name+".mat"),
+                         os.path.join(self.nifti_output_directory, self.fwd_name+".nii.gz"),
+                         os.path.join(self.nifti_output_directory, self.inv_name+".mat"),
+                         os.path.join(self.nifti_output_directory, self.inv_name+".nii.gz"),
                          os.path.join(self.nifti_output_directory, "totalsegmentator"+self.file_number+".nii.gz"),
                          os.path.join(self.nifti_output_directory, "head"+self.file_number+".nii.gz")]
         
@@ -683,42 +693,43 @@ class Identification:
         self.arteries : ants.ANTsImage
             Binary mask of segmented MCA arteries in patient space.
         """
-        # Keeping the MCA territories
-        arterial_territories = ants.image_read(arterial_territories_path, reorient='IAL')
-        mca_territories = np.where(arterial_territories.numpy() == 4.0, 1, 0) + np.where(arterial_territories.numpy() == 14.0, 1, 0)
-        mca_territories = arterial_territories.new_image_like(mca_territories) # copies image information and just changes the data
-        
-        # Resample to target image (the atlas is supposed to be in the same space than the normalized MRI)
-        mri = ants.image_read(self.fixed_img_path, reorient='IAL')
-        resampled_mca_territories = ants.resample_image_to_target(mca_territories, mri, verbose=True)
+        if not self.register_with_CT_not_normalized:
+            # Keeping the MCA territories
+            arterial_territories = ants.image_read(arterial_territories_path, reorient='IAL')
+            mca_territories = np.where(arterial_territories.numpy() == 4.0, 1, 0) + np.where(arterial_territories.numpy() == 14.0, 1, 0)
+            mca_territories = arterial_territories.new_image_like(mca_territories) # copies image information and just changes the data
+            
+            # Resample to target image (the atlas is supposed to be in the same space than the normalized MRI)
+            mri = ants.image_read(self.fixed_img_path, reorient='IAL')
+            resampled_mca_territories = ants.resample_image_to_target(mca_territories, mri, verbose=True)
 
-        # Getting the arteries mask
-        self.arteries = ants.image_read(os.path.join(self.nifti_output_directory, "mask"+self.file_number+".nii.gz"), reorient="IAL")
-        arteries_only = np.where(self.arteries.numpy()==2,1,0)
-        # arteries_only = self.arteries.numpy() # Pour mieux voir, mais ne sera pas dans la version finale
-        self.arteries = self.arteries.new_image_like(arteries_only)
-        self.show_3D_array(self.arteries.numpy())
+            # Getting the arteries mask
+            self.arteries = ants.image_read(os.path.join(self.nifti_output_directory, "mask"+self.file_number+".nii.gz"), reorient="IAL")
+            arteries_only = np.where(self.arteries.numpy()==2,1,0)
+            # arteries_only = self.arteries.numpy() # Pour mieux voir, mais ne sera pas dans la version finale
+            self.arteries = self.arteries.new_image_like(arteries_only)
+            self.show_3D_array(self.arteries.numpy())
 
-        # Bringing the arteries mask in the normalized space 
-        registered_arteries = ants.apply_transforms(fixed=resampled_mca_territories, moving=self.arteries, transformlist=[os.path.join(self.nifti_output_directory, "inv"+self.file_number+".mat"), os.path.join(self.nifti_output_directory, "inv"+self.file_number+".nii.gz")])
-        self.show_3D_array(registered_arteries.numpy())
-        # Keeping the arteries of the mask included in the MC territories
-        normalized_mca_arteries = registered_arteries.numpy()*resampled_mca_territories.numpy()
-        self.show_3D_array(normalized_mca_arteries)
+            # Bringing the arteries mask in the normalized space 
+            registered_arteries = ants.apply_transforms(fixed=resampled_mca_territories, moving=self.arteries, transformlist=[os.path.join(self.nifti_output_directory, "inv"+self.file_number+".mat"), os.path.join(self.nifti_output_directory, "inv"+self.file_number+".nii.gz")])
+            self.show_3D_array(registered_arteries.numpy())
+            # Keeping the arteries of the mask included in the MC territories
+            normalized_mca_arteries = registered_arteries.numpy()*resampled_mca_territories.numpy()
+            self.show_3D_array(normalized_mca_arteries)
 
-        # Bringing the MCA arteries back to the patient's space
-        normalized_mca_arteries = registered_arteries.new_image_like(normalized_mca_arteries)
-        patient_mca_arteries = ants.apply_transforms(fixed=self.arteries, moving=normalized_mca_arteries, transformlist=[os.path.join(self.nifti_output_directory, "fwd"+self.file_number+".mat"), os.path.join(self.nifti_output_directory, "fwd"+self.file_number+".nii.gz")])
-        
-        self.show_3D_array(patient_mca_arteries.numpy())
-        counts_z = np.sum(patient_mca_arteries.numpy(), axis = 0) # axis=2 sums in y, axis=0 sums in z
-        plt.imshow(counts_z, origin="lower")
-        plt.show()
+            # Bringing the MCA arteries back to the patient's space
+            normalized_mca_arteries = registered_arteries.new_image_like(normalized_mca_arteries)
+            patient_mca_arteries = ants.apply_transforms(fixed=self.arteries, moving=normalized_mca_arteries, transformlist=[os.path.join(self.nifti_output_directory, "fwd"+self.file_number+".mat"), os.path.join(self.nifti_output_directory, "fwd"+self.file_number+".nii.gz")])
+            
+            self.show_3D_array(patient_mca_arteries.numpy())
+            counts_z = np.sum(patient_mca_arteries.numpy(), axis = 0) # axis=2 sums in y, axis=0 sums in z
+            plt.imshow(counts_z, origin="lower")
+            plt.show()
 
-        # Nifti file with the MCA territories
-        head_img =  nib.load(os.path.join(self.nifti_output_directory, "head"+self.file_number+".nii.gz"))
-        patient_mca_arteries = ants.reorient_image2(patient_mca_arteries, orientation=self.initial_moving_img_orientation) # Reorient accordinf to the initial mask
-        mca_image = nib.Nifti1Image(patient_mca_arteries.numpy(), head_img.affine, head_img.header) # Create a new NIfTI image
-        nifti_path = os.path.join(self.nifti_output_directory, "mca_territory"+self.file_number+".nii.gz")
-        nib.save(mca_image, nifti_path)
-        print(f"NIfTI generated : {nifti_path}.nii.gz")
+            # Nifti file with the MCA territories
+            head_img =  nib.load(os.path.join(self.nifti_output_directory, "head"+self.file_number+".nii.gz"))
+            patient_mca_arteries = ants.reorient_image2(patient_mca_arteries, orientation=self.initial_moving_img_orientation) # Reorient accordinf to the initial mask
+            mca_image = nib.Nifti1Image(patient_mca_arteries.numpy(), head_img.affine, head_img.header) # Create a new NIfTI image
+            nifti_path = os.path.join(self.nifti_output_directory, "mca_territory"+self.file_number+".nii.gz")
+            nib.save(mca_image, nifti_path)
+            print(f"NIfTI generated : {nifti_path}.nii.gz")
