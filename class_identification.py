@@ -98,16 +98,15 @@ class Identification:
         self.fwd_name = "mri_fwd"+self.file_number
         self.inv_name = "mri_inv"+self.file_number
         
-        # Vrai ct scan
-        print(ants.get_orientation(self.moving_img), ants.get_orientation(self.fixed_img))
-        self.show_3D_array(self.moving_img.numpy(), axis=2)
-        self.show_3D_array(self.fixed_img.numpy(), axis=2, pts=[((236, 69),403, "red"), ((50, 101),238, "green"), ((236, 57),83, "blue")])
-        self.show_3D_array(self.moving_img.numpy(), axis=1)
-        self.show_3D_array(self.fixed_img.numpy(), axis=1)
+        # from cropped_6_cow_angio__06__hv36__3
         if self.register_with_CT_not_normalized:
-            self.lpa_vox_normal_space = np.array([57, 236, 83]) # de 6_cow_angio_06_hv36
-            self.rpa_vox_normal_space = np.array([69, 236, 403])
+            # self.show_3D_array(self.moving_img.numpy(), axis=2)
             self.nas_vox_normal_space = np.array([101, 50, 238])
+            self.lpa_vox_normal_space = np.array([57, 236, 83]) 
+            self.rpa_vox_normal_space = np.array([69, 236, 403])
+            self.show_3D_array(self.fixed_img.numpy(), axis=2, pts=[((self.nas_vox_normal_space[1],self.nas_vox_normal_space[0]), self.nas_vox_normal_space[2], "green"),
+                                                                    ((self.lpa_vox_normal_space[1],self.lpa_vox_normal_space[0]), self.lpa_vox_normal_space[2], "blue"),
+                                                                    ((self.rpa_vox_normal_space[1],self.rpa_vox_normal_space[0]), self.rpa_vox_normal_space[2], "red")])
             self.fwd_name = "ct_fwd"+self.file_number
             self.inv_name = "ct_inv"+self.file_number
 
@@ -121,6 +120,13 @@ class Identification:
                                                                 initial_orient=self.initial_moving_img_orientation, 
                                                                 final_orient=self.orient_for_registration)
         self.head = np.copy(self.filled_head)
+
+        self.nasion=(1,2,3)
+        self.lpa=(4,5,6)
+        self.rpa=(7,8,9)
+        self.registered_nasion=(-1,-2,-3)
+        self.registered_lpa=(-4,-5,-6)
+        self.registered_rpa=(-7,-8,-9)
 
    
     def show_3D_array(self, arr, axis=0, pts=None):
@@ -592,6 +598,10 @@ class Identification:
 
         df_existing = pd.read_csv(csv_path)
         df_to_keep = df_existing.values[:5,:4].tolist()
+        df_end = df_existing.values[21:,:4].tolist()
+        print(df_end)
+        df_is_exist = np.array(df_existing.values[5:22,:4].tolist())
+        print(df_is_exist)
 
         improved_landmarks = [self.nasion, self.lpa, self.rpa]
         registered_landmarks = [self.registered_nasion, self.registered_lpa, self.registered_rpa]
@@ -603,27 +613,55 @@ class Identification:
             registered_landmarks[i] = self.reorient_to_original_masks(point,
                                                               initial_orient=self.orient_for_registration,
                                                               final_orient=self.initial_moving_img_orientation)
-        data = [["----------Landmarks found with normalized MRI----------"],
-                ["Nasion improved (voxel)", improved_landmarks[0][1], improved_landmarks[0][0], improved_landmarks[0][2]],
-                ["Nasion registered (voxel)", registered_landmarks[0][1], registered_landmarks[0][0], registered_landmarks[0][2]],
-                ["LPA improved (voxel)", improved_landmarks[1][1], improved_landmarks[1][0], improved_landmarks[1][2]],
-                ["LPA registered (voxel)", registered_landmarks[1][1], registered_landmarks[1][0], registered_landmarks[1][2]],
-                ["RPA improved (voxel)", improved_landmarks[2][1], improved_landmarks[2][0], improved_landmarks[2][2]],
-                ["RPA registered (voxel)", registered_landmarks[2][1], registered_landmarks[2][0], registered_landmarks[2][2]],
-                ["If '-' appears in the line 'Dimensions not cropped', it means the original (uncropped) NIfTI file was used for the entire process."],
-                ["If the cropped NIfTI file was used to retrieve the original coordinates of the LPA RPA and Nasion : subtract the z-dimension of the cropped file from that of the original file, and add the difference to the z-index. The x and y indices remain unchanged."]]
-        if self.switch_lpa_rpa: # Switches LPA and RPA if this axis was flipped during the identification process
-            new_lpa = [row.copy() for row in data[4:6]]
-            new_rpa = [row.copy() for row in data[2:4]]
-            data[2][1:] = new_lpa[0][1:]
-            data[3][1:] = new_lpa[1][1:]
-            data[4][1:] = new_rpa[0][1:]
-            data[5][1:] = new_rpa[1][1:]
-        
         if self.register_with_CT_not_normalized:
-            df_to_keep = df_existing.values[:12,:4].tolist()
+            mri_improved_landmarks = [("-","-","-"), ("-","-","-"), ("-","-","-")]
+            mri_registered_landmarks = [("-","-","-"), ("-","-","-"), ("-","-","-")]
+            ct_improved_landmarks = improved_landmarks
+            ct_registered_landmarks = registered_landmarks
+        else:
+            mri_improved_landmarks = improved_landmarks
+            mri_registered_landmarks = registered_landmarks
+            ct_improved_landmarks = [("-","-","-"), ("-","-","-"), ("-","-","-")]
+            ct_registered_landmarks = [("-","-","-"), ("-","-","-"), ("-","-","-")]
 
+        data = np.array([["----------Landmarks found with normalized MRI----------","nan","nan","nan"],
+                    ["Nasion improved (voxel)", mri_improved_landmarks[0][1], mri_improved_landmarks[0][0], mri_improved_landmarks[0][2]],
+                    ["Nasion registered (voxel)", mri_registered_landmarks[0][1], mri_registered_landmarks[0][0], mri_registered_landmarks[0][2]],
+                    ["LPA improved (voxel)", mri_improved_landmarks[1][1], mri_improved_landmarks[1][0], mri_improved_landmarks[1][2]],
+                    ["LPA registered (voxel)", mri_registered_landmarks[1][1], mri_registered_landmarks[1][0], mri_registered_landmarks[1][2]],
+                    ["RPA improved (voxel)", mri_improved_landmarks[2][1], mri_improved_landmarks[2][0], mri_improved_landmarks[2][2]],
+                    ["RPA registered (voxel)", mri_registered_landmarks[2][1], mri_registered_landmarks[2][0], mri_registered_landmarks[2][2]],
+                    ["----------Landmarks found with non-normalized CT scan----------","nan","nan","nan"],
+                    ["Nasion improved (voxel)", ct_improved_landmarks[0][1], ct_improved_landmarks[0][0], ct_improved_landmarks[0][2]],
+                    ["Nasion registered (voxel)", ct_registered_landmarks[0][1], ct_registered_landmarks[0][0], ct_registered_landmarks[0][2]],
+                    ["LPA improved (voxel)", ct_improved_landmarks[1][1], ct_improved_landmarks[1][0], ct_improved_landmarks[1][2]],
+                    ["LPA registered (voxel)", ct_registered_landmarks[1][1], ct_registered_landmarks[1][0], ct_registered_landmarks[1][2]],
+                    ["RPA improved (voxel)", ct_improved_landmarks[2][1], ct_improved_landmarks[2][0], ct_improved_landmarks[2][2]],
+                    ["RPA registered (voxel)", ct_registered_landmarks[2][1], ct_registered_landmarks[2][0], ct_registered_landmarks[2][2]],
+                    ["If '-' appears in the line 'Dimensions not cropped' it means the original (uncropped) NIfTI file was used for the entire process.","nan","nan","nan"],
+                    ["If the cropped NIfTI file was used to retrieve the original coordinates of the LPA RPA and Nasion : subtract the z-dimension of the cropped file from that of the original file and add the difference to the z-index. The x and y indices remain unchanged.","nan","nan","nan"]])
+        
+        if len(df_is_exist) != 0:
+            if self.register_with_CT_not_normalized:
+                data[1:7,:] = df_is_exist[1:7,:]
+            else:
+                data[8:14,:] = df_is_exist[8:14,:]
+
+        if self.switch_lpa_rpa: # Switches LPA and RPA if this axis was flipped during the identification process
+            if self.register_with_CT_not_normalized:
+                new_lpa = data[12:14,1:].copy()
+                new_rpa = data[10:12,1:].copy()
+                data[12:14,1:] = new_rpa
+                data[10:12,1:] = new_lpa
+            else:
+                new_lpa = data[5:7,1:].copy()
+                new_rpa = data[3:5,1:].copy()
+                data[5:7,1:] = new_rpa
+                data[3:5,1:] = new_lpa
+
+        data = data.tolist()
         df_to_keep += data
+        df_to_keep += df_end
         df = pd.DataFrame(df_to_keep)
         df.to_csv(csv_path, index=False)
         

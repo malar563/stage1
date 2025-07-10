@@ -14,47 +14,48 @@ def run_everything(dicoms_list, big_output_directory="cava", verbose=True):
 
             ct = Segmentation(dcm_path=dicom, big_output_directory=big_output_directory, file_number=i)
 
-            # ct.apply_threshold()
-            # if verbose:
-            #     print("Thresholds applied")
+            ct.apply_threshold()
+            if verbose:
+                print("Thresholds applied")
 
-            # ct.keep_largest_island()
-            # if verbose:
-            #     print("Kept largest island")
+            ct.keep_largest_island()
+            if verbose:
+                print("Kept largest island")
 
             # ct.show_3D_array(ct.skull, axis=2) 
-            # ct.fill_holes()
-            # if verbose:
-            #     print("Holes filled")
+            ct.fill_holes()
+            if verbose:
+                print("Holes filled")
 
-            # ct.remove_arteries()
-            # if verbose:
-            #     print("Distance arteries removed")
-            # # Totalsegmentator
-            # ct.segment_brain()
-            # if verbose:
-            #     print("Head segmented (TotalSegmentator)")
+            ct.remove_arteries()
+            if verbose:
+                print("Distance arteries removed")
+            # Totalsegmentator
+            ct.segment_brain()
+            if verbose:
+                print("Head segmented (TotalSegmentator)")
 
-            # ct.arteries_and_totalsegmentator_mask()
-            # if verbose:
-            #     print("TotalSegmentator masks created")
+            ct.arteries_and_totalsegmentator_mask()
+            if verbose:
+                print("TotalSegmentator masks created")
 
-            # ct.mask_to_nii()
-            # if verbose:
-            #     print(f"Segmentation complete: {ct.nii_path}")
+            ct.mask_to_nii()
+            if verbose:
+                print(f"Segmentation complete: {ct.nii_path}")
 
             # # ct.show_3D_array(ct.skull, axis=2) # En z
             # # ct.show_3D_array(ct.head, axis=0, pt=(50,42), pt_slice = 100)
 
-            id = Identification(big_output_directory=big_output_directory, file_number=i, fixed_img_path="head1.nii.gz")#"head1.nii.gz""cropped_605_sag_1mm.nii.gz" 'icbm_avg_152_t1_tal_lin.nii'
+            id = Identification(big_output_directory=big_output_directory, file_number=i, fixed_img_path="head1.nii.gz", register_with_CT_not_normalized=True)#"head1.nii.gz""cropped_605_sag_1mm.nii.gz" 'icbm_avg_152_t1_tal_lin.nii'
+            # id = Identification(big_output_directory=big_output_directory, file_number=i, fixed_img_path='icbm_avg_152_t1_tal_lin.nii', register_with_CT_not_normalized=False)
 
-            # id.register(show=True)
-            # if verbose:
-            #     print("Registration done")
-
-            id.read_transforms()
+            id.register(show=True)
             if verbose:
-                print("Transforms loaded")
+                print("Registration done")
+
+            # id.read_transforms()
+            # if verbose:
+            #     print("Transforms loaded")
 
             id.find_registered_lpa_rpa_nasion()
             if verbose:
@@ -81,6 +82,10 @@ def run_everything(dicoms_list, big_output_directory="cava", verbose=True):
 
             print(f"Time to segment file {ct.nii_path} : {time.time() - start} seconds")
 
+            with open(os.path.join(id.nifti_output_directory, "points"+id.file_number+".csv"),'a') as fd:
+                processing_time = f"Processing time (seconds), {time.time()-start}, for file, {ct.nii_path}"
+                fd.write(processing_time)
+
         except Exception as e:
             with open(os.path.join(ct.big_output_directory, 'error.txt'), 'a') as file:
                 file.write(f"{ct.nii_path} : {e}\n")
@@ -93,7 +98,7 @@ if __name__ == "__main__":
     dicoms_list = ["ct_enligne/1", "ct_enligne/2"]
     # dicoms_list = create_dicom_list(directory="nifti")
 
-    run_everything(dicoms_list=dicoms_list, big_output_directory="reg_avec_irm")
+    run_everything(dicoms_list=dicoms_list, big_output_directory="reg_sans_irm")
 
 
 

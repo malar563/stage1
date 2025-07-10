@@ -2,6 +2,7 @@
 !icbm_avg_152_t1_tal_lin.nii
 *.nii.gz
 !mni_vascular_territories.nii.gz
+!head1.nii.gz
 *.mat
 *.csv
 INUTILE
