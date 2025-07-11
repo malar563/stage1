@@ -79,6 +79,7 @@ def run_everything(dicoms_list, big_output_directory="cava", verbose=True):
             print("registered_rpa :", id.registered_lpa)
             id.show_3D_array(id.head, axis=2, pts=[((id.rpa[1], id.rpa[0]),id.rpa[2], "red"), ((id.registered_rpa[1], id.registered_rpa[0]),id.registered_rpa[2], "green"), ((id.lpa[1], id.lpa[0]),id.lpa[2], "blue"), ((id.registered_lpa[1], id.registered_lpa[0]),id.registered_lpa[2], "green")])
             
+            id.save_pts_to_csv()
 
             print(f"Time to segment file {ct.nii_path} : {time.time() - start} seconds")
 
