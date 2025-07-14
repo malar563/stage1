@@ -96,10 +96,11 @@ if __name__ == "__main__":
 
     from automatically_get_dicom_folders import create_dicom_list
 
-    dicoms_list = ["ct_enligne/1", "ct_enligne/2"]
-    # dicoms_list = create_dicom_list(directory="nifti")
+    # dicoms_list = ["ct_enligne/1", "ct_enligne/2"]
+    dicoms_list = create_dicom_list(directory="DICOM_003")
+    print(dicoms_list)
 
-    run_everything(dicoms_list=dicoms_list, big_output_directory="reg_sans_irm")
+    run_everything(dicoms_list=dicoms_list, big_output_directory="patate")
 
 
 

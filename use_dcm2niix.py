@@ -17,7 +17,7 @@ command = [
     "python",
     "-m", "dcm2niix",
     "-z", "y",
-    "-f", "%p_%t_%s",
+    "-f", "%p_%s",
     "-o", "dicoms_niftis",
     "DICOM_003/Carotid_Angio_0.625mm"
 ]

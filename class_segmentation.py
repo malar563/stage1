@@ -5,6 +5,7 @@ from totalsegmentator.python_api import totalsegmentator
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import subprocess
 
 
 class Segmentation:
@@ -198,8 +199,16 @@ class Segmentation:
         # Create the output_directory file
         os.makedirs(self.nifti_output_directory, exist_ok=True)
 
-        # Convert DICOM to NIfTI (compression=False -> .nii instead of .nii.gz)
-        dicom2nifti.convert_directory(self.dcm_path, self.nifti_output_directory, compression=True)
+        # # Convert DICOM to NIfTI (compression=False -> .nii instead of .nii.gz)
+        command = [
+            "python",
+            "-m", "dcm2niix",
+            "-z", "y",
+            "-f", "%p_%s",
+            "-o", self.nifti_output_directory,
+            self.dcm_path]
+
+        convert = subprocess.run(command, capture_output=True, text=True) # run avec : pas d'écritures
 
         # Find the generated file in the output folder
         nifti_files = [f for f in os.listdir(self.nifti_output_directory) if f.endswith('.nii.gz')]
@@ -451,16 +460,16 @@ class Segmentation:
             Brain is labeled with the number 90
             Skull is labeled with the number 91
         """
-        if __name__ == "__main__":
-            input_img = nib.load(self.nii_path)
-            if only_brain:
-                output_img = totalsegmentator(input_img, fast=fast, roi_subset=["brain"])
-            else:
-                output_img = totalsegmentator(input_img, fast=fast)
-            print("Segmentation with TotalSegmentator has been completed")
-            output_path = os.path.join(self.nifti_output_directory, "totalsegmentator"+self.file_number+".nii.gz")
-            nib.save(output_img, output_path)
-            print(f"NIfTI generated : {output_path}.nii.gz")
+        
+        input_img = nib.load(self.nii_path)
+        if only_brain:
+            output_img = totalsegmentator(input_img, fast=fast, roi_subset=["brain"])
+        else:
+            output_img = totalsegmentator(input_img, fast=fast)
+        print("Segmentation with TotalSegmentator has been completed")
+        output_path = os.path.join(self.nifti_output_directory, "totalsegmentator"+self.file_number+".nii.gz")
+        nib.save(output_img, output_path)
+        print(f"NIfTI generated : {output_path}.nii.gz")
 
 
     def arteries_and_totalsegmentator_mask(self):
