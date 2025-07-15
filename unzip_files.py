@@ -12,3 +12,4 @@ for i, zip_file in enumerate(zip_files):
     zip_file = os.path.join(zip_directory, zip_file)
     with zipfile.ZipFile(zip_file, 'r') as zip_ref:
         zip_ref.extractall(output_directory)
+        os.remove(zip_file)

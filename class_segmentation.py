@@ -102,9 +102,9 @@ class Segmentation:
         # Check whether the specified path exists or not
         exist = os.path.exists(self.nifti_output_directory)
         if not exist:
-                # If no file is found, generating one from the specified DICOM folder
-                print("No NIfTI file found. Processing the specified DICOM folder...")
-                self.dcm_to_nii(crop)
+            # If no file is found, generating one from the specified DICOM folder
+            print("No NIfTI file found. Processing the specified DICOM folder...")
+            self.dcm_to_nii(crop)
         else:
             # Listing NIfTI files in the folder
             nii_files = [f for f in os.listdir(self.nifti_output_directory) if f.endswith(".nii") or f.endswith(".nii.gz")]
