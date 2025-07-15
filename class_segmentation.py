@@ -92,7 +92,7 @@ class Segmentation:
             - In this class, when displaying an array, the index order is (Y, X, Z)
             - According to Nibabel, reorient automatically the image in RAS+ coordinates    
         """
-
+        
         self.dcm_path = dcm_path # Path to the DICOM directory.
         self.big_output_directory = big_output_directory # Path to the top-level directory for storing outputs.
         self.file_number = str(file_number) # String version of the file number used in folder naming.
@@ -132,7 +132,7 @@ class Segmentation:
         self.resolution = self.img.header["pixdim"][1:4]
         self.dimension = self.img.shape
         self.save_to_csv()
-
+        
 
     def save_to_csv(self):
         """
@@ -150,7 +150,7 @@ class Segmentation:
         - Axes are reordered to (x, y, z) for readability and consistency.
         """
         csv_path = os.path.join(self.nifti_output_directory, f"points{self.file_number}.csv")
-        data = [["","x", "y", "z"],
+        data = [[self.dcm_path,"x", "y", "z"],
                 ["Dimensions", self.dimension[1], self.dimension[0], self.dimension[2]],
                 ["Dimensions not cropped", "-", "-", "-"],
                 ["Resolution (mm)", self.resolution[1], self.resolution[0], self.resolution[2]],
@@ -208,7 +208,7 @@ class Segmentation:
             "-o", self.nifti_output_directory,
             self.dcm_path]
 
-        convert = subprocess.run(command, capture_output=True, text=True) # run avec : pas d'écritures
+        convert = subprocess.run(command) # , capture_output=True, text=True run avec : pas d'écritures
 
         # Find the generated file in the output folder
         nifti_files = [f for f in os.listdir(self.nifti_output_directory) if f.endswith('.nii.gz')]
@@ -460,12 +460,16 @@ class Segmentation:
             Brain is labeled with the number 90
             Skull is labeled with the number 91
         """
-        
+        import torch
+
+        device = "gpu" if torch.cuda.is_available() else "cpu"
+        print(f"Running on device: {device}")
+
         input_img = nib.load(self.nii_path)
         if only_brain:
-            output_img = totalsegmentator(input_img, fast=fast, roi_subset=["brain"])
+            output_img = totalsegmentator(input_img, fast=fast, roi_subset=["brain"], device=device)
         else:
-            output_img = totalsegmentator(input_img, fast=fast)
+            output_img = totalsegmentator(input_img, fast=fast, device=device)
         print("Segmentation with TotalSegmentator has been completed")
         output_path = os.path.join(self.nifti_output_directory, "totalsegmentator"+self.file_number+".nii.gz")
         nib.save(output_img, output_path)
