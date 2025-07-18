@@ -155,11 +155,18 @@ if __name__ == "__main__":
 
     from automatically_get_dicom_folders import create_list
 
-    # dicoms_list = ["ct_enligne/1", "ct_enligne/2"]
-    dicoms_list = create_list(directory="50_CQ")
-    print(dicoms_list, len(dicoms_list))
+    dicoms_list = [r"50_CQ\CQ500CT0 CQ500CT0\Unknown Study\CT PLAIN THIN", r"50_CQ\CQ500CT2 CQ500CT2\Unknown Study\CT 0.625mm", r"50_CQ\CQ500CT3 CQ500CT3\Unknown Study\CT PLAIN THIN",
+                   r"50_CQ\CQ500CT4 CQ500CT4\Unknown Study\CT 0.625mm", r"50_CQ\CQ500CT6 CQ500CT6\Unknown Study\CT Thin Details", r"50_CQ\CQ500CT10 CQ500CT10\Unknown Study\CT PLAIN THIN",
+                    r"50_CQ\CQ500CT17 CQ500CT17\Unknown Study\CT 0.625mm", r"50_CQ\CQ500CT18 CQ500CT18\Unknown Study\CT 0.625mm", r"50_CQ\CQ500CT22 CQ500CT22\Unknown Study\CT PLAIN THIN",
+                    r"50_CQ\CQ500CT26 CQ500CT26\Unknown Study\CT C THIN", r"50_CQ\CQ500CT32 CQ500CT32\Unknown Study\CT 0.625mm", r"50_CQ\CQ500CT40 CQ500CT40\Unknown Study\CT 0.625mm",
+                    r"50_CQ\CQ500CT48 CQ500CT48\Unknown Study\CT PLAIN THIN", r"50_CQ\CQ500CT50 CQ500CT50\Unknown Study\CT 0.625mm"]
+    # dicoms_list = [r"50_CQ\CQ500CT48 CQ500CT48\Unknown Study\CT_decrompresse"]
+    # dicoms_list = [r"50_CQ\CQ500CT47 CQ500CT47\Unknown Study\CT PRE CONTRAST THIN"]
+    # dicoms_list = [r"50_CQ\CQ500CT26 CQ500CT26\Unknown Study\CT PLAIN THIN"]
+    # dicoms_list = create_list(directory="50_CQ")
+    # print(dicoms_list, len(dicoms_list))
 
-    run_everything(dicoms_list=dicoms_list, big_output_directory="50_p_2025-07-15")
+    run_everything(dicoms_list=dicoms_list, big_output_directory="50_2025-07-17")
 
 
 

@@ -488,10 +488,21 @@ class Identification:
         self.fill_cavities()
 
         reg_nas_z, reg_nas_x, reg_nas_y = self.registered_nasion
+        
+        # Limits to avoid a too big window
+        z_min, z_max = 0, self.filled_head.shape[0]
+        x_min, x_max = 0, self.filled_head.shape[1]
+        y_min, y_max = 0, self.filled_head.shape[2]
 
-        ROI_nas = self.filled_head[reg_nas_z-window:reg_nas_z+window,
-                                   reg_nas_x-window:reg_nas_x+window,
-                                   reg_nas_y-window:reg_nas_y+window]
+        # Secure slicing
+        z_start = max(z_min, reg_nas_z - window)
+        z_end   = min(z_max, reg_nas_z + window)
+        x_start = max(x_min, reg_nas_x - window)
+        x_end   = min(x_max, reg_nas_x + window)
+        y_start = max(y_min, reg_nas_y - window)
+        y_end   = min(y_max, reg_nas_y + window)
+
+        ROI_nas = self.filled_head[z_start:z_end, x_start:x_end, y_start:y_end]
         # Sum up one values of the binary mask on the x axis (3D array -> 2D array)
         counts_x = np.sum(ROI_nas, axis = 1) # axis=2 sums in y, axis=0 sums in z
 

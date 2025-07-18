@@ -168,7 +168,7 @@ class Segmentation:
             df.to_csv(csv_path, index=False)             
 
 
-    def dcm_to_nii(self, crop="yes"):
+    def dcm_to_nii(self, crop=True, size_head=250):
         """
         Convert a DICOM series to a NIfTI file and optionally crop it along the z-axis.
 
@@ -218,17 +218,19 @@ class Segmentation:
 
         self.nii_path = nifti_path
 
-        if crop is not None:
+        if crop:
             # Load the image with nibabel
             self.not_cropped_nii_path = nifti_path
             nifti_image = nib.load(nifti_path)
+            top_head_bottom_node_distance = 0.75*size_head
 
             # Crop the image depending on the resolution 
             pix_dim, pix_z = nifti_image.header["pixdim"][1:4], nifti_image.header["pixdim"][3]
-            if pix_z >= 0.6:
-                cropped_data = nifti_image.get_fdata()[:,:,-256:]
-            else:
-                cropped_data = nifti_image.get_fdata()[:,:,-512:]
+            cropped_data = nifti_image.get_fdata()[:,:,-1*int(top_head_bottom_node_distance/pix_z):]
+            # if pix_z >= 0.6:
+            #     cropped_data = nifti_image.get_fdata()[:,:,-256:]
+            # else:
+            #     cropped_data = nifti_image.get_fdata()[:,:,-512:]
 
             # Create a new NIfTI image
             cropped_image = nib.Nifti1Image(cropped_data, nifti_image.affine, nifti_image.header)

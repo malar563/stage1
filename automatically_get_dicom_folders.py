@@ -118,10 +118,11 @@ def create_list(directory="50_CQ", green_flags = ["thin"], red_flags=["bone", "b
     all_dcm_folders = find_dcm_folders(directory=directory)
     for i, dcm_folders in enumerate(all_dcm_folders):
         final_folders.append(conservation_criteria(dcm_folders=dcm_folders, green_flags=green_flags, red_flags=red_flags))
+    # final_folders.sort(key=lambda x: int(x.split('\\')[1]))
     return final_folders
 
-# dcm_list = create_list()
-# print(dcm_list, len(dcm_list))
+dcm_list = create_list()
+print(dcm_list, len(dcm_list))
                 
 
 
