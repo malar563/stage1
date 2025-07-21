@@ -104,7 +104,7 @@ class Segmentation:
         if not exist:
             # If no file is found, generating one from the specified DICOM folder
             print("No NIfTI file found. Processing the specified DICOM folder...")
-            self.dcm_to_nii(crop)
+            self.dcm_to_nii(crop=True)
         else:
             # Listing NIfTI files in the folder
             nii_files = [f for f in os.listdir(self.nifti_output_directory) if f.endswith(".nii") or f.endswith(".nii.gz")]
@@ -131,7 +131,9 @@ class Segmentation:
         self.array = self.img.get_fdata()
         self.resolution = self.img.header["pixdim"][1:4]
         self.dimension = self.img.shape
+        print("avant le save")
         self.save_to_csv()
+        print("process dans l'init")
         
 
     def save_to_csv(self):
@@ -150,6 +152,12 @@ class Segmentation:
         - Axes are reordered to (x, y, z) for readability and consistency.
         """
         csv_path = os.path.join(self.nifti_output_directory, f"points{self.file_number}.csv")
+
+        print("çamarchetu savecsv")
+        nii_files = [f for f in os.listdir(self.nifti_output_directory) if f.endswith(f"points{self.file_number}.csv")]
+        print(nii_files)
+        if nii_files:
+            os.remove(csv_path)
         data = [[self.dcm_path,"x", "y", "z"],
                 ["Dimensions", self.dimension[1], self.dimension[0], self.dimension[2]],
                 ["Dimensions not cropped", "-", "-", "-"],
@@ -226,7 +234,12 @@ class Segmentation:
 
             # Crop the image depending on the resolution 
             pix_dim, pix_z = nifti_image.header["pixdim"][1:4], nifti_image.header["pixdim"][3]
-            cropped_data = nifti_image.get_fdata()[:,:,-1*int(top_head_bottom_node_distance/pix_z):]
+            # cropped_data = nifti_image.get_fdata()[:,:,-1*int(top_head_bottom_node_distance/pix_z):]
+            n_slices = nifti_image.shape[2]
+            crop_start = max(0, n_slices - int(top_head_bottom_node_distance / pix_z))
+            cropped_data = nifti_image.get_fdata()[:, :, crop_start:]
+
+
             # if pix_z >= 0.6:
             #     cropped_data = nifti_image.get_fdata()[:,:,-256:]
             # else:
