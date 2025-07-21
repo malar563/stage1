@@ -113,7 +113,7 @@ def create_list(directory="dicom_dataset", green_flags = ["thin"], red_flags=["b
     return final_folders
 
             
-
+# ---------- USER SECTION: Only modify parameters below this line ----------
 if __name__ == "__main__":
     dicoms_list = create_list(directory="50_CQ")
     print(dicoms_list)

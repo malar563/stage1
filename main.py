@@ -13,7 +13,7 @@ def run_everything(dicoms_list, big_output_directory="cava", verbose=True):
             start = time.time()
 
             ct = Segmentation(dcm_path=dicom, big_output_directory=big_output_directory, file_number=i)
-            print("process dans main")
+            
             ct.apply_threshold()
             if verbose:
                 print("Thresholds applied")
@@ -155,9 +155,13 @@ def run_everything(dicoms_list, big_output_directory="cava", verbose=True):
                     file.write(f"{dicom} : {e}\n")                
 
 
+# ---------- USER SECTION: Only modify parameters below this line ----------
 if __name__ == "__main__":
 
-    from automatically_get_dicom_folders import create_list
+    # from automatically_get_dicom_folders import create_list
+    # dicoms_list = create_list(directory="50_CQ")
+    # print(dicoms_list, len(dicoms_list))
+
 
     # dicoms_list = [r"50_CQ\CQ500CT0 CQ500CT0\Unknown Study\CT PLAIN THIN", r"50_CQ\CQ500CT2 CQ500CT2\Unknown Study\CT 0.625mm", r"50_CQ\CQ500CT3 CQ500CT3\Unknown Study\CT PLAIN THIN",
     #                r"50_CQ\CQ500CT4 CQ500CT4\Unknown Study\CT 0.625mm", r"50_CQ\CQ500CT6 CQ500CT6\Unknown Study\CT Thin Details", r"50_CQ\CQ500CT10 CQ500CT10\Unknown Study\CT PLAIN THIN",
@@ -165,8 +169,6 @@ if __name__ == "__main__":
     #                 r"50_CQ\CQ500CT26 CQ500CT26\Unknown Study\CT C THIN", r"50_CQ\CQ500CT32 CQ500CT32\Unknown Study\CT 0.625mm", r"50_CQ\CQ500CT40 CQ500CT40\Unknown Study\CT 0.625mm",
     #                 r"50_CQ\CQ500CT48 CQ500CT48\Unknown Study\CT PLAIN THIN", r"50_CQ\CQ500CT50 CQ500CT50\Unknown Study\CT 0.625mm"]
 
-    # dicoms_list = create_list(directory="50_CQ")
-    # print(dicoms_list, len(dicoms_list))
 
     dicoms_list = ["150_CQ/CQ500CT55 CQ500CT55/Unknown Study/CT 5mm", "150_CQ/CQ500CT57 CQ500CT57/Unknown Study/CT 0.625mm",
                    "150_CQ/CQ500CT60 CQ500CT60/Unknown Study/CT 0.625mm", "150_CQ/CQ500CT66 CQ500CT66/Unknown Study/CT PLAIN THIN",

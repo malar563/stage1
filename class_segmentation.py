@@ -131,9 +131,7 @@ class Segmentation:
         self.array = self.img.get_fdata()
         self.resolution = self.img.header["pixdim"][1:4]
         self.dimension = self.img.shape
-        print("avant le save")
         self.save_to_csv()
-        print("process dans l'init")
         
 
     def save_to_csv(self):
@@ -153,11 +151,10 @@ class Segmentation:
         """
         csv_path = os.path.join(self.nifti_output_directory, f"points{self.file_number}.csv")
 
-        print("çamarchetu savecsv")
-        nii_files = [f for f in os.listdir(self.nifti_output_directory) if f.endswith(f"points{self.file_number}.csv")]
-        print(nii_files)
-        if nii_files:
+        points_csv_file = [f for f in os.listdir(self.nifti_output_directory) if f.endswith(f"points{self.file_number}.csv")]
+        if points_csv_file:
             os.remove(csv_path)
+
         data = [[self.dcm_path,"x", "y", "z"],
                 ["Dimensions", self.dimension[1], self.dimension[0], self.dimension[2]],
                 ["Dimensions not cropped", "-", "-", "-"],

@@ -36,6 +36,7 @@ def unzip(zip_directory, output_directory, delete_zip=False):
             print(f"NOT CONVERTED : {zip_file} (Error: {e})")
 
 
+# ---------- USER SECTION: Only modify parameters below this line ----------
 if __name__ == "__main__":
     # # Examples of path
 
@@ -46,7 +47,7 @@ if __name__ == "__main__":
     # output_directory = "de_150_CQ"
 
     # # Note : zip_directory and output_directory can be identical or different
-    unzip(zip_directory = "dezip_test", output_directory = "fait_dezip_test", delete_zip=True)
+    unzip(zip_directory = "dezip_test", output_directory = "fait_dezip_test", delete_zip=False)
             
 
 
