@@ -11,7 +11,7 @@ import subprocess
 class Segmentation:
     """Processing DICOM files, segmenting the head and storing various image masks."""
     
-    def __init__(self, dcm_path="DICOM_010/COW_Angio_0.6_Hv36_3", big_output_directory="processed_files", file_number=0, crop="yes"):
+    def __init__(self, dcm_path="DICOM_010/COW_Angio_0.6_Hv36_3", big_output_directory="processed_files", file_number=0, crop=True):
         """
         Initializes the Segmentation object by locating or generating a NIfTI file
         from a DICOM folder, and setting up paths and key image attributes.
@@ -104,7 +104,7 @@ class Segmentation:
         if not exist:
             # If no file is found, generating one from the specified DICOM folder
             print("No NIfTI file found. Processing the specified DICOM folder...")
-            self.dcm_to_nii(crop=True)
+            self.dcm_to_nii(crop=crop)
         else:
             # Listing NIfTI files in the folder
             nii_files = [f for f in os.listdir(self.nifti_output_directory) if f.endswith(".nii") or f.endswith(".nii.gz")]
@@ -204,7 +204,7 @@ class Segmentation:
         # Create the output_directory file
         os.makedirs(self.nifti_output_directory, exist_ok=True)
 
-        # # Convert DICOM to NIfTI (compression=False -> .nii instead of .nii.gz)
+        # # Convert DICOM to NIfTI
         command = [
             "python",
             "-m", "dcm2niix",
@@ -213,7 +213,7 @@ class Segmentation:
             "-o", self.nifti_output_directory,
             self.dcm_path]
 
-        convert = subprocess.run(command) # , capture_output=True, text=True run avec : pas d'écritures
+        convert = subprocess.run(command) 
 
         # Find the generated file in the output folder
         nifti_files = [f for f in os.listdir(self.nifti_output_directory) if f.endswith('.nii.gz')]
@@ -231,11 +231,9 @@ class Segmentation:
 
             # Crop the image depending on the resolution 
             pix_dim, pix_z = nifti_image.header["pixdim"][1:4], nifti_image.header["pixdim"][3]
-            # cropped_data = nifti_image.get_fdata()[:,:,-1*int(top_head_bottom_node_distance/pix_z):]
             n_slices = nifti_image.shape[2]
             crop_start = max(0, n_slices - int(top_head_bottom_node_distance / pix_z))
             cropped_data = nifti_image.get_fdata()[:, :, crop_start:]
-
 
             # if pix_z >= 0.6:
             #     cropped_data = nifti_image.get_fdata()[:,:,-256:]

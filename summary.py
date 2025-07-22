@@ -83,9 +83,13 @@ def create_summary(csv_paths, output_dir):
         print(df.iloc[1,0])
         big_dict_csv["dcm path"] = df.iloc[1, 0]
 
-        # Processing time (row 23)
-        processing_time = clean_value(df.iloc[23, 1]) if len(df) > 23 and len(df.columns) > 2 else None
-        big_dict_csv["processing time"] = processing_time
+        # Processing time (row 22-23-24)
+        segm_processing_time = clean_value(df.iloc[22, 1]) if len(df) > 22 and len(df.columns) > 2 else None
+        big_dict_csv["segmentation processing time"] = segm_processing_time
+        ct_processing_time = clean_value(df.iloc[23, 1]) if len(df) > 23 and len(df.columns) > 2 else None
+        big_dict_csv["CT processing time"] = ct_processing_time
+        mri_processing_time = clean_value(df.iloc[24, 1]) if len(df) > 24 and len(df.columns) > 2 else None
+        big_dict_csv["MRI processing time"] = mri_processing_time
 
         # Resolution (row 3)
         res_x, res_y, res_z = (None, None, None)
@@ -147,9 +151,12 @@ def create_summary(csv_paths, output_dir):
 
 # ---------- USER SECTION: Only modify parameters below this line ----------
 if __name__ == "__main__":
-    # Create a folder list
-    directory = "50_2025-07-17" 
+    # Path of the processing directory (to change)
+    directory = "150_2025-07-21" 
+    # Create a folder list to get points{...}.csv
     csv_paths = create_list(directory=directory)
     csv_paths.sort(key=lambda x: int(x.split('\\')[-1]))
+    print(csv_paths)
 
+    # Create summary.csv
     create_summary(csv_paths=csv_paths, output_dir=directory)

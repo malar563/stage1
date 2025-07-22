@@ -4,9 +4,7 @@ from class_segmentation import Segmentation
 from class_identification import Identification
 
 
-                
-
-def run_everything(dicoms_list, big_output_directory="cava", verbose=True):
+def run_everything(dicoms_list, big_output_directory="processed_files", verbose=True, read=False, register_with_MRI=True, register_with_CT=False):
 
     for i, dicom in enumerate(dicoms_list):
         try:
@@ -21,8 +19,7 @@ def run_everything(dicoms_list, big_output_directory="cava", verbose=True):
             ct.keep_largest_island()
             if verbose:
                 print("Kept largest island")
-
-            # ct.show_3D_array(ct.skull, axis=2) 
+ 
             ct.fill_holes()
             if verbose:
                 print("Holes filled")
@@ -30,8 +27,8 @@ def run_everything(dicoms_list, big_output_directory="cava", verbose=True):
             ct.remove_arteries()
             if verbose:
                 print("Distance arteries removed")
-            # Totalsegmentator
-            ct.segment_brain()
+            
+            ct.segment_brain() # Totalsegmentator
             if verbose:
                 print("Head segmented (TotalSegmentator)")
 
@@ -45,105 +42,100 @@ def run_everything(dicoms_list, big_output_directory="cava", verbose=True):
 
             segmentation_processing_time = time.time()-start
 
-            # # ct.show_3D_array(ct.skull, axis=2) # En z
-            # # ct.show_3D_array(ct.head, axis=0, pt=(50,42), pt_slice = 100)
-
+            # ct.show_3D_array(ct.skull, axis=2) # z-axis
 
             # --------------------------------------------------------------------------------------------------
             # --------------------------------------------------------------------------------------------------
             # --------------------------------------------------------------------------------------------------
             # --------------------------------------------------------------------------------------------------
+            # Registration with a CT scan not normalized
 
-            id = Identification(big_output_directory=big_output_directory, file_number=i, fixed_img_path="head1.nii.gz", register_with_CT_not_normalized=True)#"head1.nii.gz""cropped_605_sag_1mm.nii.gz" 'icbm_avg_152_t1_tal_lin.nii'
-            # id = Identification(big_output_directory=big_output_directory, file_number=i, fixed_img_path='icbm_avg_152_t1_tal_lin.nii', register_with_CT_not_normalized=False)
+            if register_with_CT:
+                id = Identification(big_output_directory=big_output_directory, file_number=i, fixed_img_path="head1.nii.gz", register_with_CT_not_normalized=True)
 
-            id.register(show=False)
-            if verbose:
-                print("Registration done")
+                if not read:
+                    id.register(show=False)
+                    if verbose:
+                        print("Registration done")
 
-            # id.read_transforms()
-            # if verbose:
-            #     print("Transforms loaded")
+                if read:
+                    id.read_transforms()
+                    if verbose:
+                        print("Transforms loaded")
 
-            id.find_registered_lpa_rpa_nasion()
-            if verbose:
-                print("Registered LPA, RPA, and Nasion located")
-            print("registered_rpa :", id.registered_rpa)
-            print("registered_rpa :", id.registered_lpa)
-            # id.show_3D_array(id.head, axis=2, pts=[((id.registered_rpa[1], id.registered_rpa[0]),id.registered_rpa[2], "red"), ((id.registered_lpa[1], id.registered_lpa[0]),id.registered_lpa[2], "green")])
+                id.find_registered_lpa_rpa_nasion()
+                if verbose:
+                    print("Registered LPA, RPA, and Nasion located")
+                # id.show_3D_array(id.head, axis=2, pts=[((id.registered_rpa[1], id.registered_rpa[0]),id.registered_rpa[2], "red"), ((id.registered_lpa[1], id.registered_lpa[0]),id.registered_lpa[2], "green")])
 
-            id.find_nasion()
-            if verbose:
-                print("Nasion refined")
-            id.check_nasion()
+                id.find_nasion()
+                if verbose:
+                    print("Nasion refined")
+                id.check_nasion()
 
-            id.improve_lpa_rpa()
-            if verbose:
-                print("LPA and RPA refined")
+                id.improve_lpa_rpa()
+                if verbose:
+                    print("LPA and RPA refined")
+                # id.show_3D_array(id.head, axis=2, pts=[((id.rpa[1], id.rpa[0]),id.rpa[2], "red"), ((id.registered_rpa[1], id.registered_rpa[0]),id.registered_rpa[2], "green"), ((id.lpa[1], id.lpa[0]),id.lpa[2], "blue"), ((id.registered_lpa[1], id.registered_lpa[0]),id.registered_lpa[2], "green")])
+                
+                id.save_pts_to_csv()
 
-            print("rpa :", id.rpa)
-            print("lpa :", id.lpa)
-            print("registered_rpa :", id.registered_rpa)
-            print("registered_rpa :", id.registered_lpa)
-            # id.show_3D_array(id.head, axis=2, pts=[((id.rpa[1], id.rpa[0]),id.rpa[2], "red"), ((id.registered_rpa[1], id.registered_rpa[0]),id.registered_rpa[2], "green"), ((id.lpa[1], id.lpa[0]),id.lpa[2], "blue"), ((id.registered_lpa[1], id.registered_lpa[0]),id.registered_lpa[2], "green")])
-            
-            id.save_pts_to_csv()
+                print(f"Time to segment file {ct.nii_path} : {time.time() - start} seconds")
 
-            print(f"Time to segment file {ct.nii_path} : {time.time() - start} seconds")
+                with open(os.path.join(id.nifti_output_directory, "points"+id.file_number+".csv"),'a') as fd:
+                    id_ct_processing_time = f"CT processing time (seconds), {time.time()-start}, for file, {ct.nii_path}"
+                    fd.write(id_ct_processing_time)
+
+            # --------------------------------------------------------------------------------------------------
+            # --------------------------------------------------------------------------------------------------
+            # --------------------------------------------------------------------------------------------------
+            # --------------------------------------------------------------------------------------------------
+            # Registration with an MRI normalized scan
+
+            if register_with_MRI:
+                id = Identification(big_output_directory=big_output_directory, file_number=i, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
+
+                if not read:
+                    id.register(show=False)
+                    if verbose:
+                        print("Registration done")
+
+                if read:
+                    id.read_transforms()
+                    if verbose:
+                        print("Transforms loaded")
+
+                id.find_registered_lpa_rpa_nasion()
+                if verbose:
+                    print("Registered LPA, RPA, and Nasion located")
+                # id.show_3D_array(id.head, axis=2, pts=[((id.registered_rpa[1], id.registered_rpa[0]),id.registered_rpa[2], "red"), ((id.registered_lpa[1], id.registered_lpa[0]),id.registered_lpa[2], "green")])
+
+                id.find_nasion()
+                if verbose:
+                    print("Nasion refined")
+                # id.check_nasion()
+
+                id.improve_lpa_rpa()
+                if verbose:
+                    print("LPA and RPA refined")
+                # id.show_3D_array(id.head, axis=2, pts=[((id.rpa[1], id.rpa[0]),id.rpa[2], "red"), ((id.registered_rpa[1], id.registered_rpa[0]),id.registered_rpa[2], "green"), ((id.lpa[1], id.lpa[0]),id.lpa[2], "blue"), ((id.registered_lpa[1], id.registered_lpa[0]),id.registered_lpa[2], "green")])
+                
+                id.save_pts_to_csv()
+
+                print(f"Time to segment file {ct.nii_path} : {time.time() - start} seconds")
+
+                with open(os.path.join(id.nifti_output_directory, "points"+id.file_number+".csv"),'a') as fd:
+                    mri_processing_time = f"MRI processing time (seconds), {time.time()-start}, for file, {ct.nii_path}"
+                    fd.write(mri_processing_time)
+
+            # --------------------------------------------------------------------------------------------------
+            # --------------------------------------------------------------------------------------------------
+            # --------------------------------------------------------------------------------------------------
+            # --------------------------------------------------------------------------------------------------
 
             with open(os.path.join(id.nifti_output_directory, "points"+id.file_number+".csv"),'a') as fd:
-                segmentation_processing_time = f"Segmentation processing time (seconds), {segmentation_processing_time}, for file, {ct.nii_path}\n"
-                id_ct_processing_time = f"CT processing time (seconds), {time.time()-start}, for file, {ct.nii_path}"
-                fd.write(segmentation_processing_time+id_ct_processing_time) # CHECKER SI ÇA MARCHE BIEN
-                # fd.write(id_ct_processing_time)
-
-
-            # --------------------------------------------------------------------------------------------------
-            # --------------------------------------------------------------------------------------------------
-            # --------------------------------------------------------------------------------------------------
-            # --------------------------------------------------------------------------------------------------
-
-            # id = Identification(big_output_directory=big_output_directory, file_number=i, fixed_img_path="head1.nii.gz", register_with_CT_not_normalized=True)#"head1.nii.gz""cropped_605_sag_1mm.nii.gz" 'icbm_avg_152_t1_tal_lin.nii'
-            id = Identification(big_output_directory=big_output_directory, file_number=i, fixed_img_path='icbm_avg_152_t1_tal_lin.nii', register_with_CT_not_normalized=False)
-
-            id.register(show=False)
-            if verbose:
-                print("Registration done")
-
-            # id.read_transforms()
-            # if verbose:
-            #     print("Transforms loaded")
-
-            id.find_registered_lpa_rpa_nasion()
-            if verbose:
-                print("Registered LPA, RPA, and Nasion located")
-            print("registered_rpa :", id.registered_rpa)
-            print("registered_rpa :", id.registered_lpa)
-            # id.show_3D_array(id.head, axis=2, pts=[((id.registered_rpa[1], id.registered_rpa[0]),id.registered_rpa[2], "red"), ((id.registered_lpa[1], id.registered_lpa[0]),id.registered_lpa[2], "green")])
-
-            id.find_nasion()
-            if verbose:
-                print("Nasion refined")
-            id.check_nasion()
-
-            id.improve_lpa_rpa()
-            if verbose:
-                print("LPA and RPA refined")
-
-            print("rpa :", id.rpa)
-            print("lpa :", id.lpa)
-            print("registered_rpa :", id.registered_rpa)
-            print("registered_rpa :", id.registered_lpa)
-            # id.show_3D_array(id.head, axis=2, pts=[((id.rpa[1], id.rpa[0]),id.rpa[2], "red"), ((id.registered_rpa[1], id.registered_rpa[0]),id.registered_rpa[2], "green"), ((id.lpa[1], id.lpa[0]),id.lpa[2], "blue"), ((id.registered_lpa[1], id.registered_lpa[0]),id.registered_lpa[2], "green")])
-            
-            id.save_pts_to_csv()
-
-            print(f"Time to segment file {ct.nii_path} : {time.time() - start} seconds")
-
-            with open(os.path.join(id.nifti_output_directory, "points"+id.file_number+".csv"),'a') as fd:
-                mri_processing_time = f"MRI processing time (seconds), {time.time()-start}, for file, {ct.nii_path}"
-                fd.write(mri_processing_time)
-
+                segmentation_processing_time = f"Segmentation processing time (seconds), {segmentation_processing_time}, for file, {ct.nii_path}"
+                fd.write(segmentation_processing_time+id_ct_processing_time)
 
 
         except Exception as e:
@@ -155,10 +147,11 @@ def run_everything(dicoms_list, big_output_directory="cava", verbose=True):
                     file.write(f"{dicom} : {e}\n")                
 
 
+
 # ---------- USER SECTION: Only modify parameters below this line ----------
 if __name__ == "__main__":
 
-    # from automatically_get_dicom_folders import create_list
+    from automatically_get_dicom_folders import create_list
     # dicoms_list = create_list(directory="50_CQ")
     # print(dicoms_list, len(dicoms_list))
 
@@ -184,27 +177,7 @@ if __name__ == "__main__":
                    "150_CQ/CQ500CT135 CQ500CT135/Unknown Study/CT PLAIN THIN", "150_CQ/CQ500CT140 CQ500CT140/Unknown Study/CT PLAIN THIN",
                    "150_CQ/CQ500CT149 CQ500CT149/Unknown Study/CT 0.625mm"]
 
-    run_everything(dicoms_list=dicoms_list, big_output_directory="150_2025-07-21")
-
-
-
-
-
-
-
-    # start = time.time()
-    # ct = Segmentation(dcm_path="online_patient/2.16.840.1.114274.1818.56920369040074765021783555636978216368", big_output_directory="online", file_number=2)
-    # ct.apply_threshold()       
-    # ct.keep_largest_island()
-    # ct.fill_holes()
-    # ct.remove_arteries()
-
-    # # Totalsegmentator
-    # # ct.segment_brain()
-    # ct.arteries_and_totalsegmentator_mask()
-    # ct.mask_to_nii()
-
-    # print(f"Time to segment file {ct.nii_path} : {time.time() - start} seconds")
+    run_everything(dicoms_list=dicoms_list, big_output_directory="150_2025-07-21", verbose=True, read=False, register_with_MRI=True, register_with_CT=True)
 
 
 
