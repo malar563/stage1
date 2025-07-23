@@ -64,7 +64,7 @@ if show_landmarks:
     id.show_3D_array(head, axis=2, pts=[ ((lpa[0],lpa[1]),lpa[2],"blue"),  ((rpa[0],rpa[1]),rpa[2],"red"), ((nas[0],nas[1]),nas[2],"green")])
 
 if show_file:
-    # Comment the name to keep what you want to see
+    # Show a specific file
     img = nib.load(os.path.join(id.nifti_output_directory, nifti_img_name+".nii.gz"))
     img = img.get_fdata()
     id.show_3D_array(img, axis=axis)
