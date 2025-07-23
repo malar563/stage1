@@ -30,6 +30,10 @@ def load_landmarks_from_csv(csv_path):
 big_output_directory = "cava" # Folder with NIfTI and CSV files
 file_number = 1 # Number of the case to visualize
 
+# Show landmarks in normal CT space (to be transformed in patient space)
+show_CT_normalized_space = True
+path_CT_not_normalized = 'head1.nii.gz'
+
 show_landmarks = True # To see the landmarks
 # Choose which landmarks to display (can be CT or MRI, reg or imp)
 reg_with = "CT" # "CT" or "MRI"
@@ -43,6 +47,9 @@ axis = 2 # 0:y-axis, 1:x-axis, 2:z-axis
 
 # ---------------- END OF USER SETTINGS ---------------- #
 
+# Initialize an instance of the class
+if show_CT_normalized_space:
+    id = Identification(big_output_directory=big_output_directory, file_number=file_number, fixed_img_path=path_CT_not_normalized, register_with_CT_not_normalized=True)
 
 # Initialize an instance of the class
 id = Identification(big_output_directory=big_output_directory, file_number=file_number, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
