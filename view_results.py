@@ -36,15 +36,15 @@ reg_with = "CT" # "CT" or "MRI"
 landmarks_type = "reg" # "reg" or "imp"
 
 show_file = True # To see a specific file
-# Choose which NIfTI image to display (comment/uncomment/change here)
-nifti_img_name = "mask" + str(file_number) # e.g., "mask", "totalsegmentator", "mca_territory"
+# Choose which NIfTI image and axis to display (comment/uncomment/change here)
+nifti_img_name = "mask" + str(file_number) # e.g., "mask", "totalsegmentator", "mca_territory", "head"
 nifti_img_name = "6_cow_angio__06__hv36__3"
-axis = 2 # 0 : y-axis, 1 : x-axis, 2 : z-axis
+axis = 2 # 0:y-axis, 1:x-axis, 2:z-axis
 
 # ---------------- END OF USER SETTINGS ---------------- #
 
 
-# To check the registration and the head
+# Initialize an instance of the class
 id = Identification(big_output_directory=big_output_directory, file_number=file_number, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
 
 # Show head mask

@@ -4,7 +4,7 @@ from class_segmentation import Segmentation
 from class_identification import Identification
 
 
-def run_everything(dicoms_list, big_output_directory="processed_files", verbose=True, read=False, register_with_MRI=True, register_with_CT=False):
+def run_everything(dicoms_list, big_output_directory="processed_files", register_with_MRI=True, register_with_CT=False, read=False, delete_useless_files=False, verbose=True):
 
     for i, dicom in enumerate(dicoms_list):
         try:
@@ -85,6 +85,11 @@ def run_everything(dicoms_list, big_output_directory="processed_files", verbose=
                 with open(os.path.join(id.nifti_output_directory, "points"+id.file_number+".csv"),'a') as fd:
                     id_ct_processing_time = f"CT processing time (seconds), {time.time()-start}, for file, {ct.nii_path}"
                     fd.write(id_ct_processing_time)
+                
+                if delete_useless_files:
+                    id.delete_useless_files()
+                    if verbose:
+                        print("Useless files deleted")
 
             # --------------------------------------------------------------------------------------------------
             # --------------------------------------------------------------------------------------------------
@@ -127,6 +132,11 @@ def run_everything(dicoms_list, big_output_directory="processed_files", verbose=
                 with open(os.path.join(id.nifti_output_directory, "points"+id.file_number+".csv"),'a') as fd:
                     mri_processing_time = f"MRI processing time (seconds), {time.time()-start}, for file, {ct.nii_path}"
                     fd.write(mri_processing_time)
+
+                if delete_useless_files:
+                    id.delete_useless_files()
+                    if verbose:
+                        print("Useless files deleted")
 
             # --------------------------------------------------------------------------------------------------
             # --------------------------------------------------------------------------------------------------
@@ -177,7 +187,7 @@ if __name__ == "__main__":
                    "150_CQ/CQ500CT135 CQ500CT135/Unknown Study/CT PLAIN THIN", "150_CQ/CQ500CT140 CQ500CT140/Unknown Study/CT PLAIN THIN",
                    "150_CQ/CQ500CT149 CQ500CT149/Unknown Study/CT 0.625mm"]
 
-    run_everything(dicoms_list=dicoms_list, big_output_directory="150_2025-07-21", verbose=True, read=False, register_with_MRI=True, register_with_CT=True)
+    run_everything(dicoms_list=dicoms_list, big_output_directory="150_2025-07-21", register_with_MRI=True, register_with_CT=True, read=False, delete_useless_files=False, verbose=True)
 
 
 

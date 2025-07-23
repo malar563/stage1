@@ -98,6 +98,8 @@ class Identification:
         self.fwd_name = "mri_fwd"+self.file_number
         self.inv_name = "mri_inv"+self.file_number
         
+        
+        # ------------------------ USER -----------------------------
         # from cropped_6_cow_angio__06__hv36__3
         if self.register_with_CT_not_normalized:
             # self.show_3D_array(self.moving_img.numpy(), axis=2)
@@ -107,6 +109,9 @@ class Identification:
             self.show_3D_array(self.fixed_img.numpy(), axis=2, pts=[((self.nas_vox_normal_space[1],self.nas_vox_normal_space[0]), self.nas_vox_normal_space[2], "green"),
                                                                     ((self.lpa_vox_normal_space[1],self.lpa_vox_normal_space[0]), self.lpa_vox_normal_space[2], "blue"),
                                                                     ((self.rpa_vox_normal_space[1],self.rpa_vox_normal_space[0]), self.rpa_vox_normal_space[2], "red")])
+            self.show_3D_array(self.fixed_img.numpy(), axis=1, pts=[((self.nas_vox_normal_space[2],self.nas_vox_normal_space[0]), self.nas_vox_normal_space[1], "green"),
+                                                                    ((self.lpa_vox_normal_space[2],self.lpa_vox_normal_space[0]), self.lpa_vox_normal_space[1], "blue"),
+                                                                    ((self.rpa_vox_normal_space[2],self.rpa_vox_normal_space[0]), self.rpa_vox_normal_space[1], "red")])
             self.fwd_name = "ct_fwd"+self.file_number
             self.inv_name = "ct_inv"+self.file_number
 
@@ -120,13 +125,6 @@ class Identification:
                                                                 initial_orient=self.initial_moving_img_orientation, 
                                                                 final_orient=self.orient_for_registration)
         self.head = np.copy(self.filled_head)
-
-        self.nasion=(1,2,3)
-        self.lpa=(4,5,6)
-        self.rpa=(7,8,9)
-        self.registered_nasion=(-1,-2,-3)
-        self.registered_lpa=(-4,-5,-6)
-        self.registered_rpa=(-7,-8,-9)
 
    
     def show_3D_array(self, arr, axis=0, pts=None):
@@ -300,8 +298,7 @@ class Identification:
             return new_point
         
         # Dealing with exeptions
-        else:
-            print("Invalid object")    
+        return None    
 
 
     def register(self, show=False):
@@ -556,9 +553,7 @@ class Identification:
         plt.scatter([self.nasion[1]], [self.nasion[0]], c="r")
         plt.scatter([self.registered_nasion[1]], [self.registered_nasion[0]], c="b")
         plt.show()
-
-
-        
+ 
 
     def find_depth_rpa(self):
         nonzero = np.nonzero(self.filled_head[self.registered_rpa[0],self.registered_rpa[1],:])[0]
@@ -704,14 +699,17 @@ class Identification:
                          os.path.join(self.nifti_output_directory, self.fwd_name+".nii.gz"),
                          os.path.join(self.nifti_output_directory, self.inv_name+".mat"),
                          os.path.join(self.nifti_output_directory, self.inv_name+".nii.gz"),
-                         os.path.join(self.nifti_output_directory, "totalsegmentator"+self.file_number+".nii.gz"),
-                         os.path.join(self.nifti_output_directory, "head"+self.file_number+".nii.gz")]
+                         os.path.join(self.nifti_output_directory, "totalsegmentator"+self.file_number+".nii.gz")
+                        # ,os.path.join(self.nifti_output_directory, "head"+self.file_number+".nii.gz")
+                        ] 
+                        # head is NOT included in the files to delete because without it, it is not be possible to create an instance of the class Identification
+                        # For example, view_results.py won't work.
         
         # Finds if a cropped file exists, and delete the original one in that case
         nii_files = [f for f in os.listdir(self.nifti_output_directory) if f.endswith(".nii") or f.endswith(".nii.gz")]
         cropped_files = [f for f in nii_files if f.startswith("cropped_")]
         if len(cropped_files)>=1:
-            excluded_prefixes = ("cropped_", "fwd", "inv", "mask", "mca_territory", "totalsegmentator") 
+            excluded_prefixes = ("cropped_", "ct_fwd", "mri_fwd", "ct_inv", "mri_inv", "mask", "mca_territory", "totalsegmentator") 
             non_cropped = [f for f in nii_files if not f.startswith(excluded_prefixes)][0]
             useless_files.append(os.path.join(self.nifti_output_directory,non_cropped))
         
