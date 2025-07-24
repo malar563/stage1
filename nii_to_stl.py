@@ -42,10 +42,6 @@ def save_to_stl(big_output_directory, file_number, show_mask_to_convert=False):
 
     # Generate surface mesh using marching cubes
     vertices, faces, normals, values = measure.marching_cubes(img_thresholded, level=0.5)
-    # print("vertices :", vertices)
-    # print("faces :", faces)
-    # print("normals :", normals)
-    # print("values :", values)
     vertices = vertices*spacing
 
     # Format mesh for STL export
