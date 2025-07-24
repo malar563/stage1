@@ -1,67 +1,52 @@
 import os
 import nibabel as nib
-import pandas as pd
-from class_identification import Identification
-
-
-
-
 import numpy as np
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d.art3d import Poly3DCollection
-
+from class_identification import Identification
 from skimage import measure
-from skimage.draw import ellipsoid
+from stl import mesh
+from automatically_get_dicom_folders import create_list
 
 
+def save_to_stl(big_output_directory, file_number, show_mask_to_convert=False):
+    id = Identification(big_output_directory=big_output_directory, file_number=file_number, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
 
+    img = nib.load(os.path.join(id.nifti_output_directory, "mask"+id.file_number+".nii.gz"))
+    img = img.get_fdata()
+    img_thresholded = np.where(img >= 3, 1, 0)
+
+    if show_mask_to_convert:
+        id.show_3D_array(img, axis=2)
+        id.show_3D_array(img_thresholded, axis=2)
+        print(img_thresholded.shape)
+
+    # Set level to only keep values over 0.5 in the mesh 
+    vertices, faces, normals, values = measure.marching_cubes(img_thresholded, 0.5)
+
+    # Create the mesh data structure
+    data = np.zeros(len(faces), dtype=mesh.Mesh.dtype)
+    for i, f in enumerate(faces):
+        for j in range(3):
+            data['vectors'][i][j] = vertices[f[j], :]
+
+    skull_mesh = mesh.Mesh(data)
+
+    skull_mesh.save(os.path.join(id.nifti_output_directory, "mesh_skull"+id.file_number+".stl"))
+
+#-------------------------------------------
+# -----------------------------------------
 big_output_directory = "cava"
+show_mask_to_convert = True
+
+# --------------------
 file_number = 1
+save_to_stl(big_output_directory, file_number, show_mask_to_convert=True)
+# ----------------------------------------------
 
-id = Identification(big_output_directory=big_output_directory, file_number=file_number, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
-
-img = nib.load(os.path.join(id.nifti_output_directory, "mask"+id.file_number+".nii.gz"))
-img = img.get_fdata()
-id.show_3D_array(img, axis=2)
-
-
-# Generate a level set about zero of two identical ellipsoids in 3D
-ellip_base = ellipsoid(6, 10, 16, levelset=True)
-ellip_double = np.concatenate((ellip_base[:-1, ...], ellip_base[2:, ...]), axis=0)
-print(ellip_base, ellip_double)
-
-# Use marching cubes to obtain the surface mesh of these ellipsoids
-# verts, faces, normals, values = measure.marching_cubes(ellip_double, 0)
-verts, faces, normals, values = measure.marching_cubes(img, 3)
-
-# Display resulting triangular mesh using Matplotlib. This can also be done
-# with mayavi (see skimage.measure.marching_cubes docstring).
-fig = plt.figure(figsize=(5, 5))
-ax = fig.add_subplot(111, projection='3d')
-
-# Fancy indexing: `verts[faces]` to generate a collection of triangles
-mesh = Poly3DCollection(verts[faces])
-mesh.set_edgecolor('k')
-ax.add_collection3d(mesh)
-
-ax.set_xlabel("x-axis: a = 6 per ellipsoid")
-ax.set_ylabel("y-axis: b = 10")
-ax.set_zlabel("z-axis: c = 16")
-
-ax.set_xlim(0, 500)  # a = 6 (times two for 2nd ellipsoid)
-ax.set_ylim(0, 500)  # b = 10
-ax.set_zlim(0, 500)  # c = 16
-
-plt.tight_layout()
-plt.show()
+folders_list = create_list(big_output_directory)
+print(folders_list)
+for folder in folders_list:
+    file_number = os.path.basename(folder)
+    save_to_stl(big_output_directory, file_number, show_mask_to_convert=True)
 
 
 
-# big_output_directory = "cava"
-# file_number = 1
-
-# id = Identification(big_output_directory=big_output_directory, file_number=file_number, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
-
-# img = nib.load(os.path.join(id.nifti_output_directory, "mask"+id.file_number+".nii.gz"))
-# img = img.get_fdata()
-# id.show_3D_array(img, axis=0)
