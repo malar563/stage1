@@ -49,7 +49,9 @@ def delete(folder_list, big_output_directory="processed_files",
                 print(f"[{file_number}] MRI useless files deleted")
 
 
-# -------------------- USER SECTION --------------------
+# --------------------------------------------------------------------------
+# ----------------------------- USER SECTION -------------------------------
+# --------------------------------------------------------------------------
 
 if __name__ == "__main__":
     # Set the path to the folder that contains all processed subfolders
@@ -65,8 +67,7 @@ if __name__ == "__main__":
         big_output_directory=big_output_directory,
         register_with_MRI=True,
         register_with_CT=True,
-        verbose=True
-    )
+        verbose=True)
 
 
 

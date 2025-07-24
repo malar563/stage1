@@ -5,6 +5,8 @@
 !head1.nii.gz
 *.mat
 *.csv
+*.json
+*.stl
 INUTILE
 nifti
 jspakoi
