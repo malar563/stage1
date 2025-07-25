@@ -62,3 +62,44 @@ dict_scans = {
     "250_CQ/CQ500CT249 CQ500CT249/Unknown Study/CT 0.625mm" : {"NAS":[], "LPA":[], "RPA":[]},
     "250_CQ/CQ500CT250 CQ500CT250/Unknown Study/CT PLAIN THIN" : {"NAS":[], "LPA":[], "RPA":[]},
 }
+
+
+csv_file_path = "cava/summary.csv"
+df = pd.read_csv(csv_file_path, sep=",", header=None, on_bad_lines='skip')
+# print(df)
+print(len(df))
+# À partir de index 11, prendre par groupe de 3
+mri_nas_imp = []
+mri_nas_reg = []
+mri_lpa_imp = []
+mri_lpa_reg = []
+mri_rpa_imp = []
+mri_rpa_reg = []
+
+ct_nas_imp = []
+ct_nas_reg = []
+ct_lpa_imp = []
+ct_lpa_reg = []
+ct_rpa_imp = []
+ct_rpa_imp = []
+
+for index_row in range(1,len(df)):
+    # # df[index_row+1]
+    # landmarks = dict_scans[df.iloc[index_row, 1]]
+    print(df.iloc[index_row])
+    for i in range(12):
+        offset = 11+(3*i)
+        x, y, z = df.iloc[index_row, offset:offset+3]
+        print(x,y,z)
+
+
+import matplotlib.pyplot as plt
+import numpy as np
+
+np.random.seed(10)
+d = np.random.normal(100, 20, 200)
+
+fig = plt.figure(figsize =(10, 7))
+
+plt.boxplot(d)
+plt.show()

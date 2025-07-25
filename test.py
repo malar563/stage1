@@ -523,7 +523,7 @@ d = np.random.normal(100, 20, 200)
 fig = plt.figure(figsize =(10, 7))
 
 plt.boxplot(d)
-# plt.show()
+plt.show()
 
 
 # Columns of interest
