@@ -604,10 +604,8 @@ class Identification:
 
         df_existing = pd.read_csv(csv_path)
         df_to_keep = df_existing.values[:5,:4].tolist()
-        df_end = df_existing.values[21:,:4].tolist()
-        print(df_end)
-        df_is_exist = np.array(df_existing.values[5:22,:4].tolist())
-        print(df_is_exist)
+        df_end = df_existing.values[17:,:4].tolist()
+        df_is_exist = np.array(df_existing.values[5:,:4].tolist())
 
         improved_landmarks = [self.nasion, self.lpa, self.rpa]
         registered_landmarks = [self.registered_nasion, self.registered_lpa, self.registered_rpa]
@@ -630,48 +628,43 @@ class Identification:
             ct_improved_landmarks = [("-","-","-"), ("-","-","-"), ("-","-","-")]
             ct_registered_landmarks = [("-","-","-"), ("-","-","-"), ("-","-","-")]
 
-        data = np.array([["----------Landmarks found with normalized MRI----------","nan","nan","nan"],
-                    ["Nasion improved (voxel)", mri_improved_landmarks[0][1], mri_improved_landmarks[0][0], mri_improved_landmarks[0][2]],
-                    ["Nasion registered (voxel)", mri_registered_landmarks[0][1], mri_registered_landmarks[0][0], mri_registered_landmarks[0][2]],
-                    ["LPA improved (voxel)", mri_improved_landmarks[1][1], mri_improved_landmarks[1][0], mri_improved_landmarks[1][2]],
-                    ["LPA registered (voxel)", mri_registered_landmarks[1][1], mri_registered_landmarks[1][0], mri_registered_landmarks[1][2]],
-                    ["RPA improved (voxel)", mri_improved_landmarks[2][1], mri_improved_landmarks[2][0], mri_improved_landmarks[2][2]],
-                    ["RPA registered (voxel)", mri_registered_landmarks[2][1], mri_registered_landmarks[2][0], mri_registered_landmarks[2][2]],
-                    ["----------Landmarks found with non-normalized CT scan----------","nan","nan","nan"],
-                    ["Nasion improved (voxel)", ct_improved_landmarks[0][1], ct_improved_landmarks[0][0], ct_improved_landmarks[0][2]],
-                    ["Nasion registered (voxel)", ct_registered_landmarks[0][1], ct_registered_landmarks[0][0], ct_registered_landmarks[0][2]],
-                    ["LPA improved (voxel)", ct_improved_landmarks[1][1], ct_improved_landmarks[1][0], ct_improved_landmarks[1][2]],
-                    ["LPA registered (voxel)", ct_registered_landmarks[1][1], ct_registered_landmarks[1][0], ct_registered_landmarks[1][2]],
-                    ["RPA improved (voxel)", ct_improved_landmarks[2][1], ct_improved_landmarks[2][0], ct_improved_landmarks[2][2]],
-                    ["RPA registered (voxel)", ct_registered_landmarks[2][1], ct_registered_landmarks[2][0], ct_registered_landmarks[2][2]],
-                    ["If '-' appears in the line 'Dimensions not cropped' it means the original (uncropped) NIfTI file was used for the entire process.","nan","nan","nan"],
-                    ["If the cropped NIfTI file was used to retrieve the original coordinates of the LPA RPA and Nasion : subtract the z-dimension of the cropped file from that of the original file and add the difference to the z-index. The x and y indices remain unchanged.","nan","nan","nan"]])
+        data = np.array([
+                    ["MRI Nasion improved (voxel)", mri_improved_landmarks[0][1], mri_improved_landmarks[0][0], mri_improved_landmarks[0][2]],
+                    ["MRI Nasion registered (voxel)", mri_registered_landmarks[0][1], mri_registered_landmarks[0][0], mri_registered_landmarks[0][2]],
+                    ["MRI LPA improved (voxel)", mri_improved_landmarks[1][1], mri_improved_landmarks[1][0], mri_improved_landmarks[1][2]],
+                    ["MRI LPA registered (voxel)", mri_registered_landmarks[1][1], mri_registered_landmarks[1][0], mri_registered_landmarks[1][2]],
+                    ["MRI RPA improved (voxel)", mri_improved_landmarks[2][1], mri_improved_landmarks[2][0], mri_improved_landmarks[2][2]],
+                    ["MRI RPA registered (voxel)", mri_registered_landmarks[2][1], mri_registered_landmarks[2][0], mri_registered_landmarks[2][2]],
+                    ["CT Nasion improved (voxel)", ct_improved_landmarks[0][1], ct_improved_landmarks[0][0], ct_improved_landmarks[0][2]],
+                    ["CT Nasion registered (voxel)", ct_registered_landmarks[0][1], ct_registered_landmarks[0][0], ct_registered_landmarks[0][2]],
+                    ["CT LPA improved (voxel)", ct_improved_landmarks[1][1], ct_improved_landmarks[1][0], ct_improved_landmarks[1][2]],
+                    ["CT LPA registered (voxel)", ct_registered_landmarks[1][1], ct_registered_landmarks[1][0], ct_registered_landmarks[1][2]],
+                    ["CT RPA improved (voxel)", ct_improved_landmarks[2][1], ct_improved_landmarks[2][0], ct_improved_landmarks[2][2]],
+                    ["CT RPA registered (voxel)", ct_registered_landmarks[2][1], ct_registered_landmarks[2][0], ct_registered_landmarks[2][2]]])
         
         if len(df_is_exist) != 0:
             if self.register_with_CT_not_normalized:
-                data[1:7,:] = df_is_exist[1:7,:]
+                data[0:6,:] = df_is_exist[0:6,:]
             else:
-                data[8:14,:] = df_is_exist[8:14,:]
+                data[6:12,:] = df_is_exist[6:12,:]
 
         if self.switch_lpa_rpa: # Switches LPA and RPA if this axis was flipped during the identification process
             if self.register_with_CT_not_normalized:
-                new_lpa = data[12:14,1:].copy()
-                new_rpa = data[10:12,1:].copy()
-                data[12:14,1:] = new_rpa
-                data[10:12,1:] = new_lpa
+                new_lpa = data[10:12,1:].copy()
+                new_rpa = data[8:10,1:].copy()
+                data[10:12,1:] = new_rpa
+                data[8:10,1:] = new_lpa
             else:
-                new_lpa = data[5:7,1:].copy()
-                new_rpa = data[3:5,1:].copy()
-                data[5:7,1:] = new_rpa
-                data[3:5,1:] = new_lpa
+                new_lpa = data[4:6,1:].copy()
+                new_rpa = data[2:4,1:].copy()
+                data[4:6,1:] = new_rpa
+                data[2:4,1:] = new_lpa
 
         data = data.tolist()
         df_to_keep += data
         df_to_keep += df_end
         df = pd.DataFrame(df_to_keep)
         df.to_csv(csv_path, index=False)
-        
-
 
 
     def delete_useless_files(self):

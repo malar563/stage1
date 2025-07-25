@@ -50,10 +50,13 @@ def create_summary(csv_paths, output_dir):
     list_of_dict = []
 
     # Columns of interest
-    points = ['Nasion improved (voxel)', 'Nasion registered (voxel)',
-            'LPA improved (voxel)', 'LPA registered (voxel)',
-            'RPA improved (voxel)', 'RPA registered (voxel)']
-    blocks = ['mri', 'ct']
+    points = ['MRI NAS imp', 'MRI NAS reg',
+        'MRI LPA imp', 'MRI LPA reg',
+        'MRI RPA imp', 'MRI RPA reg',
+        'CT NAS imp', 'CT NAS reg',
+        'CT LPA imp', 'CT LPA reg',
+        'CT RPA imp', 'CT RPA reg' ]
+        
 
     for csv_path in csv_paths:
         csv_file = [f for f in os.listdir(csv_path) if f.endswith(".csv")]
@@ -68,78 +71,56 @@ def create_summary(csv_paths, output_dir):
             big_dict_csv["res_x"] = None
             big_dict_csv["res_y"] = None
             big_dict_csv["res_z"] = None
-            for block in blocks:
-                for point in points:
-                    for coord in ['x', 'y', 'z']:
-                        big_dict_csv[f"{block} {point} {coord}"] = None
+            for point in points:
+                for axis in ['x', 'y', 'z']:
+                    big_dict_csv[f"{point} {axis}"] = None
             list_of_dict.append(big_dict_csv)
             continue
 
         # Else, loads the .csv file
         csv_file_path = os.path.join(csv_path, csv_file[0])
-        df = pd.read_csv(csv_file_path, sep=",", header=None)
+        df = pd.read_csv(csv_file_path, sep=",", header=None, on_bad_lines='skip')
 
         # dcm path (row 1)
         print(df.iloc[1,0])
         big_dict_csv["dcm path"] = df.iloc[1, 0]
 
-        # Processing time (row 22-23-24)
-        segm_processing_time = clean_value(df.iloc[22, 1]) if len(df) > 22 and len(df.columns) > 2 else None
+        # Processing time (row 18-19-20)
+        segm_processing_time = clean_value(df.iloc[18, 1]) if len(df) > 18 and len(df.columns) > 2 else None
         big_dict_csv["segmentation processing time"] = segm_processing_time
-        ct_processing_time = clean_value(df.iloc[23, 1]) if len(df) > 23 and len(df.columns) > 2 else None
+        ct_processing_time = clean_value(df.iloc[19, 1]) if len(df) > 19 and len(df.columns) > 2 else None
         big_dict_csv["CT processing time"] = ct_processing_time
-        mri_processing_time = clean_value(df.iloc[24, 1]) if len(df) > 24 and len(df.columns) > 2 else None
+        mri_processing_time = clean_value(df.iloc[20, 1]) if len(df) > 20 and len(df.columns) > 2 else None
         big_dict_csv["MRI processing time"] = mri_processing_time
 
         # Resolution (row 3)
         res_x, res_y, res_z = (None, None, None)
-        if len(df) > 3:
+        dim_x, dim_y, dim_z = (None, None, None)
+        if len(df) > 4:
             res_x, res_y, res_z = map(clean_value, df.iloc[4, 1:4])
+            dim_x, dim_y, dim_z = map(clean_value, df.iloc[2, 1:4])
         big_dict_csv["res_x"] = res_x
         big_dict_csv["res_y"] = res_y
         big_dict_csv["res_z"] = res_z
+        big_dict_csv["dim_x"] = dim_x
+        big_dict_csv["dim_y"] = dim_y
+        big_dict_csv["dim_z"] = dim_z
 
         # MRI
-        mri_block_idx = df[df[0].str.contains('normalized MRI', na=False)].index
-        if not mri_block_idx.empty:
-            idx = mri_block_idx[0]
-            for offset, point in enumerate(points, start=1):
-                line_idx = idx + offset
-                if len(df) > line_idx:
-                    values = df.iloc[line_idx, 1:4].map(clean_value)
-                    big_dict_csv[f"mri {point} x"] = values.iloc[0]
-                    big_dict_csv[f"mri {point} y"] = values.iloc[1]
-                    big_dict_csv[f"mri {point} z"] = values.iloc[2]
-                else:
-                    big_dict_csv[f"mri {point} x"] = None
-                    big_dict_csv[f"mri {point} y"] = None
-                    big_dict_csv[f"mri {point} z"] = None
+        start_block = 6
+        mri_block = df.iloc[start_block:18]
+        if not mri_block.empty:
+            for offset, point in enumerate(points):
+                line_index=start_block+offset
+                values = df.iloc[line_index, 1:4].map(clean_value)
+                big_dict_csv[f"{point} x"] = values.iloc[0]
+                big_dict_csv[f"{point} y"] = values.iloc[1]
+                big_dict_csv[f"{point} z"] = values.iloc[2]
         else:
             for point in points:
-                big_dict_csv[f"mri {point} x"] = None
-                big_dict_csv[f"mri {point} y"] = None
-                big_dict_csv[f"mri {point} z"] = None
-
-        # CT
-        ct_block_idx = df[df[0].str.contains('non-normalized CT scan', na=False)].index
-        if not ct_block_idx.empty:
-            idx = ct_block_idx[0]
-            for offset, point in enumerate(points, start=1):
-                line_idx = idx + offset
-                if len(df) > line_idx:
-                    values = df.iloc[line_idx, 1:4].map(clean_value)
-                    big_dict_csv[f"ct {point} x"] = values.iloc[0]
-                    big_dict_csv[f"ct {point} y"] = values.iloc[1]
-                    big_dict_csv[f"ct {point} z"] = values.iloc[2]
-                else:
-                    big_dict_csv[f"ct {point} x"] = None
-                    big_dict_csv[f"ct {point} y"] = None
-                    big_dict_csv[f"ct {point} z"] = None
-        else:
-            for point in points:
-                big_dict_csv[f"ct {point} x"] = None
-                big_dict_csv[f"ct {point} y"] = None
-                big_dict_csv[f"ct {point} z"] = None
+                big_dict_csv[f"{point} x"] = None
+                big_dict_csv[f"{point} y"] = None
+                big_dict_csv[f"{point} z"] = None
 
         list_of_dict.append(big_dict_csv)
 
@@ -152,7 +133,7 @@ def create_summary(csv_paths, output_dir):
 # ---------- USER SECTION: Only modify parameters below this line ----------
 if __name__ == "__main__":
     # Path of the processing directory (to change)
-    directory = "150_2025-07-21" 
+    directory = "cava" 
     # Create a folder list to get points{...}.csv
     csv_paths = create_list(directory=directory)
     csv_paths.sort(key=lambda x: int(x.split('\\')[-1]))

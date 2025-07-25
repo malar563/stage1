@@ -512,8 +512,32 @@ dicoms_list = ["50_CQ/CQ500CT0 CQ500CT0/Unknown Study/CT PLAIN THIN", "50_CQ/CQ5
                    "250_CQ/CQ500CT243 CQ500CT243/Unknown Study/CT PLAIN THIN", "250_CQ/CQ500CT249 CQ500CT249/Unknown Study/CT 0.625mm",
                    "250_CQ/CQ500CT250 CQ500CT250/Unknown Study/CT PLAIN THIN"]
         
-print(len(dicoms_list))
+# print(len(dicoms_list))
 
+import matplotlib.pyplot as plt
+import numpy as np
+
+np.random.seed(10)
+d = np.random.normal(100, 20, 200)
+
+fig = plt.figure(figsize =(10, 7))
+
+plt.boxplot(d)
+# plt.show()
+
+
+# Columns of interest
+points = ['MRI NAS imp', 'MRI NAS reg',
+        'MRI LPA imp', 'MRI LPA reg',
+        'MRI RPA imp', 'MRI RPA reg',
+        'CT NAS imp', 'CT NAS reg',
+        'CT LPA imp', 'CT LPA reg',
+        'CT RPA imp', 'CT RPA reg' ]
+blocks = ['mri', 'ct']
+rows_in_file = []
+for scan_type in blocks:
+    rows_in_file.append(scan_type+points)
+print(rows_in_file)
 
 
 

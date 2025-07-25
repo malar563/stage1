@@ -483,7 +483,7 @@ class Segmentation:
         print("Segmentation with TotalSegmentator has been completed")
         output_path = os.path.join(self.nifti_output_directory, "totalsegmentator"+self.file_number+".nii.gz")
         nib.save(output_img, output_path)
-        print(f"NIfTI generated : {output_path}.nii.gz")
+        print(f"NIfTI generated : {output_path}")
 
 
     def arteries_and_totalsegmentator_mask(self):

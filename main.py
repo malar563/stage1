@@ -4,7 +4,7 @@ from class_segmentation import Segmentation
 from class_identification import Identification
 
 
-def run_everything(dicoms_list, big_output_directory="processed_files", register_with_MRI=True, register_with_CT=False, read=False, delete_useless_files=False, verbose=True):
+def run_everything(dicoms_list, big_output_directory="processed_files", register_with_MRI=True, register_with_CT=False, read_transforms=False, delete_useless_files=False, verbose=True):
 
     for i, dicom in enumerate(dicoms_list):
         try:
@@ -51,43 +51,44 @@ def run_everything(dicoms_list, big_output_directory="processed_files", register
             # Registration with a CT scan not normalized
 
             if register_with_CT:
-                id = Identification(big_output_directory=big_output_directory, file_number=i, fixed_img_path="head1.nii.gz", register_with_CT_not_normalized=True)
+                id_ct = Identification(big_output_directory=big_output_directory, file_number=i, fixed_img_path="head1.nii.gz", register_with_CT_not_normalized=True)
 
-                if not read:
-                    id.register(show=False)
+                if not read_transforms:
+                    id_ct.register(show=False)
                     if verbose:
                         print("Registration done")
 
-                if read:
-                    id.read_transforms()
+                if read_transforms:
+                    id_ct.read_transforms()
                     if verbose:
                         print("Transforms loaded")
 
-                id.find_registered_lpa_rpa_nasion()
+                id_ct.find_registered_lpa_rpa_nasion()
                 if verbose:
                     print("Registered LPA, RPA, and Nasion located")
-                # id.show_3D_array(id.head, axis=2, pts=[((id.registered_rpa[1], id.registered_rpa[0]),id.registered_rpa[2], "red"), ((id.registered_lpa[1], id.registered_lpa[0]),id.registered_lpa[2], "green")])
+                # id_ct.show_3D_array(id_ct.head, axis=2, pts=[((id_ct.registered_rpa[1], id_ct.registered_rpa[0]),id_ct.registered_rpa[2], "red"), ((id_ct.registered_lpa[1], id_ct.registered_lpa[0]),id_ct.registered_lpa[2], "green")])
 
-                id.find_nasion()
+                id_ct.find_nasion()
                 if verbose:
                     print("Nasion refined")
-                id.check_nasion()
+                id_ct.check_nasion()
 
-                id.improve_lpa_rpa()
+                id_ct.improve_lpa_rpa()
                 if verbose:
                     print("LPA and RPA refined")
-                # id.show_3D_array(id.head, axis=2, pts=[((id.rpa[1], id.rpa[0]),id.rpa[2], "red"), ((id.registered_rpa[1], id.registered_rpa[0]),id.registered_rpa[2], "green"), ((id.lpa[1], id.lpa[0]),id.lpa[2], "blue"), ((id.registered_lpa[1], id.registered_lpa[0]),id.registered_lpa[2], "green")])
+                # id_ct.show_3D_array(id_ct.head, axis=2, pts=[((id_ct.rpa[1], id_ct.rpa[0]),id_ct.rpa[2], "red"), ((id_ct.registered_rpa[1], id_ct.registered_rpa[0]),id_ct.registered_rpa[2], "green"), ((id_ct.lpa[1], id_ct.lpa[0]),id_ct.lpa[2], "blue"), ((id_ct.registered_lpa[1], id_ct.registered_lpa[0]),id_ct.registered_lpa[2], "green")])
                 
-                id.save_pts_to_csv()
+                id_ct.save_pts_to_csv()
 
                 print(f"Time to segment file {ct.nii_path} : {time.time() - start} seconds")
 
-                with open(os.path.join(id.nifti_output_directory, "points"+id.file_number+".csv"),'a') as fd:
-                    id_ct_processing_time = f"CT processing time (seconds), {time.time()-start}, for file, {ct.nii_path}"
-                    fd.write(id_ct_processing_time)
+                with open(os.path.join(id_ct.nifti_output_directory, "points"+id_ct.file_number+".csv"),'a') as fd:
+                    ct_processing_time = f"CT processing time (seconds), {time.time()-start}, for file, {ct.nii_path}\n"
+                    fd.write(ct_processing_time)
+                    fd.close()
                 
                 if delete_useless_files:
-                    id.delete_useless_files()
+                    id_ct.delete_useless_files()
                     if verbose:
                         print("Useless files deleted")
 
@@ -100,12 +101,12 @@ def run_everything(dicoms_list, big_output_directory="processed_files", register
             if register_with_MRI:
                 id = Identification(big_output_directory=big_output_directory, file_number=i, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
 
-                if not read:
+                if not read_transforms:
                     id.register(show=False)
                     if verbose:
                         print("Registration done")
 
-                if read:
+                if read_transforms:
                     id.read_transforms()
                     if verbose:
                         print("Transforms loaded")
@@ -130,8 +131,9 @@ def run_everything(dicoms_list, big_output_directory="processed_files", register
                 print(f"Time to segment file {ct.nii_path} : {time.time() - start} seconds")
 
                 with open(os.path.join(id.nifti_output_directory, "points"+id.file_number+".csv"),'a') as fd:
-                    mri_processing_time = f"MRI processing time (seconds), {time.time()-start}, for file, {ct.nii_path}"
+                    mri_processing_time = f"MRI processing time (seconds), {time.time()-start}, for file, {ct.nii_path}\n"
                     fd.write(mri_processing_time)
+                    fd.close()
 
                 if delete_useless_files:
                     id.delete_useless_files()
@@ -145,7 +147,8 @@ def run_everything(dicoms_list, big_output_directory="processed_files", register
 
             with open(os.path.join(id.nifti_output_directory, "points"+id.file_number+".csv"),'a') as fd:
                 segmentation_processing_time = f"Segmentation processing time (seconds), {segmentation_processing_time}, for file, {ct.nii_path}"
-                fd.write(segmentation_processing_time+id_ct_processing_time)
+                fd.write(segmentation_processing_time)
+                fd.close()
 
 
         except Exception as e:
@@ -188,11 +191,11 @@ if __name__ == "__main__":
     #                "150_CQ/CQ500CT149 CQ500CT149/Unknown Study/CT 0.625mm"]
     
 
-    dicoms_list = ["50_CQ/CQ500CT0 CQ500CT0/Unknown Study/CT PLAIN THIN", "50_CQ/CQ500CT2 CQ500CT2/Unknown Study/CT 0.625mm", "50_CQ/CQ500CT3 CQ500CT3/Unknown Study/CT PLAIN THIN",
-                   "50_CQ/CQ500CT4 CQ500CT4/Unknown Study/CT 0.625mm", "50_CQ/CQ500CT6 CQ500CT6/Unknown Study/CT Thin Details", "50_CQ/CQ500CT10 CQ500CT10/Unknown Study/CT PLAIN THIN",
-                    "50_CQ/CQ500CT17 CQ500CT17/Unknown Study/CT 0.625mm", "50_CQ/CQ500CT18 CQ500CT18/Unknown Study/CT 0.625mm", "50_CQ/CQ500CT22 CQ500CT22/Unknown Study/CT PLAIN THIN",
-                    "250_CQ/CQ500CT26 CQ500CT26/Unknown Study/CT PLAIN THIN", "50_CQ/CQ500CT40 CQ500CT40/Unknown Study/CT 0.625mm",
-                    "50_CQ/CQ500CT50 CQ500CT50/Unknown Study/CT 0.625mm",
+    dicoms_list = ["250_CQ/CQ500CT0 CQ500CT0/Unknown Study/CT PLAIN THIN", "250_CQ/CQ500CT2 CQ500CT2/Unknown Study/CT 0.625mm", "250_CQ/CQ500CT3 CQ500CT3/Unknown Study/CT PLAIN THIN",
+                   "250_CQ/CQ500CT4 CQ500CT4/Unknown Study/CT 0.625mm", "250_CQ/CQ500CT6 CQ500CT6/Unknown Study/CT Thin Details", "250_CQ/CQ500CT10 CQ500CT10/Unknown Study/CT PLAIN THIN",
+                    "250_CQ/CQ500CT17 CQ500CT17/Unknown Study/CT 0.625mm", "250_CQ/CQ500CT18 CQ500CT18/Unknown Study/CT 0.625mm", "250_CQ/CQ500CT22 CQ500CT22/Unknown Study/CT PLAIN THIN",
+                    "250_CQ/CQ500CT26 CQ500CT26/Unknown Study/CT PLAIN THIN", "250_CQ/CQ500CT40 CQ500CT40/Unknown Study/CT 0.625mm",
+                    "250_CQ/CQ500CT50 CQ500CT50/Unknown Study/CT 0.625mm",
                     "250_CQ/CQ500CT55 CQ500CT55/Unknown Study/CT 0.625mm",
                    "250_CQ/CQ500CT60 CQ500CT60/Unknown Study/CT 0.625mm-2", "250_CQ/CQ500CT66 CQ500CT66/Unknown Study/CT PLAIN THIN",
                    "250_CQ/CQ500CT67 CQ500CT67/Unknown Study/CT PLAIN THIN",
@@ -218,7 +221,7 @@ if __name__ == "__main__":
                    "250_CQ/CQ500CT243 CQ500CT243/Unknown Study/CT PLAIN THIN", "250_CQ/CQ500CT249 CQ500CT249/Unknown Study/CT 0.625mm",
                    "250_CQ/CQ500CT250 CQ500CT250/Unknown Study/CT PLAIN THIN"]
 
-    run_everything(dicoms_list=dicoms_list, big_output_directory="150_2025-07-21", register_with_MRI=True, register_with_CT=True, read=False, delete_useless_files=False, verbose=True)
+    run_everything(dicoms_list=dicoms_list, big_output_directory="250_2025-07-25", register_with_MRI=True, register_with_CT=True, read_transforms=False, delete_useless_files=False, verbose=True)
 
 
 
