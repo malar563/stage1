@@ -1,5 +1,7 @@
 import pandas as pd
 import numpy as np
+import os
+from automatically_get_dicom_folders import create_list
 
 dict_scans = {
     "250_CQ/CQ500CT0 CQ500CT0/Unknown Study/CT PLAIN THIN" : {"NAS":[450,235,40], "LPA":[253,94,70], "RPA":[281,402,40]},        
@@ -64,42 +66,52 @@ dict_scans = {
 }
 
 
-csv_file_path = "cava/summary.csv"
-df = pd.read_csv(csv_file_path, sep=",", header=None, on_bad_lines='skip')
-# print(df)
-print(len(df))
-# À partir de index 11, prendre par groupe de 3
-mri_nas_imp = []
-mri_nas_reg = []
-mri_lpa_imp = []
-mri_lpa_reg = []
-mri_rpa_imp = []
-mri_rpa_reg = []
-
-ct_nas_imp = []
-ct_nas_reg = []
-ct_lpa_imp = []
-ct_lpa_reg = []
-ct_rpa_imp = []
-ct_rpa_imp = []
-
-for index_row in range(1,len(df)):
-    # # df[index_row+1]
-    # landmarks = dict_scans[df.iloc[index_row, 1]]
-    print(df.iloc[index_row])
-    for i in range(12):
-        offset = 11+(3*i)
-        x, y, z = df.iloc[index_row, offset:offset+3]
-        print(x,y,z)
+def compute_distance(pt1, pt2, remove_dim=None):
+    print(pt1, pt2)
+    if len(pt1) > 0 and len(pt2) > 0:
+        if remove_dim == "x":
+            pt1[0], pt2[0] = 0, 0
+        elif remove_dim == "y":
+            pt1[1], pt2[1] = 0, 0
+        elif remove_dim == "z":
+            pt1[2], pt2[2] = 0, 0
+        elif remove_dim is not None:
+            return None
+        distance = np.sqrt(((pt1[0]-pt2[0])**2 + (pt1[1]-pt2[1])**2 + (pt1[1]-pt2[1])**2))
+        return distance
+    return None
 
 
-import matplotlib.pyplot as plt
-import numpy as np
+# Path of the processing directory (to change)
+directory = "250_2025-07-25" 
+# Create a folder list to get points{...}.csv
+csv_dirs = create_list(directory=directory)
+csv_dirs.sort(key=lambda x: int(x.split('\\')[-1]))
 
-np.random.seed(10)
-d = np.random.normal(100, 20, 200)
 
-fig = plt.figure(figsize =(10, 7))
+dict_distance = {}
 
-plt.boxplot(d)
-plt.show()
+for csv_dir in csv_dirs:
+    csv_file = [f for f in os.listdir(csv_dir) if f.endswith(".csv")]
+    if csv_file:
+        csv_file_path = os.path.join(csv_dir, csv_file[0])
+        df = pd.read_csv(csv_file_path, sep=",", header=None, on_bad_lines='skip')
+        # print(df)
+        label = df.iloc[1,0]
+        dict_landmarks = dict_scans[label]
+        for i in range(6,18):
+            pt1 = df.iloc[i,1:].values.astype(float)
+            name_pt = df.iloc[i,0]
+            if i in [6,7,12,13]:
+                distance = compute_distance(pt1, dict_landmarks["NAS"], None)
+            elif i in [8,9,14,15]:
+                distance = compute_distance(pt1, dict_landmarks["LPA"], None)
+            else:
+                distance = compute_distance(pt1, dict_landmarks["RPA"], None)
+            if distance is None:
+                continue
+            dict_distance.setdefault(name_pt, []).append(distance)
+print(dict_distance)
+
+
+            
