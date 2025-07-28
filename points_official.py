@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import os
 from automatically_get_dicom_folders import create_list
+import matplotlib.pyplot as plt
 
 dict_scans = {
     "250_CQ/CQ500CT0 CQ500CT0/Unknown Study/CT PLAIN THIN" : {"NAS":[450,235,40], "LPA":[253,94,70], "RPA":[281,402,40]},        
@@ -82,36 +83,71 @@ def compute_distance(pt1, pt2, remove_dim=None):
     return None
 
 
+
+def errors_scans(csv_dirs):
+    dict_distance = {}
+
+    for csv_dir in csv_dirs:
+        csv_file = [f for f in os.listdir(csv_dir) if f.endswith(".csv")]
+        if csv_file:
+            csv_file_path = os.path.join(csv_dir, csv_file[0])
+            df = pd.read_csv(csv_file_path, sep=",", header=None, on_bad_lines='skip')
+            # print(df)
+            label = df.iloc[1,0]
+            dict_landmarks = dict_scans[label]
+            for i in range(6,18):
+                pt1 = df.iloc[i,1:].values.astype(float)
+                name_pt = df.iloc[i,0]
+                if i in [6,7,12,13]:
+                    distance = compute_distance(pt1, dict_landmarks["NAS"], None)
+                elif i in [8,9,14,15]:
+                    distance = compute_distance(pt1, dict_landmarks["LPA"], None)
+                else:
+                    distance = compute_distance(pt1, dict_landmarks["RPA"], None)
+                if distance is None:
+                    continue
+                dict_distance.setdefault(name_pt, []).append(distance)
+    return dict_distance
+
+
+def show_boxplots(dict_errors):
+
+    nas = [dict_errors['MRI Nasion improved (voxel)'], dict_errors['MRI Nasion registered (voxel)'],
+           dict_errors['CT Nasion improved (voxel)'], dict_errors['CT Nasion registered (voxel)']]
+    lpa = [dict_errors['MRI LPA improved (voxel)'], dict_errors['MRI LPA registered (voxel)'],
+           dict_errors['CT LPA improved (voxel)'], dict_errors['CT LPA registered (voxel)']]    
+    rpa = [dict_errors['MRI RPA improved (voxel)'], dict_errors['MRI RPA registered (voxel)'],
+           dict_errors['CT RPA improved (voxel)'], dict_errors['CT RPA registered (voxel)']]
+
+    landmarks = {"Nasion":nas, "LPA":lpa, "RPA":rpa}
+    labels = ["MRI improved", "MRI registered", "CT improved", "CT registered"]
+    colors = ["lightcoral", "indianred", "lightsteelblue", "cornflowerblue"]
+    medianprops = dict(color='black')
+
+    for pt_name in landmarks:
+
+        fig, ax = plt.subplots()
+        ax.set_ylabel('Distance (mm)')
+        ax.set_xlabel(pt_name)
+        
+        bplot = ax.boxplot(landmarks[pt_name],
+                        patch_artist=True,  # fill with color
+                        tick_labels=labels,  # will be used to label x-ticks
+                        notch=False,
+                        medianprops=medianprops)
+        # fill with colors
+        for patch, color in zip(bplot['boxes'], colors):
+            patch.set_facecolor(color)
+
+        plt.show()
+
+
+
 # Path of the processing directory (to change)
 directory = "250_2025-07-25" 
 # Create a folder list to get points{...}.csv
 csv_dirs = create_list(directory=directory)
 csv_dirs.sort(key=lambda x: int(x.split('\\')[-1]))
 
-
-dict_distance = {}
-
-for csv_dir in csv_dirs:
-    csv_file = [f for f in os.listdir(csv_dir) if f.endswith(".csv")]
-    if csv_file:
-        csv_file_path = os.path.join(csv_dir, csv_file[0])
-        df = pd.read_csv(csv_file_path, sep=",", header=None, on_bad_lines='skip')
-        # print(df)
-        label = df.iloc[1,0]
-        dict_landmarks = dict_scans[label]
-        for i in range(6,18):
-            pt1 = df.iloc[i,1:].values.astype(float)
-            name_pt = df.iloc[i,0]
-            if i in [6,7,12,13]:
-                distance = compute_distance(pt1, dict_landmarks["NAS"], None)
-            elif i in [8,9,14,15]:
-                distance = compute_distance(pt1, dict_landmarks["LPA"], None)
-            else:
-                distance = compute_distance(pt1, dict_landmarks["RPA"], None)
-            if distance is None:
-                continue
-            dict_distance.setdefault(name_pt, []).append(distance)
-print(dict_distance)
-
-
-            
+dict_errors = errors_scans(csv_dirs=csv_dirs)
+show_boxplots(dict_errors=dict_errors)
