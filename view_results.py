@@ -6,7 +6,8 @@ from class_identification import Identification
 
 def load_landmarks_from_csv(csv_path):
     """Load and separate MRI and CT landmarks from a CSV file."""
-    df = pd.read_csv(csv_path, sep=",")
+    df = pd.read_csv(csv_path, sep=",", header=None)
+    print(df.iloc[1,0])
     
     # Get MRI landmarks
     array_MRI = df.iloc[6:12, 1:].values.astype(float)
@@ -14,7 +15,7 @@ def load_landmarks_from_csv(csv_path):
     imp_nas_MRI, imp_lpa_MRI, imp_rpa_MRI = array_MRI[0], array_MRI[2], array_MRI[4]
     
     # Get CT landmarks
-    array_CT = df.iloc[13:19, 1:].values.astype(float)
+    array_CT = df.iloc[12:18, 1:].values.astype(float)
     reg_nas_CT, reg_lpa_CT, reg_rpa_CT = array_CT[1], array_CT[3], array_CT[5]
     imp_nas_CT, imp_lpa_CT, imp_rpa_CT = array_CT[0], array_CT[2], array_CT[4]
 
@@ -27,11 +28,11 @@ def load_landmarks_from_csv(csv_path):
 # ------------------ USER SETTINGS ------------------ #
     
 # Choose working folder and file number
-big_output_directory = "cava" # Folder with NIfTI and CSV files
-file_number = 1 # Number of the case to visualize
+big_output_directory = "250_2025-07-25" # Folder with NIfTI and CSV files
+file_number = 51 # Number of the case to visualize
 
 # Show landmarks in normal CT space (to be transformed in patient space)
-show_CT_normalized_space = True
+show_CT_normalized_space = False
 path_CT_not_normalized = 'head1.nii.gz'
 
 show_landmarks = True # To see the landmarks
@@ -39,10 +40,10 @@ show_landmarks = True # To see the landmarks
 reg_with = "CT" # "CT" or "MRI"
 landmarks_type = "reg" # "reg" or "imp"
 
-show_file = True # To see a specific file
+show_file = False # To see a specific file
 # Choose which NIfTI image and axis to display (comment/uncomment/change here)
 nifti_img_name = "mask" + str(file_number) # e.g., "mask", "totalsegmentator", "mca_territory", "head"
-nifti_img_name = "6_cow_angio__06__hv36__3"
+# nifti_img_name = "6_cow_angio__06__hv36__3"
 axis = 2 # 0:y-axis, 1:x-axis, 2:z-axis
 
 # ---------------- END OF USER SETTINGS ---------------- #
@@ -54,8 +55,8 @@ if show_CT_normalized_space:
 # Initialize an instance of the class
 id = Identification(big_output_directory=big_output_directory, file_number=file_number, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
 
-# Show head mask
-id.show_3D_array(id.head, axis=0)
+# # Show head mask
+# id.show_3D_array(id.head, axis=0)
 
 if show_landmarks:
     csv_path = os.path.join(id.nifti_output_directory, "points"+id.file_number+".csv")

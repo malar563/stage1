@@ -44,53 +44,6 @@ def run_everything(dicoms_list, big_output_directory="processed_files", register
 
             # ct.show_3D_array(ct.skull, axis=2) # z-axis
 
-            # --------------------------------------------------------------------------------------------------
-            # --------------------------------------------------------------------------------------------------
-            # --------------------------------------------------------------------------------------------------
-            # --------------------------------------------------------------------------------------------------
-            # Registration with a CT scan not normalized
-
-            if register_with_CT:
-                id_ct = Identification(big_output_directory=big_output_directory, file_number=i, fixed_img_path="head1.nii.gz", register_with_CT_not_normalized=True)
-
-                if not read_transforms:
-                    id_ct.register(show=False)
-                    if verbose:
-                        print("Registration done")
-
-                if read_transforms:
-                    id_ct.read_transforms()
-                    if verbose:
-                        print("Transforms loaded")
-
-                id_ct.find_registered_lpa_rpa_nasion()
-                if verbose:
-                    print("Registered LPA, RPA, and Nasion located")
-                # id_ct.show_3D_array(id_ct.head, axis=2, pts=[((id_ct.registered_rpa[1], id_ct.registered_rpa[0]),id_ct.registered_rpa[2], "red"), ((id_ct.registered_lpa[1], id_ct.registered_lpa[0]),id_ct.registered_lpa[2], "green")])
-
-                id_ct.find_nasion()
-                if verbose:
-                    print("Nasion refined")
-                id_ct.check_nasion()
-
-                id_ct.improve_lpa_rpa()
-                if verbose:
-                    print("LPA and RPA refined")
-                # id_ct.show_3D_array(id_ct.head, axis=2, pts=[((id_ct.rpa[1], id_ct.rpa[0]),id_ct.rpa[2], "red"), ((id_ct.registered_rpa[1], id_ct.registered_rpa[0]),id_ct.registered_rpa[2], "green"), ((id_ct.lpa[1], id_ct.lpa[0]),id_ct.lpa[2], "blue"), ((id_ct.registered_lpa[1], id_ct.registered_lpa[0]),id_ct.registered_lpa[2], "green")])
-                
-                id_ct.save_pts_to_csv()
-
-                print(f"Time to segment file {ct.nii_path} : {time.time() - start} seconds")
-
-                with open(os.path.join(id_ct.nifti_output_directory, "points"+id_ct.file_number+".csv"),'a') as fd:
-                    ct_processing_time = f"CT processing time (seconds), {time.time()-start}, for file, {ct.nii_path}\n"
-                    fd.write(ct_processing_time)
-                    fd.close()
-                
-                if delete_useless_files:
-                    id_ct.delete_useless_files()
-                    if verbose:
-                        print("Useless files deleted")
 
             # --------------------------------------------------------------------------------------------------
             # --------------------------------------------------------------------------------------------------
@@ -140,12 +93,76 @@ def run_everything(dicoms_list, big_output_directory="processed_files", register
                     if verbose:
                         print("Useless files deleted")
 
+
+            # --------------------------------------------------------------------------------------------------
+            # --------------------------------------------------------------------------------------------------
+            # --------------------------------------------------------------------------------------------------
+            # --------------------------------------------------------------------------------------------------
+            # Registration with a CT scan not normalized
+
+            if register_with_CT:
+                id_ct = Identification(big_output_directory=big_output_directory, file_number=i, fixed_img_path="head1.nii.gz", register_with_CT_not_normalized=True)
+
+                if not read_transforms:
+                    id_ct.register(show=False)
+                    if verbose:
+                        print("Registration done")
+
+                if read_transforms:
+                    id_ct.read_transforms()
+                    if verbose:
+                        print("Transforms loaded")
+
+                id_ct.find_registered_lpa_rpa_nasion()
+                if verbose:
+                    print("Registered LPA, RPA, and Nasion located")
+                # id_ct.show_3D_array(id_ct.head, axis=2, pts=[((id_ct.registered_rpa[1], id_ct.registered_rpa[0]),id_ct.registered_rpa[2], "red"), ((id_ct.registered_lpa[1], id_ct.registered_lpa[0]),id_ct.registered_lpa[2], "green")])
+
+                id_ct.find_nasion()
+                if verbose:
+                    print("Nasion refined")
+                id_ct.check_nasion()
+
+                id_ct.improve_lpa_rpa()
+                if verbose:
+                    print("LPA and RPA refined")
+                # id_ct.show_3D_array(id_ct.head, axis=2, pts=[((id_ct.rpa[1], id_ct.rpa[0]),id_ct.rpa[2], "red"), ((id_ct.registered_rpa[1], id_ct.registered_rpa[0]),id_ct.registered_rpa[2], "green"), ((id_ct.lpa[1], id_ct.lpa[0]),id_ct.lpa[2], "blue"), ((id_ct.registered_lpa[1], id_ct.registered_lpa[0]),id_ct.registered_lpa[2], "green")])
+                
+                id_ct.save_pts_to_csv()
+
+                print(f"Time to segment file {ct.nii_path} : {time.time() - start} seconds")
+
+                with open(os.path.join(id_ct.nifti_output_directory, "points"+id_ct.file_number+".csv"),'a') as fd:
+                    ct_processing_time = f"CT processing time (seconds), {time.time()-start}, for file, {ct.nii_path}\n"
+                    fd.write(ct_processing_time)
+                    fd.close()
+                
+                if delete_useless_files:
+                    id_ct.delete_useless_files()
+                    if verbose:
+                        print("Useless files deleted")
+
+
             # --------------------------------------------------------------------------------------------------
             # --------------------------------------------------------------------------------------------------
             # --------------------------------------------------------------------------------------------------
             # --------------------------------------------------------------------------------------------------
 
-            with open(os.path.join(id.nifti_output_directory, "points"+id.file_number+".csv"),'a') as fd:
+            if not register_with_MRI:
+                with open(os.path.join(ct.nifti_output_directory, "points"+ct.file_number+".csv"),'a') as fd:
+                    mri_processing_time = f"MRI processing time (seconds), {0}, for file, {ct.nii_path}\n"
+                    fd.write(mri_processing_time)
+                    fd.close()
+                    
+            if not register_with_CT:
+                with open(os.path.join(ct.nifti_output_directory, "points"+ct.file_number+".csv"),'a') as fd:
+                    ct_processing_time = f"CT processing time (seconds), {0}, for file, {ct.nii_path}\n"
+                    fd.write(ct_processing_time)
+                    fd.close()
+            
+
+
+            with open(os.path.join(ct.nifti_output_directory, "points"+ct.file_number+".csv"),'a') as fd:
                 segmentation_processing_time = f"Segmentation processing time (seconds), {segmentation_processing_time}, for file, {ct.nii_path}"
                 fd.write(segmentation_processing_time)
                 fd.close()
@@ -221,7 +238,7 @@ if __name__ == "__main__":
                    "250_CQ/CQ500CT243 CQ500CT243/Unknown Study/CT PLAIN THIN", "250_CQ/CQ500CT249 CQ500CT249/Unknown Study/CT 0.625mm",
                    "250_CQ/CQ500CT250 CQ500CT250/Unknown Study/CT PLAIN THIN"]
 
-    run_everything(dicoms_list=dicoms_list, big_output_directory="250_2025-07-25", register_with_MRI=True, register_with_CT=True, read_transforms=False, delete_useless_files=False, verbose=True)
+    run_everything(dicoms_list=dicoms_list, big_output_directory="250_2025-07-28", register_with_MRI=False, register_with_CT=False, read_transforms=False, delete_useless_files=False, verbose=True)
 
 
 

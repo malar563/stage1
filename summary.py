@@ -1,5 +1,6 @@
 import os
 import pandas as pd
+import numpy as np
 from automatically_get_dicom_folders import create_list
 
 
@@ -48,6 +49,7 @@ def create_summary(csv_paths, output_dir):
     - Landmarks are reported as x, y, z for improved and registered positions.
     """
     list_of_dict = []
+    list_segm_processing_time, list_ct_processing_time, list_mri_processing_time = [], [], []
 
     # Columns of interest
     points = ['MRI NAS imp', 'MRI NAS reg',
@@ -86,12 +88,15 @@ def create_summary(csv_paths, output_dir):
         big_dict_csv["dcm path"] = df.iloc[1, 0]
 
         # Processing time (row 18-19-20)
-        segm_processing_time = clean_value(df.iloc[18, 1]) if len(df) > 18 and len(df.columns) > 2 else None
+        segm_processing_time = clean_value(df.iloc[20, 1]) if len(df) > 18 and len(df.columns) > 2 else None
         big_dict_csv["segmentation processing time"] = segm_processing_time
-        ct_processing_time = clean_value(df.iloc[19, 1]) if len(df) > 19 and len(df.columns) > 2 else None
+        list_segm_processing_time.append(float(segm_processing_time))
+        ct_processing_time = clean_value(df.iloc[18, 1]) if len(df) > 19 and len(df.columns) > 2 else None
         big_dict_csv["CT processing time"] = ct_processing_time
-        mri_processing_time = clean_value(df.iloc[20, 1]) if len(df) > 20 and len(df.columns) > 2 else None
+        list_ct_processing_time.append(float(ct_processing_time))
+        mri_processing_time = clean_value(df.iloc[19, 1]) if len(df) > 20 and len(df.columns) > 2 else None
         big_dict_csv["MRI processing time"] = mri_processing_time
+        list_mri_processing_time.append(float(mri_processing_time))
 
         # Resolution (row 3)
         res_x, res_y, res_z = (None, None, None)
@@ -128,16 +133,25 @@ def create_summary(csv_paths, output_dir):
     df_final = pd.DataFrame(list_of_dict)
     df_final.to_csv(os.path.join(output_dir, "summary.csv"), index=False)
 
+    return np.array(list_segm_processing_time), np.array(list_ct_processing_time), np.array(list_mri_processing_time)
+    
+
 
 
 # ---------- USER SECTION: Only modify parameters below this line ----------
 if __name__ == "__main__":
     # Path of the processing directory (to change)
-    directory = "cava" 
+    directory = "250_2025-07-25" 
     # Create a folder list to get points{...}.csv
     csv_paths = create_list(directory=directory)
     csv_paths.sort(key=lambda x: int(x.split('\\')[-1]))
     print(csv_paths)
 
     # Create summary.csv
-    create_summary(csv_paths=csv_paths, output_dir=directory)
+    segm_processing_time, ct_processing_time, mri_processing_time = create_summary(csv_paths=csv_paths, output_dir=directory)
+    print(segm_processing_time)
+
+    print("Average segmentation processing time (s) :", np.mean(segm_processing_time),"±",2*np.std(segm_processing_time))
+    print("Average identification processing time with MRI (s) :", np.mean(mri_processing_time-segm_processing_time),"±",2*np.std(mri_processing_time-segm_processing_time))
+    print("Average identification processing time with CT (s) :", np.mean(mri_processing_time-ct_processing_time),"±",2*np.std(mri_processing_time-ct_processing_time))
+    print("Average time - total (s) :", np.mean(mri_processing_time),"±",2*np.std(mri_processing_time))

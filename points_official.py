@@ -43,32 +43,31 @@ dict_scans = {
     "250_CQ/CQ500CT135 CQ500CT135/Unknown Study/CT PLAIN THIN" : {"NAS": [455, 266, 43],  "LPA": [254, 104, 21],  "RPA": [244, 414, 27]},
     "250_CQ/CQ500CT140 CQ500CT140/Unknown Study/CT PLAIN THIN" : {"NAS": [420, 250, 76],  "LPA": [254, 113, 73],  "RPA": [238, 361, 61]},
     "250_CQ/CQ500CT149 CQ500CT149/Unknown Study/CT 0.625mm-3" : {"NAS": [442, 271, 53],  "LPA": [279, 96, 77],   "RPA": [226, 380, 53]},
-    "250_CQ/CQ500CT152 CQ500CT152/Unknown Study/CT PLAIN THIN" : {"NAS":[], "LPA":[], "RPA":[]},
-    "250_CQ/CQ500CT154 CQ500CT154/Unknown Study/CT PLAIN THIN" : {"NAS":[], "LPA":[], "RPA":[]},
-    "250_CQ/CQ500CT162 CQ500CT162/Unknown Study/CT PLAIN THIN-2" : {"NAS":[], "LPA":[], "RPA":[]},
-    "250_CQ/CQ500CT166 CQ500CT166/Unknown Study/CT 0.625mm-2" : {"NAS":[], "LPA":[], "RPA":[]},
-    "250_CQ/CQ500CT167 CQ500CT167/Unknown Study/CT 0.625mm" : {"NAS":[], "LPA":[], "RPA":[]},
-    "250_CQ/CQ500CT179 CQ500CT179/Unknown Study/CT PLAIN THIN" : {"NAS":[], "LPA":[], "RPA":[]},
-    "250_CQ/CQ500CT183 CQ500CT183/Unknown Study/CT PLAIN THIN" : {"NAS":[], "LPA":[], "RPA":[]},
-    "250_CQ/CQ500CT188 CQ500CT188/Unknown Study/CT 0.625mm-3" : {"NAS":[], "LPA":[], "RPA":[]},
-    "250_CQ/CQ500CT193 CQ500CT193/Unknown Study/CT 0.625mm" : {"NAS":[], "LPA":[], "RPA":[]},
-    "250_CQ/CQ500CT196 CQ500CT196/Unknown Study/CT 0.625mm" : {"NAS":[], "LPA":[], "RPA":[]},
-    "250_CQ/CQ500CT204 CQ500CT204/Unknown Study/CT PLAIN THIN" : {"NAS":[], "LPA":[], "RPA":[]},
-    "250_CQ/CQ500CT216 CQ500CT216/Unknown Study/CT 0.625mm" : {"NAS":[], "LPA":[], "RPA":[]},
-    "250_CQ/CQ500CT219 CQ500CT219/Unknown Study/CT 0.625mm" : {"NAS":[], "LPA":[], "RPA":[]},
-    "250_CQ/CQ500CT220 CQ500CT220/Unknown Study/CT PLAIN THIN" : {"NAS":[], "LPA":[], "RPA":[]},
-    "250_CQ/CQ500CT221 CQ500CT221/Unknown Study/CT PLAIN THIN" : {"NAS":[], "LPA":[], "RPA":[]},
-    "250_CQ/CQ500CT233 CQ500CT233/Unknown Study/CT PLAIN THIN" : {"NAS":[], "LPA":[], "RPA":[]},
-    "250_CQ/CQ500CT237 CQ500CT237/Unknown Study/CT PLAIN THIN" : {"NAS":[], "LPA":[], "RPA":[]},
-    "250_CQ/CQ500CT241 CQ500CT241/Unknown Study/CT PLAIN THIN-2" : {"NAS":[], "LPA":[], "RPA":[]},
-    "250_CQ/CQ500CT243 CQ500CT243/Unknown Study/CT PLAIN THIN" : {"NAS":[], "LPA":[], "RPA":[]},
-    "250_CQ/CQ500CT249 CQ500CT249/Unknown Study/CT 0.625mm" : {"NAS":[], "LPA":[], "RPA":[]},
-    "250_CQ/CQ500CT250 CQ500CT250/Unknown Study/CT PLAIN THIN" : {"NAS":[], "LPA":[], "RPA":[]},
+    "250_CQ/CQ500CT152 CQ500CT152/Unknown Study/CT PLAIN THIN" : {"NAS":[439,75,54], "LPA":[281,91,51], "RPA":[248,404,46]},
+    "250_CQ/CQ500CT154 CQ500CT154/Unknown Study/CT PLAIN THIN" : {"NAS":[464,256,69], "LPA":[258,73,53], "RPA":[243,416,71]},
+    "250_CQ/CQ500CT162 CQ500CT162/Unknown Study/CT PLAIN THIN-2" : {"NAS":[441,230,45], "LPA":[247,81,59], "RPA":[261,394,60]},
+    "250_CQ/CQ500CT166 CQ500CT166/Unknown Study/CT 0.625mm-2" : {"NAS":[455,236,123], "LPA":[291,79,75], "RPA":[287,382,66]},
+    "250_CQ/CQ500CT167 CQ500CT167/Unknown Study/CT 0.625mm" : {"NAS":[435,231,103], "LPA":[257,100,64], "RPA":[267,380,66]},
+    "250_CQ/CQ500CT179 CQ500CT179/Unknown Study/CT PLAIN THIN" : {"NAS":[429,265,46], "LPA":[240,99,35], "RPA":[215,396,48]},
+    "250_CQ/CQ500CT183 CQ500CT183/Unknown Study/CT PLAIN THIN" : {"NAS":[441,249,135], "LPA":[259,91,110], "RPA":[237,372,98]},
+    "250_CQ/CQ500CT188 CQ500CT188/Unknown Study/CT 0.625mm-3" : {"NAS":[441,250,49], "LPA":[245,106,60], "RPA":[253,386,62]},
+    "250_CQ/CQ500CT193 CQ500CT193/Unknown Study/CT 0.625mm" : {"NAS":[436,261,66], "LPA":[264,113,64], "RPA":[246,388,65]},
+    "250_CQ/CQ500CT196 CQ500CT196/Unknown Study/CT 0.625mm" : {"NAS":[447,224,99], "LPA":[243,100,64], "RPA":[301,406,81]},
+    "250_CQ/CQ500CT204 CQ500CT204/Unknown Study/CT PLAIN THIN" : {"NAS":[453,251,41], "LPA":[244,78,46], "RPA":[234,407,45]},
+    "250_CQ/CQ500CT216 CQ500CT216/Unknown Study/CT 0.625mm" : {"NAS":[430,240,72], "LPA":[240,123,50], "RPA":[263,399,64]},
+    "250_CQ/CQ500CT219 CQ500CT219/Unknown Study/CT 0.625mm" : {"NAS":[454,244,143], "LPA":[270,93,68], "RPA":[289,415,79]},
+    "250_CQ/CQ500CT220 CQ500CT220/Unknown Study/CT PLAIN THIN" : {"NAS":[462,265,80], "LPA":[272,99,74], "RPA":[241,386,81]},
+    "250_CQ/CQ500CT221 CQ500CT221/Unknown Study/CT PLAIN THIN" : {"NAS":[456,235,40], "LPA":[253,96,42], "RPA":[253,389,47]},
+    "250_CQ/CQ500CT233 CQ500CT233/Unknown Study/CT PLAIN THIN" : {"NAS":[462,258,38], "LPA":[252,80,38], "RPA":[221,393,44]},
+    "250_CQ/CQ500CT237 CQ500CT237/Unknown Study/CT PLAIN THIN" : {"NAS":[435,247,63], "LPA":[240,97,49], "RPA":[232,374,46]},
+    "250_CQ/CQ500CT241 CQ500CT241/Unknown Study/CT PLAIN THIN-2" : {"NAS":[402,269,169], "LPA":[231,115,120], "RPA":[221,380,110]}, # bad scan
+    "250_CQ/CQ500CT243 CQ500CT243/Unknown Study/CT PLAIN THIN" : {"NAS":[448,241,76], "LPA":[247,79,47], "RPA":[252,395,39]},
+    "250_CQ/CQ500CT249 CQ500CT249/Unknown Study/CT 0.625mm" : {"NAS":[423,272,93], "LPA":[263,121,48], "RPA":[240,393,61]},
+    "250_CQ/CQ500CT250 CQ500CT250/Unknown Study/CT PLAIN THIN" : {"NAS":[452,249,21], "LPA":[257,105,34], "RPA":[252,385,34]},
 }
 
 
 def compute_distance(pt1, pt2, remove_dim=None):
-    print(pt1, pt2)
     if len(pt1) > 0 and len(pt2) > 0:
         if remove_dim == "x":
             pt1[0], pt2[0] = 0, 0
@@ -84,15 +83,15 @@ def compute_distance(pt1, pt2, remove_dim=None):
 
 
 
-def errors_scans(csv_dirs):
+def errors_scans(csv_dirs, remove_dim = False, too_far=15):
     dict_distance = {}
+    dict_too_far = {}
 
     for csv_dir in csv_dirs:
         csv_file = [f for f in os.listdir(csv_dir) if f.endswith(".csv")]
         if csv_file:
             csv_file_path = os.path.join(csv_dir, csv_file[0])
             df = pd.read_csv(csv_file_path, sep=",", header=None, on_bad_lines='skip')
-            # print(df)
             label = df.iloc[1,0]
             dict_landmarks = dict_scans[label]
             for i in range(6,18):
@@ -100,14 +99,23 @@ def errors_scans(csv_dirs):
                 name_pt = df.iloc[i,0]
                 if i in [6,7,12,13]:
                     distance = compute_distance(pt1, dict_landmarks["NAS"], None)
+                    if remove_dim:
+                        distance = compute_distance(pt1, dict_landmarks["NAS"], "x")
                 elif i in [8,9,14,15]:
                     distance = compute_distance(pt1, dict_landmarks["LPA"], None)
+                    if remove_dim:
+                        distance = compute_distance(pt1, dict_landmarks["LPA"], "y")
                 else:
                     distance = compute_distance(pt1, dict_landmarks["RPA"], None)
+                    if remove_dim:
+                        distance = compute_distance(pt1, dict_landmarks["RPA"], "y")
                 if distance is None:
                     continue
                 dict_distance.setdefault(name_pt, []).append(distance)
-    return dict_distance
+                if distance > too_far:
+                    dict_too_far[label]= (i, distance)
+
+    return dict_distance, dict_too_far
 
 
 def show_boxplots(dict_errors):
@@ -122,7 +130,7 @@ def show_boxplots(dict_errors):
     landmarks = {"Nasion":nas, "LPA":lpa, "RPA":rpa}
     labels = ["MRI improved", "MRI registered", "CT improved", "CT registered"]
     colors = ["lightcoral", "indianred", "lightsteelblue", "cornflowerblue"]
-    medianprops = dict(color='black')
+    medianprops = dict(color='gold')
 
     for pt_name in landmarks:
 
@@ -149,5 +157,7 @@ directory = "250_2025-07-25"
 csv_dirs = create_list(directory=directory)
 csv_dirs.sort(key=lambda x: int(x.split('\\')[-1]))
 
-dict_errors = errors_scans(csv_dirs=csv_dirs)
+dict_errors, dict_too_far = errors_scans(csv_dirs=csv_dirs, remove_dim=False, too_far=100)
 show_boxplots(dict_errors=dict_errors)
+print(dict_too_far)
+print(len(dict_too_far))
