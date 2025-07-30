@@ -93,7 +93,7 @@ class Identification:
 
         # Landmark coordinates determined visually in the normalized space (mri)
         self.lpa_vox_normal_space = np.array([25, 107, 6])
-        self.rpa_vox_normal_space = np.array([25, 107, 173])
+        self.rpa_vox_normal_space = np.array([25, 107, 174])#173
         self.nas_vox_normal_space = np.array([28, 4, 90])
         self.fwd_name = "mri_fwd"+self.file_number
         self.inv_name = "mri_inv"+self.file_number

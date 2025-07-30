@@ -13,12 +13,11 @@ class Segmentation:
     
     def __init__(self, dcm_path="DICOM_010/COW_Angio_0.6_Hv36_3", big_output_directory="processed_files", file_number=0, crop=True):
         """
-        Initializes the Segmentation object by locating or generating a NIfTI file
-        from a DICOM folder, and setting up paths and key image attributes.
-
         This method either loads an existing NIfTI file (cropped or not), or converts
-        the provided DICOM folder to a NIfTI image using `dicom2nifti`, optionally cropping it
+        the provided DICOM folder to a NIfTI image using `dcm2niix`, optionally cropping it
         based on resolution.
+
+        It also sets up paths and image attributes.
 
         Parameters
         ----------
@@ -29,10 +28,10 @@ class Segmentation:
             Root directory where subfolders of NIfTI and mask outputs will be saved.
         
         file_number : int, optional
-            Identifier for the processed file. Used to name subfolders and outputs.
+            Identifier (number) for the processed file. Used to name subfolders and outputs.
         
-        crop : any type (default="yes")
-            If not None, cropping will be applied after DICOM conversion based on image resolution.
+        crop : bool (default=True)
+            If True, cropping will be applied after DICOM conversion based on image resolution.
 
         Sets
         ----
@@ -43,10 +42,10 @@ class Segmentation:
 
         Files Created
         -------------
-        - If no NIfTI file is found, runs `self.dcm_to_nii()`:
-            - Generates a `.nii.gz` file from the DICOM folder
+        - If no NIfTI file is found in the folder, runs `self.dcm_to_nii()`:
+            - Generates a `.nii.gz` file from the DICOM folder in nifti_output_directory
             - Applies cropping if enabled
-        - Automatically calls `self.save_to_csv()` to save image metadata to `points<file_number>.txt`
+        - Calls `self.save_to_csv()` in all cases to save image metadata to `points<file_number>.csv`
 
         Attributes
         ----------
@@ -66,7 +65,7 @@ class Segmentation:
             Full path to the NIfTI file used as base image.
         
         not_cropped_nii_path : str or None
-            Path to the uncropped image, if both exist.
+            Path to the uncropped image, if both cropped and uncropped files exist.
         
         img : nibabel.Nifti1Image
             NIfTI image object corresponding to `nii_path`.
@@ -136,14 +135,19 @@ class Segmentation:
 
     def save_to_csv(self):
         """
-        Save image metadata to a CSV file. It contains :
-        - Voxel dimensions along the x, y, z axes
-        - Spatial resolution in millimeters
-        - Physical length of the volume in each direction (dimension × resolution)
+        Save image metadata to a CSV file named `points{file_number}.csv`.
+
+        The CSV contains:
+        - Input DICOM path
+        - Voxel dimensions along the x, y, z axes (image shape)
+        - Spatial resolution in millimeters (voxel spacing)
+        - Physical length of the cropped volume in each direction (dimension × resolution)
+        - Uncropped voxel dimensions, if available
 
         Files Created
         -------------
-        - points{self.file_number}.csv : CSV file containing metadata.
+        - points{self.file_number}.csv : CSV file containing image dimensions and resolutions.
+          If the file already exists, it is deleted before creating a new one.
 
         Notes
         -----
@@ -151,6 +155,7 @@ class Segmentation:
         """
         csv_path = os.path.join(self.nifti_output_directory, f"points{self.file_number}.csv")
 
+        # Delete an already existing .csv file
         points_csv_file = [f for f in os.listdir(self.nifti_output_directory) if f.endswith(f"points{self.file_number}.csv")]
         if points_csv_file:
             os.remove(csv_path)
@@ -164,41 +169,48 @@ class Segmentation:
             not_cropped_img = nib.load(self.not_cropped_nii_path)
             data[2][1], data[2][2], data[2][3] = not_cropped_img.shape 
 
-        if os.path.exists(csv_path):
-            df_existing = pd.read_csv(csv_path)
-            df_existing.values[:5,:4] = np.array(data)
-            df_existing.to_csv(csv_path, index=False)
-        else:
-            df = pd.DataFrame(data)
-            df.to_csv(csv_path, index=False)             
+        df = pd.DataFrame(data)
+        df.to_csv(csv_path, index=False)             
 
 
     def dcm_to_nii(self, crop=True, size_head=250):
         """
-        Convert a DICOM series to a NIfTI file and optionally crop it along the z-axis.
+        Convert a DICOM series to a NIfTI file using `dcm2niix`, and optionally crop it along the z-axis.
 
-        Uses `dicom2nifti` to convert DICOM files in `self.dcm_path` to a `.nii.gz` file 
-        saved in `self.nifti_output_directory`. If `crop` is enabled, the image is cropped 
-        based on voxel spacing along the z-axis: the last 256 or 512 slices are kept 
-        depending on slice thickness.
+        This function calls `dcm2niix` to convert the contents of `self.dcm_path` into a `.nii.gz` 
+        file stored in `self.nifti_output_directory`. If `crop=True`, it keeps approximately 
+        the last 75% of a head volume (based on a default physical size of 250 mm) in the z-direction, 
+        using the image's voxel size to calculate how many slices to retain.
 
         Parameters
         ----------
-        crop : str or None, optional
-            If not None, crop the volume depending on slice thickness (z-resolution).
+        crop : bool, optional
+            Whether to crop the image along the z-axis after conversion. Defaults to True.
+
+        size_head : float, optional
+            Estimated physical height of the head in millimeters, used to determine how many 
+            slices to keep during cropping. Defaults to 250 mm.
 
         Sets
-        ----    
+        ----
         self.nii_path : str
-            Full path to the primary (possibly cropped) NIfTI file after conversion.  
+            Full path to the final NIfTI file used in the pipeline (cropped if applicable).
 
         self.not_cropped_nii_path : str
-            Path to the original, full NIfTI file before cropping. Won't exist if no cropped file was produced
+            Path to the original full-volume NIfTI file before cropping, only set if cropping is performed.
 
         Files Created
         -------------
-        - <generated_name>.nii.gz : Converted DICOM to NIfTI
-        - cropped_<generated_name>.nii.gz : Cropped version saved if cropping is enabled
+        - <generated_name>.nii.gz :
+            NIfTI file converted from the DICOM series.
+
+        - cropped_<generated_name>.nii.gz :
+            Cropped NIfTI file saved if cropping is enabled.
+
+        Notes
+        -----
+        - Cropping is performed by retaining the last N slices where N ≈ 0.75 × size_head ÷ slice_thickness.
+        - The header and affine from the original NIfTI are preserved in the cropped version.
         """
 
         # Create the output_directory file
@@ -227,18 +239,13 @@ class Segmentation:
             # Load the image with nibabel
             self.not_cropped_nii_path = nifti_path
             nifti_image = nib.load(nifti_path)
-            top_head_bottom_node_distance = 0.75*size_head
+            top_head_bottom_node_distance = 0.75*size_head # Keeps 3/4 of the head size
 
             # Crop the image depending on the resolution 
             pix_dim, pix_z = nifti_image.header["pixdim"][1:4], nifti_image.header["pixdim"][3]
             n_slices = nifti_image.shape[2]
             crop_start = max(0, n_slices - int(top_head_bottom_node_distance / pix_z))
             cropped_data = nifti_image.get_fdata()[:, :, crop_start:]
-
-            # if pix_z >= 0.6:
-            #     cropped_data = nifti_image.get_fdata()[:,:,-256:]
-            # else:
-            #     cropped_data = nifti_image.get_fdata()[:,:,-512:]
 
             # Create a new NIfTI image
             cropped_image = nib.Nifti1Image(cropped_data, nifti_image.affine, nifti_image.header)
@@ -276,9 +283,45 @@ class Segmentation:
         - Points are displayed as circles with customizable color.
         - Axes are displayed in (row, column) order, with `origin="lower"` for intuitive orientation.
         """
+        """
+        Display a 3D volume slice-by-slice using a matplotlib slider.
+
+        A specific axis is selected for 2D slicing through the volume`. 
+        Optional points can be overlaid as colored circles on specific slices.
+
+        Parameters
+        ----------
+        arr : numpy.ndarray
+            3D array to visualize (typically an image or mask).
+            Shape must be (D1, D2, D3), where slicing is done along one of the axes.
+
+        axis : int, default=0
+            Axis along which to slice the volume:
+            - 0 → sagittal-like slicing (ZX)
+            - 1 → coronal-like slicing (YZ)
+            - 2 → axial-like slicing (XY)
+
+        pts : list of tuples ((x, y), slice_idx, color), optional
+            List of points to highlight on individual slices.
+            Each entry is a tuple of:
+                - (x, y): coordinates in the 2D slice (row, col)
+                - slice_idx: index of the slice along the selected axis
+                - color: a matplotlib-compatible color string (e.g., "red", "#00ff00")
+
+        Notes
+        -----
+        - Uses matplotlib's `Slider` widget for interactive navigation through slices.
+        - Slices are shown using `imshow` with `origin='lower'` for intuitive display.
+        - Highlighted points are drawn only on their corresponding `slice_idx`.
+        - Axes are ordered as (row, column) for `imshow`, which may differ from the actual 
+          axis order in the array depending on the selected slicing direction.
+        """
         from matplotlib.widgets import Slider
         import numpy as np
         import matplotlib.pyplot as plt
+
+        if not (0 <= axis <= 2):
+            raise ValueError("Axis must be 0, 1, or 2.")
 
         fig, ax = plt.subplots()
         plt.subplots_adjust(bottom=0.25)
@@ -336,7 +379,7 @@ class Segmentation:
         """
         Apply intensity thresholds to segment different anatomical structures.
 
-        Generates binary masks for head, air, skull, arteries, and a no-arteries region 
+        Generates 3D binary masks (0 or 1) for head, skull, arteries, and a no-arteries region 
         based on fixed intensity thresholds applied to `self.array`.
 
         Arguments

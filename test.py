@@ -523,7 +523,7 @@ d = np.random.normal(100, 20, 200)
 fig = plt.figure(figsize =(10, 7))
 
 plt.boxplot(d)
-plt.show()
+# plt.show()
 
 
 # Columns of interest
@@ -535,9 +535,12 @@ points = ['MRI NAS imp', 'MRI NAS reg',
         'CT RPA imp', 'CT RPA reg' ]
 blocks = ['mri', 'ct']
 rows_in_file = []
-for scan_type in blocks:
-    rows_in_file.append(scan_type+points)
-print(rows_in_file)
+# for scan_type in blocks:
+#     rows_in_file.append(scan_type+points)
+# print(rows_in_file)
+
+z = np.array[[[0],[1]],[[2],[3]]]
+print(z.ndim)
 
 
 
