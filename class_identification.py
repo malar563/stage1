@@ -92,9 +92,18 @@ class Identification:
         self.fixed_img = ants.image_read(fixed_img_path, reorient=self.orient_for_registration) # Reference image for registration
 
         # Landmark coordinates determined visually in the normalized space (mri)
-        self.lpa_vox_normal_space = np.array([25, 107, 6])
-        self.rpa_vox_normal_space = np.array([25, 107, 174])#173
+        self.lpa_vox_normal_space = np.array([24, 112, 8])
+        self.rpa_vox_normal_space = np.array([24, 112, 172]) # 173
         self.nas_vox_normal_space = np.array([28, 4, 90])
+        # self.lpa_vox_normal_space = np.array([25, 107, 6]) # (initial avec 173 : 25-07-2025)  et 30-07-2025
+        # self.rpa_vox_normal_space = np.array([25, 107, 174]) # 173
+        # self.nas_vox_normal_space = np.array([28, 4, 90])
+        # self.show_3D_array(self.fixed_img.numpy(), axis=2, pts=[((self.nas_vox_normal_space[1],self.nas_vox_normal_space[0]), self.nas_vox_normal_space[2], "green"),
+        #                                                             ((self.lpa_vox_normal_space[1],self.lpa_vox_normal_space[0]), self.lpa_vox_normal_space[2], "blue"),
+        #                                                             ((self.rpa_vox_normal_space[1],self.rpa_vox_normal_space[0]), self.rpa_vox_normal_space[2], "red")])
+        # self.show_3D_array(self.fixed_img.numpy(), axis=1, pts=[((self.nas_vox_normal_space[2],self.nas_vox_normal_space[0]), self.nas_vox_normal_space[1], "green"),
+        #                                                             ((self.lpa_vox_normal_space[2],self.lpa_vox_normal_space[0]), self.lpa_vox_normal_space[1], "blue"),
+        #                                                             ((self.rpa_vox_normal_space[2],self.rpa_vox_normal_space[0]), self.rpa_vox_normal_space[1], "red")])
         self.fwd_name = "mri_fwd"+self.file_number
         self.inv_name = "mri_inv"+self.file_number
         
@@ -106,12 +115,12 @@ class Identification:
             self.nas_vox_normal_space = np.array([101, 50, 238])
             self.lpa_vox_normal_space = np.array([57, 236, 83]) 
             self.rpa_vox_normal_space = np.array([69, 236, 403])
-            self.show_3D_array(self.fixed_img.numpy(), axis=2, pts=[((self.nas_vox_normal_space[1],self.nas_vox_normal_space[0]), self.nas_vox_normal_space[2], "green"),
-                                                                    ((self.lpa_vox_normal_space[1],self.lpa_vox_normal_space[0]), self.lpa_vox_normal_space[2], "blue"),
-                                                                    ((self.rpa_vox_normal_space[1],self.rpa_vox_normal_space[0]), self.rpa_vox_normal_space[2], "red")])
-            self.show_3D_array(self.fixed_img.numpy(), axis=1, pts=[((self.nas_vox_normal_space[2],self.nas_vox_normal_space[0]), self.nas_vox_normal_space[1], "green"),
-                                                                    ((self.lpa_vox_normal_space[2],self.lpa_vox_normal_space[0]), self.lpa_vox_normal_space[1], "blue"),
-                                                                    ((self.rpa_vox_normal_space[2],self.rpa_vox_normal_space[0]), self.rpa_vox_normal_space[1], "red")])
+            # self.show_3D_array(self.fixed_img.numpy(), axis=2, pts=[((self.nas_vox_normal_space[1],self.nas_vox_normal_space[0]), self.nas_vox_normal_space[2], "green"),
+            #                                                         ((self.lpa_vox_normal_space[1],self.lpa_vox_normal_space[0]), self.lpa_vox_normal_space[2], "blue"),
+            #                                                         ((self.rpa_vox_normal_space[1],self.rpa_vox_normal_space[0]), self.rpa_vox_normal_space[2], "red")])
+            # self.show_3D_array(self.fixed_img.numpy(), axis=1, pts=[((self.nas_vox_normal_space[2],self.nas_vox_normal_space[0]), self.nas_vox_normal_space[1], "green"),
+            #                                                         ((self.lpa_vox_normal_space[2],self.lpa_vox_normal_space[0]), self.lpa_vox_normal_space[1], "blue"),
+            #                                                         ((self.rpa_vox_normal_space[2],self.rpa_vox_normal_space[0]), self.rpa_vox_normal_space[1], "red")])
             self.fwd_name = "ct_fwd"+self.file_number
             self.inv_name = "ct_inv"+self.file_number
 

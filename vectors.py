@@ -1,6 +1,8 @@
+import matplotlib.pyplot as plt
 import os
 import nibabel as nib
 import pandas as pd
+import numpy as np
 from class_identification import Identification
 
 
@@ -96,57 +98,150 @@ def load_landmarks_from_csv(csv_path):
     
 # Choose working folder and file number
 big_output_directory = "250_2025-07-31" # Folder with NIfTI and CSV files
-file_number = 3 # Number of the case to visualize
+
 
 # Show landmarks in normal CT space (to be transformed in patient space)
 show_CT_normalized_space = False
 path_CT_not_normalized = 'head1.nii.gz'
 
-show_landmarks = True # To see the landmarks
+show_landmarks = False # To see the landmarks
 show_my = False
 # Choose which landmarks to display (can be CT or MRI, reg or imp)
 reg_with = "MRI" # "CT" or "MRI"
 landmarks_type = "reg" # "reg" or "imp"
 
-show_file = False # To see a specific file
-# Choose which NIfTI image and axis to display (comment/uncomment/change here)
-nifti_img_name = "mask" + str(file_number) # e.g., "mask", "totalsegmentator", "mca_territory", "head"
-# nifti_img_name = "6_cow_angio__06__hv36__3"
-axis = 2 # 0:y-axis, 1:x-axis, 2:z-axis
 
 # ---------------- END OF USER SETTINGS ---------------- #
 
-# Initialize an instance of the class
-if show_CT_normalized_space:
-    id = Identification(big_output_directory=big_output_directory, file_number=file_number, fixed_img_path=path_CT_not_normalized, register_with_CT_not_normalized=True)
+dict_nas = {"x_origins" : [],"y_origins": [],"z_origins" : [],"u_comps" : [],"v_comps" : [],"w_comps" : []}
+dict_lpa = {"x_origins" : [],"y_origins": [],"z_origins" : [],"u_comps" : [],"v_comps" : [],"w_comps" : []}
+dict_rpa = {"x_origins" : [],"y_origins": [],"z_origins" : [],"u_comps" : [],"v_comps" : [],"w_comps" : []}
+for file_number in range(4):
+    # Initialize an instance of the class
+    id = Identification(big_output_directory=big_output_directory, file_number=file_number, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
 
-# Initialize an instance of the class
-id = Identification(big_output_directory=big_output_directory, file_number=file_number, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
-
-# # Show head mask
-# id.show_3D_array(id.head, axis=0)
-
-if show_landmarks:
     csv_path = os.path.join(id.nifti_output_directory, "points"+id.file_number+".csv")
     head = nib.load(id.moving_img_path)
     head = head.get_fdata()
 
     dict_landmarks = load_landmarks_from_csv(csv_path=csv_path)
+    scan_name = dict_landmarks["scan name"]
+    res = np.array(dict_scans[scan_name]["res"])
     nas, lpa, rpa = dict_landmarks[reg_with][landmarks_type]
-    if show_my:
-        scan_name = dict_landmarks["scan name"]
-        nas = dict_scans[scan_name]["NAS"]
-        lpa = dict_scans[scan_name]["LPA"]
-        rpa = dict_scans[scan_name]["RPA"]
+    nas = np.array(nas)*res
+    lpa = np.array(lpa)*res
+    rpa = np.array(rpa)*res
+    
+    
+    my_nas = np.array(dict_scans[scan_name]["NAS"])*res
+    my_lpa = np.array(dict_scans[scan_name]["LPA"])*res
+    my_rpa = np.array(dict_scans[scan_name]["RPA"])*res
 
-    # Show head with landmarks
-    id.show_3D_array(head, axis=0, pts=[ ((lpa[2],lpa[0]),lpa[1],"blue"),  ((rpa[2],rpa[0]),rpa[1],"red"), ((nas[2],nas[0]),nas[1],"green")])
-    id.show_3D_array(head, axis=1, pts=[ ((lpa[2],lpa[1]),lpa[0],"blue"),  ((rpa[2],rpa[1]),rpa[0],"red"), ((nas[2],nas[1]),nas[0],"green")])
-    id.show_3D_array(head, axis=2, pts=[ ((lpa[0],lpa[1]),lpa[2],"blue"),  ((rpa[0],rpa[1]),rpa[2],"red"), ((nas[0],nas[1]),nas[2],"green")])
+    points = [nas, lpa, rpa]
+    my_points = [my_nas, my_lpa, my_rpa]
+    all_dict = [dict_nas, dict_lpa, dict_rpa]
+    for i in range(3):
+        x, y, z = points[i]
+        u, v, w = np.array(my_points[i]) - np.array(points[i]) 
+        all_dict[i]["x_origins"].append(x)
+        all_dict[i]["y_origins"].append(y)
+        all_dict[i]["z_origins"].append(z)
+        all_dict[i]["u_comps"].append(u)
+        all_dict[i]["v_comps"].append(v)
+        all_dict[i]["w_comps"].append(w)
 
-if show_file:
-    # Show a specific file
-    img = nib.load(os.path.join(id.nifti_output_directory, nifti_img_name+".nii.gz"))
-    img = img.get_fdata()
-    id.show_3D_array(img, axis=axis)
+all_dict = [dict_nas, dict_lpa, dict_rpa]
+colors = ["green", "blue", "red"]
+w_tot = []
+u_tot = []
+for i in range(3):
+    x_origins=all_dict[i]["x_origins"]
+    y_origins=all_dict[i]["y_origins"]
+    z_origins=all_dict[i]["z_origins"]
+    u_comps=all_dict[i]["u_comps"]
+    v_comps=all_dict[i]["v_comps"]
+    w_comps=all_dict[i]["w_comps"]   
+    plt.quiver(z_origins, x_origins, w_comps, u_comps,
+            angles='xy', scale_units='xy', scale=1,
+            color=colors[i])
+
+    # Set plot limits for better visualization
+    plt.xlim(0, 511)
+    plt.ylim(0, 511)
+
+    # Add labels and title
+    plt.xlabel("X-axis")
+    plt.ylabel("Y-axis")
+    # plt.title("50 Single Vectors")
+
+    # Display the plot
+    plt.grid(True)
+    plt.gca().set_aspect('equal', adjustable='box') # Ensure equal scaling for x and y axes
+    plt.show()
+
+    w_tot.append(np.sum(w_comps))
+    u_tot.append(np.sum(u_comps))
+
+
+plt.quiver([0,0,0], [0,0,0], w_tot, u_tot,
+            angles='xy', scale_units='xy', scale=1,
+            color=["green", "blue", "red"])
+
+# Set plot limits for better visualization
+plt.xlim(-200, 200)
+plt.ylim(-200, 200)
+
+# Add labels and title
+plt.xlabel("X-axis")
+plt.ylabel("Y-axis")
+# plt.title("50 Single Vectors")
+
+# Display the plot
+plt.grid(True)
+plt.gca().set_aspect('equal', adjustable='box') # Ensure equal scaling for x and y axes
+plt.show()
+
+
+
+    # if show_landmarks:
+        
+
+    #     # Show head with landmarks
+    #     id.show_3D_array(head, axis=0, pts=[ ((lpa[2],lpa[0]),lpa[1],"blue"),  ((rpa[2],rpa[0]),rpa[1],"red"), ((nas[2],nas[0]),nas[1],"green")])
+    #     id.show_3D_array(head, axis=1, pts=[ ((lpa[2],lpa[1]),lpa[0],"blue"),  ((rpa[2],rpa[1]),rpa[0],"red"), ((nas[2],nas[1]),nas[0],"green")])
+    #     id.show_3D_array(head, axis=2, pts=[ ((lpa[0],lpa[1]),lpa[2],"blue"),  ((rpa[0],rpa[1]),rpa[2],"red"), ((nas[0],nas[1]),nas[2],"green")])
+
+
+    # # Vector 1: starts at (0,0), points towards (2,3)
+    # x1, y1 = 0, 0
+    # u1, v1 = 2, 3
+
+    # # Vector 2: starts at (1,1), points towards (4,-1)
+    # x2, y2 = 1, 1
+    # u2, v2 = 3, -2  # (4-1, -1-1)
+
+    # # Vector 3: starts at (-2,0), points towards (0,2)
+    # x3, y3 = -2, 0
+    # u3, v3 = 2, 2
+
+
+    
+    # plt.quiver(x2, y2, u2, v2, color='blue', angles='xy', scale_units='xy', scale=1, label='Vector 2')
+    # plt.quiver(x3, y3, u3, v3, color='green', angles='xy', scale_units='xy', scale=1, label='Vector 3')
+
+
+
+    # plt.xlim(-3, 5)
+    # plt.ylim(-3, 4)
+    # plt.axhline(0, color='grey', lw=0.5)
+    # plt.axvline(0, color='grey', lw=0.5)
+    # plt.xlabel('X-axis')
+    # plt.ylabel('Y-axis')
+    # plt.title('Multiple Single Vectors')
+    # plt.grid(True)
+    # plt.legend() # If using individual calls with labels
+    # plt.gca().set_aspect('equal', adjustable='box') # Ensures correct aspect ratio for vectors
+    # plt.show()
+
+
 

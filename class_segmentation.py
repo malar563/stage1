@@ -155,7 +155,6 @@ class Segmentation:
         """
         csv_path = os.path.join(self.nifti_output_directory, f"points{self.file_number}.csv")
 
-        # Delete an already existing .csv file
         points_csv_file = [f for f in os.listdir(self.nifti_output_directory) if f.endswith(f"points{self.file_number}.csv")]
         if points_csv_file:
             os.remove(csv_path)
@@ -169,8 +168,13 @@ class Segmentation:
             not_cropped_img = nib.load(self.not_cropped_nii_path)
             data[2][1], data[2][2], data[2][3] = not_cropped_img.shape 
 
-        df = pd.DataFrame(data)
-        df.to_csv(csv_path, index=False)             
+        if os.path.exists(csv_path):
+            df_existing = pd.read_csv(csv_path)
+            df_existing.values[:5,:4] = np.array(data)
+            df_existing.to_csv(csv_path, index=False)
+        else:
+            df = pd.DataFrame(data)
+            df.to_csv(csv_path, index=False)             
 
 
     def dcm_to_nii(self, crop=True, size_head=250):
@@ -239,13 +243,18 @@ class Segmentation:
             # Load the image with nibabel
             self.not_cropped_nii_path = nifti_path
             nifti_image = nib.load(nifti_path)
-            top_head_bottom_node_distance = 0.75*size_head # Keeps 3/4 of the head size
+            top_head_bottom_node_distance = 0.75*size_head
 
             # Crop the image depending on the resolution 
             pix_dim, pix_z = nifti_image.header["pixdim"][1:4], nifti_image.header["pixdim"][3]
             n_slices = nifti_image.shape[2]
             crop_start = max(0, n_slices - int(top_head_bottom_node_distance / pix_z))
             cropped_data = nifti_image.get_fdata()[:, :, crop_start:]
+
+            # if pix_z >= 0.6:
+            #     cropped_data = nifti_image.get_fdata()[:,:,-256:]
+            # else:
+            #     cropped_data = nifti_image.get_fdata()[:,:,-512:]
 
             # Create a new NIfTI image
             cropped_image = nib.Nifti1Image(cropped_data, nifti_image.affine, nifti_image.header)
@@ -259,30 +268,6 @@ class Segmentation:
 
    
     def show_3D_array(self, arr, axis=0, pts=None):
-        """
-         Display a 3D array slice-by-slice using a matplotlib slider.
-
-        Parameters
-        ----------
-        arr : numpy.ndarray
-            3D image or mask volume to visualize (shape: [D1, D2, D3]).
-
-        axis : int, default=0
-            Axis along which to slice (0 = first axis, 1 = second, 2 = third).
-
-        pts : list of tuples ((x, y), slice_idx, color), optional
-            Points to highlight on specific slices. Each point is defined by:
-                - (x, y) coordinates in the 2D slice
-                - slice index (along selected axis)
-                - color (any matplotlib-compatible color string)
-
-        Notes
-        -----
-        - The array is visualized using `imshow`, with slices taken along the specified axis.
-        - Points are only shown on the slice corresponding to their `slice_idx`.
-        - Points are displayed as circles with customizable color.
-        - Axes are displayed in (row, column) order, with `origin="lower"` for intuitive orientation.
-        """
         """
         Display a 3D volume slice-by-slice using a matplotlib slider.
 
@@ -300,6 +285,7 @@ class Segmentation:
             - 0 → sagittal-like slicing (ZX)
             - 1 → coronal-like slicing (YZ)
             - 2 → axial-like slicing (XY)
+            Note : These axis number are only valid for the class Segmentation.
 
         pts : list of tuples ((x, y), slice_idx, color), optional
             List of points to highlight on individual slices.
@@ -315,13 +301,14 @@ class Segmentation:
         - Highlighted points are drawn only on their corresponding `slice_idx`.
         - Axes are ordered as (row, column) for `imshow`, which may differ from the actual 
           axis order in the array depending on the selected slicing direction.
+
+        Example
+        -------
+        self.show_3D_array(self.head, axis=2, pts=[((100, 100),100, "red"), ((50, 50),50, "green")])
         """
         from matplotlib.widgets import Slider
         import numpy as np
         import matplotlib.pyplot as plt
-
-        if not (0 <= axis <= 2):
-            raise ValueError("Axis must be 0, 1, or 2.")
 
         fig, ax = plt.subplots()
         plt.subplots_adjust(bottom=0.25)
@@ -392,9 +379,11 @@ class Segmentation:
         
         threshold_no_arteries : int
             Threshold above which regions are considered free of arteries.
+            Only high HU value bones should be left.
         
         threshold_arteries : int
             Lower bound for artery detection.
+            As much artery regions as possible must be taken.
 
         Sets
         ----
@@ -418,9 +407,12 @@ class Segmentation:
     def keep_largest_island(self):
         """
         Keep only the largest connected component in each binary mask.
+        (e.g., remove metal frame artifacts or isolated noise).
 
         Applies 3D connected component labeling to `head`, `skull` and `no_arteries_array`,
         and retains only the largest region in each.
+        Applies 3D connected-component labeling to the existing masks (`self.head`, `self.skull`, and
+        `self.no_arteries_array`) and retains only the largest region in each while ignoring the background (0).
 
         Updates
         -------
@@ -428,6 +420,11 @@ class Segmentation:
             Binary mask of the where only the biggest component (head) is left.
         self.skull : numpy.ndarray
         self.no_arteries_array : numpy.ndarray
+
+        Notes
+        -----
+        - Connectivity uses a full 3×3×3 structuring element (maximum adjacency).
+        - Will only work to remove a metal frame if it is not connected with the head.
         """
         from scipy.ndimage import label, generate_binary_structure
 
@@ -461,7 +458,8 @@ class Segmentation:
     def remove_arteries(self, max_distance = 3): 
         # max_distance = 3 with skull threshold = 200 and no_arteries threshold = 500 works fine, but not totally systematic
         """
-        Remove arteries from the skull mask based on proximity to artery-free regions.
+        Remove arteries from the skull mask (containing arteries) 
+        based on proximity to artery-free regions (skull with high HU value).
 
         Uses a distance transform on `no_arteries_array` to exclude skull voxels 
         too far from artery-free regions, then slightly dilates the result.
@@ -469,12 +467,15 @@ class Segmentation:
         Arguments
         ----------
         max_distance : int
-            Maximum distance (in voxels) to keep skull regions near artery-free zones.
+            Maximum distance (in voxels) to keep in the skull mask 
+            around the mask of the skull with high HU value region.
 
         Updates
         -------
         self.skull : numpy.ndarray
-            Binary mask of skull where arteries are removed.
+            Skull mask with distant (likely artery) parts removed, then slightly dilated.
+            It also remove bones with low HU value that are too far from the high HU value region,
+            but a correction will be made with the TotalSegmentator mask later.
         """
         from scipy.ndimage import distance_transform_edt, binary_dilation, generate_binary_structure
 
@@ -485,22 +486,18 @@ class Segmentation:
         self.skull = binary_dilation(self.skull, generate_binary_structure(3, 1))
 
 
-    def segment_brain(self, fast=False, only_brain=False):
+    def segment_brain(self, fast=False):
         """
         Run TotalSegmentator to segment the head (brain and skull mainly).
 
         Loads the NIfTI image from `self.nii_path` and performs segmentation using 
-        TotalSegmentator. Can restrict to brain only or segment the full head.
+        TotalSegmentator.
 
-        Arguments
-        ----------
+        Argument
+        --------
         fast : bool
             If True, uses lower resolution (3mm instead of 1.5mm) for faster segmentation. 
             (not recommanded for our purposes)
-
-        only_brain : bool
-            If True, segments only the brain (label 90); not recommanded, the skull is needed later in the process.
-            Otherwise, includes the skull (label 91) and more.
 
         File Created
         -------------
@@ -508,30 +505,34 @@ class Segmentation:
 
         Notes
         -----
-        ONLY RUNS WHEN THE SCRIPT IS EXECUTED DIRECTLY.
+        ONLY RUN THIS SCRIPT IN A <<if __name__ == "__main__">> environment.
+        - The code chooses GPU if available, otherwise CPU.
+        - If the output file already exists, segmentation is skipped.
         Important : 
             Brain is labeled with the number 90
             Skull is labeled with the number 91
         """
-        import torch
 
-        device = "gpu" if torch.cuda.is_available() else "cpu"
-        print(f"Running on device: {device}")
+        segmentator_nii_file = [f for f in os.listdir(self.nifti_output_directory) if f.endswith(f"totalsegmentator{self.file_number}.nii.gz")]
+        if not segmentator_nii_file:
+            import torch
 
-        input_img = nib.load(self.nii_path)
-        if only_brain:
-            output_img = totalsegmentator(input_img, fast=fast, roi_subset=["brain"], device=device)
-        else:
+            device = "gpu" if torch.cuda.is_available() else "cpu"
+            print(f"Running on device: {device}")
+
+            input_img = nib.load(self.nii_path)
             output_img = totalsegmentator(input_img, fast=fast, device=device)
-        print("Segmentation with TotalSegmentator has been completed")
-        output_path = os.path.join(self.nifti_output_directory, "totalsegmentator"+self.file_number+".nii.gz")
-        nib.save(output_img, output_path)
-        print(f"NIfTI generated : {output_path}")
+            print("Segmentation with TotalSegmentator has been completed")
+            output_path = os.path.join(self.nifti_output_directory, "totalsegmentator"+self.file_number+".nii.gz")
+            nib.save(output_img, output_path)
+            print(f"NIfTI generated : {output_path}")
+        else:
+            print(f"totalsegmentator{self.file_number}.nii.gz already exists. The existing one will be taken.")
 
 
     def arteries_and_totalsegmentator_mask(self):
         """
-        Combine TotalSegmentator brain mask with existing artery mask.
+        Combine TotalSegmentator brain mask with existing artery mask. 
 
         Loads TotalSegmentator output, extracts brain (label 90) and skull (label 91) masks, 
         and updates `self.arteries` to keep only arteries within the brain.
@@ -547,6 +548,7 @@ class Segmentation:
         -------
         self.arteries : numpy.ndarray
             Binary mask of brain arteries.
+            The artery mask doesn't include soft tissues outside of the brain region anymore.
         """
         totalsegmentator_mask = nib.load(os.path.join(self.nifti_output_directory, "totalsegmentator"+self.file_number+".nii.gz")).get_fdata()
         self.brain_totalsegmentator = np.where(totalsegmentator_mask == 90, 1, 0)
@@ -559,32 +561,32 @@ class Segmentation:
         Save the segmented head and associated masks as NIfTI files.
 
         This function generates:
-        1. A NIfTI image of the original scan masked by the head (used for registration).
-        2. A labeled mask volume combining:
-            - Air (value = 0)
-            - Head (value = 1)
-            - Arteries (value = 2)
-            - Skull (value = 3), refined using TotalSegmentator output and soft tissue overlap.
-
-        The skull mask is improved by overlapping the actual skull mask with the skull mask
-        from TotalSegmentator.
+        1. head{file_number}.nii.gz : A NIfTI image of the original scan masked by the head 
+                                      (used for registration).
+        2. mask{file_number}.nii.gz: integer-labeled volume with the following labels:
+            0 = background / air
+            1 = head (soft tissue)
+            2 = arteries
+            3 = skull (original)
+            4 = refined skull (where eroded TotalSegmentator skull overlaps soft tissue)
+            Note : For the skull mask, keep values >= 3
 
         Parameters
         ----------
         iter_erosion : int
-            Number of binary erosion iterations to apply on the TotalSegmentator skull mask
-            before adding it to the main mask as refined skull.
+            Number of erosions applied to the TotalSegmentator skull before using it for refinement.
 
         Files Created
         -------------
-        - head{file_number}.nii.gz : Original scan with non-head voxels set to -1000 HU (for registration).
-        - mask{file_number}.nii.gz : Integer-labeled volume with values 0–3 indicating tissue types.
+        - head{file_number}.nii.gz : Original scan with non-head voxels set to -1000 HU (needed for registration).
+        - mask{file_number}.nii.gz : Integer-labeled volume with values 0–4 indicating tissue types.
 
         Notes
         -----
-        - The skull refinement uses logical operations: refined regions are added only where 
-          soft tissue overlaps the eroded TotalSegmentator skull.
-        - The resulting mask is used in further processing such as artery registration.
+        - Refined skull regions are derived from the intersection of soft tissue (head) and the
+          eroded TotalSegmentator skull; they are given a distinct label to distinguish them from
+          the original skull.
+        - The final skull mask (`self.skull`) is updated to include the refined skull regions (kept binary).
         """
         # Nifti file with the HU units of the whole head for the registration
         head_array = np.where(self.head == 1, self.array, -1000) # HU units where the mask is 1, -1000 where the mask is 0
@@ -597,7 +599,7 @@ class Segmentation:
 
         # Final improvement of the mask of the skull
         from scipy.ndimage import binary_erosion, generate_binary_structure
-        mask_soft_tissues = np.where(total_mask == 1, 1, 0)
+        mask_soft_tissues = np.where(total_mask == 1, 1, 0) # Keeps only soft tissues (no arteries included)
         mask_eroded_skull = binary_erosion(self.skull_totalsegmentator, structure=generate_binary_structure(3,1), iterations=iter_erosion)
         not_included_skull = 3*mask_soft_tissues*mask_eroded_skull
         self.skull = self.skull + (mask_soft_tissues*mask_eroded_skull)

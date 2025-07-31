@@ -121,7 +121,7 @@ def run_everything(dicoms_list, big_output_directory="processed_files", register
                 id_ct.find_nasion()
                 if verbose:
                     print("Nasion refined")
-                id_ct.check_nasion()
+                # id_ct.check_nasion()
 
                 id_ct.improve_lpa_rpa()
                 if verbose:
@@ -239,7 +239,7 @@ if __name__ == "__main__":
                    "250_CQ/CQ500CT243 CQ500CT243/Unknown Study/CT PLAIN THIN", "250_CQ/CQ500CT249 CQ500CT249/Unknown Study/CT 0.625mm",
                    "250_CQ/CQ500CT250 CQ500CT250/Unknown Study/CT PLAIN THIN"]
 
-    run_everything(dicoms_list=dicoms_list, big_output_directory="250_2025-07-29", register_with_MRI=False, register_with_CT=True, read_transforms=False, delete_useless_files=False, verbose=True)
+    run_everything(dicoms_list=dicoms_list, big_output_directory="250_2025-07-31", register_with_MRI=True, register_with_CT=True, read_transforms=True, delete_useless_files=False, verbose=True)
 
 
 

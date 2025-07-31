@@ -312,6 +312,9 @@ def show_boxplots(dict_errors):
         fig, ax = plt.subplots()
         ax.set_ylabel('Distance (mm)')
         ax.set_xlabel(pt_name)
+
+        print("Median MRI", np.median(landmarks[pt_name][0]))
+        print("Median CT", np.median(landmarks[pt_name][2]))
         
         bplot = ax.boxplot(landmarks[pt_name],
                         patch_artist=True,  # fill with color
@@ -343,8 +346,8 @@ if __name__ == "__main__":
 
     dict_props2check = find_caracteristics(dict_reg_scans)
     dict_ref = find_caracteristics(dict_scans)
-    cut(dict_props2check, dict_ref)
-    # cut(dict_ref, dict_ref)
+    # cut(dict_props2check, dict_ref)
+    cut(dict_ref, dict_ref)
 
     # Path of the processing directory (to change)
     directory = "250_2025-07-25" 
@@ -357,7 +360,7 @@ if __name__ == "__main__":
 
     # print(dict_errors)
 
-    # show_boxplots(dict_errors=dict_errors)
+    show_boxplots(dict_errors=dict_errors)
 
 
     # print(dict_too_far)
