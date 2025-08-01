@@ -1,6 +1,6 @@
 import os
 from class_identification import Identification
-from automatically_get_dicom_folders import create_list
+from automatically_get_folders import create_list
 
 
 def delete(folder_list, big_output_directory="processed_files",

@@ -182,7 +182,7 @@ def run_everything(dicoms_list, big_output_directory="processed_files", register
 # ---------- USER SECTION: Only modify parameters below this line ----------
 if __name__ == "__main__":
 
-    from automatically_get_dicom_folders import create_list
+    from automatically_get_folders import create_list
     # dicoms_list = create_list(directory="50_CQ")
     # print(dicoms_list, len(dicoms_list))
 

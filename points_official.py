@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import os
-from automatically_get_dicom_folders import create_list
+from automatically_get_folders import create_list
 import matplotlib.pyplot as plt
 
 

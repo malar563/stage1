@@ -1,8 +1,10 @@
+"""Note : this file was originally to get good DICOM folders, 
+   but it can also be used for all types of folder"""
 import os
 import re
 
 
-def find_dcm_folders(directory):
+def find_folders(directory):
     """
     For each folder in the given directory, this function collects all paths to subfolders 
     that do not contain further subfolders (i.e., leaf folders containing DICOMs).
@@ -107,7 +109,7 @@ def create_list(directory="dicom_dataset", green_flags = ["thin"], red_flags=["b
         List of selected DICOM folder paths.
     """
     final_folders = []
-    all_dcm_folders = find_dcm_folders(directory=directory)
+    all_dcm_folders = find_folders(directory=directory)
     for dcm_folders in all_dcm_folders:
         final_folders.append(conservation_criteria(dcm_folders=dcm_folders, green_flags=green_flags, red_flags=red_flags))
     return final_folders
@@ -115,6 +117,6 @@ def create_list(directory="dicom_dataset", green_flags = ["thin"], red_flags=["b
             
 # ---------- USER SECTION: Only modify parameters below this line ----------
 if __name__ == "__main__":
-    dicoms_list = create_list(directory="50_CQ")
+    dicoms_list = create_list(directory="250_CQ")
     print(dicoms_list)
 

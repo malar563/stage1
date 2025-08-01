@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 import numpy as np
-from automatically_get_dicom_folders import create_list
+from automatically_get_folders import create_list
 
 
 def clean_value(val):

@@ -5,7 +5,7 @@ from skimage import measure
 from stl import mesh
 
 from class_identification import Identification
-from automatically_get_dicom_folders import create_list
+from automatically_get_folders import create_list
 
 
 def save_to_stl(big_output_directory, file_number, show_mask_to_convert=False):
