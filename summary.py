@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 import numpy as np
+
 from automatically_get_folders import create_list
 
 
@@ -88,15 +89,16 @@ def create_summary(csv_paths, output_dir):
         big_dict_csv["dcm path"] = df.iloc[1, 0]
 
         # Processing time (row 18-19-20)
-        segm_processing_time = clean_value(df.iloc[20, 1]) if len(df) > 18 and len(df.columns) > 2 else None
+        segm_processing_time = clean_value(df.iloc[20, 1]) if len(df) > 20 and len(df.columns) > 2 else None
         big_dict_csv["segmentation processing time"] = segm_processing_time
-        list_segm_processing_time.append(float(segm_processing_time))
-        ct_processing_time = clean_value(df.iloc[18, 1]) if len(df) > 19 and len(df.columns) > 2 else None
+        ct_processing_time = clean_value(df.iloc[19, 1]) if len(df) > 19 and len(df.columns) > 2 else None
         big_dict_csv["CT processing time"] = ct_processing_time
-        list_ct_processing_time.append(float(ct_processing_time))
-        mri_processing_time = clean_value(df.iloc[19, 1]) if len(df) > 20 and len(df.columns) > 2 else None
+        mri_processing_time = clean_value(df.iloc[18, 1]) if len(df) > 18 and len(df.columns) > 2 else None
         big_dict_csv["MRI processing time"] = mri_processing_time
-        list_mri_processing_time.append(float(mri_processing_time))
+        if segm_processing_time is not None and mri_processing_time is not None and ct_processing_time is not None:
+            list_segm_processing_time.append(float(segm_processing_time))
+            list_ct_processing_time.append(float(ct_processing_time))
+            list_mri_processing_time.append(float(mri_processing_time))
 
         # Resolution (row 3)
         res_x, res_y, res_z = (None, None, None)
@@ -136,12 +138,10 @@ def create_summary(csv_paths, output_dir):
     return np.array(list_segm_processing_time), np.array(list_ct_processing_time), np.array(list_mri_processing_time)
     
 
-
-
 # ---------- USER SECTION: Only modify parameters below this line ----------
 if __name__ == "__main__":
     # Path of the processing directory (to change)
-    directory = "250_2025-07-25" 
+    directory = "250_2025-07-31" 
     # Create a folder list to get points{...}.csv
     csv_paths = create_list(directory=directory)
     csv_paths.sort(key=lambda x: int(x.split('\\')[-1]))

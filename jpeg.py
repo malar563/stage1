@@ -1,5 +1,6 @@
 import os
 import subprocess
+from tqdm import tqdm
 
 from automatically_get_folders import create_list
 
@@ -43,7 +44,7 @@ def decode_jpeg(dicoms_list, repo_dir, gdcmconv_exe, overwrite=False):
     --------
     decode_jpeg(["study1", "study2"], "/data/patient_scans", "/usr/bin/gdcmconv")
     """
-    for input_dir in dicoms_list:
+    for input_dir in tqdm(dicoms_list):
 
         input_dir = os.path.join(repo_dir, input_dir)    
         output_dir=input_dir+"_dec"

@@ -1,9 +1,11 @@
 import matplotlib.pyplot as plt
 import os
-import nibabel as nib
-import pandas as pd
 import numpy as np
+from tqdm import tqdm
+
 from class_identification import Identification
+from view_results import load_landmarks_from_csv
+from automatically_get_folders import create_list
 
 
 dict_scans = {
@@ -69,179 +71,96 @@ dict_scans = {
 }
 
 
-
-
-def load_landmarks_from_csv(csv_path):
-    """Load and separate MRI and CT landmarks from a CSV file."""
-    df = pd.read_csv(csv_path, sep=",", header=None)
-    print(df.iloc[1,0])
-    
-    # Get MRI landmarks
-    scan_name = df.iloc[1,0]
-    array_MRI = df.iloc[6:12, 1:].values.astype(float)
-    reg_nas_MRI, reg_lpa_MRI, reg_rpa_MRI = array_MRI[1], array_MRI[3], array_MRI[5]
-    imp_nas_MRI, imp_lpa_MRI, imp_rpa_MRI = array_MRI[0], array_MRI[2], array_MRI[4]
-    
-    # Get CT landmarks
-    array_CT = df.iloc[12:18, 1:].values.astype(float)
-    reg_nas_CT, reg_lpa_CT, reg_rpa_CT = array_CT[1], array_CT[3], array_CT[5]
-    imp_nas_CT, imp_lpa_CT, imp_rpa_CT = array_CT[0], array_CT[2], array_CT[4]
-
-    return {"MRI": {"reg": [reg_nas_MRI, reg_lpa_MRI, reg_rpa_MRI],
-                    "imp": [imp_nas_MRI, imp_lpa_MRI, imp_rpa_MRI]},
-            "CT": {"reg":  [reg_nas_CT,  reg_lpa_CT,  reg_rpa_CT],
-                   "imp":  [imp_nas_CT,  imp_lpa_CT,  imp_rpa_CT]},
-            "scan name":scan_name}
-
-
 # ------------------ USER SETTINGS ------------------ #
     
 # Choose working folder and file number
 big_output_directory = "250_2025-07-31" # Folder with NIfTI and CSV files
-
-
-# Show landmarks in normal CT space (to be transformed in patient space)
-show_CT_normalized_space = False
-path_CT_not_normalized = 'head1.nii.gz'
-
-show_landmarks = False # To see the landmarks
-show_my = False
+number_of_file = 3
 # Choose which landmarks to display (can be CT or MRI, reg or imp)
 reg_with = "MRI" # "CT" or "MRI"
 landmarks_type = "reg" # "reg" or "imp"
 
-
 # ---------------- END OF USER SETTINGS ---------------- #
-
-dict_nas = {"x_origins" : [],"y_origins": [],"z_origins" : [],"u_comps" : [],"v_comps" : [],"w_comps" : []}
-dict_lpa = {"x_origins" : [],"y_origins": [],"z_origins" : [],"u_comps" : [],"v_comps" : [],"w_comps" : []}
-dict_rpa = {"x_origins" : [],"y_origins": [],"z_origins" : [],"u_comps" : [],"v_comps" : [],"w_comps" : []}
-for file_number in range(4):
-    # Initialize an instance of the class
-    id = Identification(big_output_directory=big_output_directory, file_number=file_number, fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
-
-    csv_path = os.path.join(id.nifti_output_directory, "points"+id.file_number+".csv")
-    head = nib.load(id.moving_img_path)
-    head = head.get_fdata()
-
-    dict_landmarks = load_landmarks_from_csv(csv_path=csv_path)
-    scan_name = dict_landmarks["scan name"]
-    res = np.array(dict_scans[scan_name]["res"])
-    nas, lpa, rpa = dict_landmarks[reg_with][landmarks_type]
-    nas = np.array(nas)*res
-    lpa = np.array(lpa)*res
-    rpa = np.array(rpa)*res
+def show_error_vectors():
     
-    
-    my_nas = np.array(dict_scans[scan_name]["NAS"])*res
-    my_lpa = np.array(dict_scans[scan_name]["LPA"])*res
-    my_rpa = np.array(dict_scans[scan_name]["RPA"])*res
+    dict_nas = {"x_origins" : [],"y_origins": [],"z_origins" : [],"u_comps" : [],"v_comps" : [],"w_comps" : []}
+    dict_lpa = {"x_origins" : [],"y_origins": [],"z_origins" : [],"u_comps" : [],"v_comps" : [],"w_comps" : []}
+    dict_rpa = {"x_origins" : [],"y_origins": [],"z_origins" : [],"u_comps" : [],"v_comps" : [],"w_comps" : []}
+    # dict_pt = {"x_origins" : [],"y_origins": [],"z_origins" : [],"u_comps" : [],"v_comps" : [],"w_comps" : []}
+    # Mettre que ça se répète pas 
 
-    points = [nas, lpa, rpa]
-    my_points = [my_nas, my_lpa, my_rpa]
     all_dict = [dict_nas, dict_lpa, dict_rpa]
+    # all_dict = [dict_pt for i in range(3)]
+    colors = ["green", "blue", "red"]
+
+    folder_path_list = create_list(big_output_directory)
+
+    for folder_path in tqdm(folder_path_list):
+        file_number = os.path.basename(folder_path)
+        csv_path = os.path.join(folder_path, "points"+file_number+".csv")
+        dict_csv = load_landmarks_from_csv(csv_path=csv_path)
+        scan_name = dict_csv["scan name"]
+        res = np.array(dict_scans[scan_name]["res"])
+        nas, lpa, rpa = np.array(dict_csv[reg_with][landmarks_type])
+        nas *= res
+        lpa *= res
+        rpa *= res
+        my_nas = np.array(dict_scans[scan_name]["NAS"])*res
+        my_lpa = np.array(dict_scans[scan_name]["LPA"])*res
+        my_rpa = np.array(dict_scans[scan_name]["RPA"])*res
+
+        points = [nas, lpa, rpa]
+        my_points = [my_nas, my_lpa, my_rpa]
+        
+        # Compute vectors
+        for i in range(3):
+            x, y, z = points[i]
+            u, v, w = np.array(my_points[i]) - np.array(points[i]) 
+            all_dict[i]["x_origins"].append(x)
+            all_dict[i]["y_origins"].append(y)
+            all_dict[i]["z_origins"].append(z)
+            all_dict[i]["u_comps"].append(u)
+            all_dict[i]["v_comps"].append(v)
+            all_dict[i]["w_comps"].append(w)
+
+    w_tot = []
+    u_tot = []
+
+    # Show vectors (difference between my_point and point found with registration) for a landmark
     for i in range(3):
-        x, y, z = points[i]
-        u, v, w = np.array(my_points[i]) - np.array(points[i]) 
-        all_dict[i]["x_origins"].append(x)
-        all_dict[i]["y_origins"].append(y)
-        all_dict[i]["z_origins"].append(z)
-        all_dict[i]["u_comps"].append(u)
-        all_dict[i]["v_comps"].append(v)
-        all_dict[i]["w_comps"].append(w)
+        x_origins=all_dict[i]["x_origins"]
+        y_origins=all_dict[i]["y_origins"]
+        z_origins=all_dict[i]["z_origins"]
+        u_comps=all_dict[i]["u_comps"]
+        v_comps=all_dict[i]["v_comps"]
+        w_comps=all_dict[i]["w_comps"]   
+        plt.quiver(z_origins, x_origins, w_comps, u_comps, angles='xy', scale_units='xy', scale=1, color=colors[i])
+        plt.xlim(0, 511)
+        plt.ylim(0, 511)
+        plt.xlabel("Z-axis (mm)")
+        plt.ylabel("X-axis (mm)")
+        plt.grid(True)
+        plt.show()
 
-all_dict = [dict_nas, dict_lpa, dict_rpa]
-colors = ["green", "blue", "red"]
-w_tot = []
-u_tot = []
-for i in range(3):
-    x_origins=all_dict[i]["x_origins"]
-    y_origins=all_dict[i]["y_origins"]
-    z_origins=all_dict[i]["z_origins"]
-    u_comps=all_dict[i]["u_comps"]
-    v_comps=all_dict[i]["v_comps"]
-    w_comps=all_dict[i]["w_comps"]   
-    plt.quiver(z_origins, x_origins, w_comps, u_comps,
-            angles='xy', scale_units='xy', scale=1,
-            color=colors[i])
+        w_tot.append(np.sum(w_comps))
+        u_tot.append(np.sum(u_comps))
 
-    # Set plot limits for better visualization
-    plt.xlim(0, 511)
-    plt.ylim(0, 511)
 
-    # Add labels and title
-    plt.xlabel("X-axis")
-    plt.ylabel("Y-axis")
-    # plt.title("50 Single Vectors")
-
-    # Display the plot
+    # Show the resulting vector for each landmark
+    plt.quiver([0,0,0], [0,0,0], w_tot, u_tot, angles='xy', scale_units='xy', scale=1, color=colors)
+    plt.xlim(-200, 200)
+    plt.ylim(-200, 200)
+    plt.xlabel("Z-axis (mm)")
+    plt.ylabel("X-axis (mm)")
     plt.grid(True)
-    plt.gca().set_aspect('equal', adjustable='box') # Ensure equal scaling for x and y axes
     plt.show()
 
-    w_tot.append(np.sum(w_comps))
-    u_tot.append(np.sum(u_comps))
-
-
-plt.quiver([0,0,0], [0,0,0], w_tot, u_tot,
-            angles='xy', scale_units='xy', scale=1,
-            color=["green", "blue", "red"])
-
-# Set plot limits for better visualization
-plt.xlim(-200, 200)
-plt.ylim(-200, 200)
-
-# Add labels and title
-plt.xlabel("X-axis")
-plt.ylabel("Y-axis")
-# plt.title("50 Single Vectors")
-
-# Display the plot
-plt.grid(True)
-plt.gca().set_aspect('equal', adjustable='box') # Ensure equal scaling for x and y axes
-plt.show()
+show_error_vectors()
 
 
 
-    # if show_landmarks:
-        
-
-    #     # Show head with landmarks
-    #     id.show_3D_array(head, axis=0, pts=[ ((lpa[2],lpa[0]),lpa[1],"blue"),  ((rpa[2],rpa[0]),rpa[1],"red"), ((nas[2],nas[0]),nas[1],"green")])
-    #     id.show_3D_array(head, axis=1, pts=[ ((lpa[2],lpa[1]),lpa[0],"blue"),  ((rpa[2],rpa[1]),rpa[0],"red"), ((nas[2],nas[1]),nas[0],"green")])
-    #     id.show_3D_array(head, axis=2, pts=[ ((lpa[0],lpa[1]),lpa[2],"blue"),  ((rpa[0],rpa[1]),rpa[2],"red"), ((nas[0],nas[1]),nas[2],"green")])
 
 
-    # # Vector 1: starts at (0,0), points towards (2,3)
-    # x1, y1 = 0, 0
-    # u1, v1 = 2, 3
-
-    # # Vector 2: starts at (1,1), points towards (4,-1)
-    # x2, y2 = 1, 1
-    # u2, v2 = 3, -2  # (4-1, -1-1)
-
-    # # Vector 3: starts at (-2,0), points towards (0,2)
-    # x3, y3 = -2, 0
-    # u3, v3 = 2, 2
-
-
-    
-    # plt.quiver(x2, y2, u2, v2, color='blue', angles='xy', scale_units='xy', scale=1, label='Vector 2')
-    # plt.quiver(x3, y3, u3, v3, color='green', angles='xy', scale_units='xy', scale=1, label='Vector 3')
-
-
-
-    # plt.xlim(-3, 5)
-    # plt.ylim(-3, 4)
-    # plt.axhline(0, color='grey', lw=0.5)
-    # plt.axvline(0, color='grey', lw=0.5)
-    # plt.xlabel('X-axis')
-    # plt.ylabel('Y-axis')
-    # plt.title('Multiple Single Vectors')
-    # plt.grid(True)
-    # plt.legend() # If using individual calls with labels
-    # plt.gca().set_aspect('equal', adjustable='box') # Ensures correct aspect ratio for vectors
-    # plt.show()
 
 
 

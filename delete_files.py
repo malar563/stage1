@@ -1,4 +1,6 @@
 import os
+from tqdm import tqdm
+
 from class_identification import Identification
 from automatically_get_folders import create_list
 
@@ -22,31 +24,34 @@ def delete(folder_list, big_output_directory="processed_files",
         If True, prints a message for each folder cleaned.
     """
 
-    for folder in folder_list:
+    for folder in tqdm(folder_list):
         file_number = os.path.basename(folder)
+        
+        try:
+            # ----- Cleanup for CT registration with non-normalized CT scan -----
+            if register_with_CT:
+                id_ct = Identification(
+                    big_output_directory=big_output_directory,
+                    file_number=file_number,
+                    fixed_img_path="head1.nii.gz",
+                    register_with_CT_not_normalized=True)
+                
+                id_ct.delete_useless_files()
+                if verbose:
+                    print(f"Folder {file_number} : CT useless files deleted")
 
-        # ----- Cleanup for CT registration with non-normalized CT scan -----
-        if register_with_CT:
-            id_ct = Identification(
-                big_output_directory=big_output_directory,
-                file_number=file_number,
-                fixed_img_path="head1.nii.gz",
-                register_with_CT_not_normalized=True)
-            
-            id_ct.delete_useless_files()
-            if verbose:
-                print(f"[{file_number}] CT useless files deleted")
-
-        # ----- Cleanup for MRI registration with normalized template -----
-        if register_with_MRI:
-            id_mri = Identification(
-                big_output_directory=big_output_directory,
-                file_number=file_number,
-                fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
-            
-            id_mri.delete_useless_files()
-            if verbose:
-                print(f"[{file_number}] MRI useless files deleted")
+            # ----- Cleanup for MRI registration with normalized template -----
+            if register_with_MRI:
+                id_mri = Identification(
+                    big_output_directory=big_output_directory,
+                    file_number=file_number,
+                    fixed_img_path='icbm_avg_152_t1_tal_lin.nii')
+                
+                id_mri.delete_useless_files()
+                if verbose:
+                    print(f"Folder {file_number} : MRI useless files deleted")
+        except Exception as e:
+            print("Folder not deleted :", folder, f" ({e})")
 
 
 # --------------------------------------------------------------------------
@@ -55,7 +60,7 @@ def delete(folder_list, big_output_directory="processed_files",
 
 if __name__ == "__main__":
     # Set the path to the folder that contains all processed subfolders
-    big_output_directory = "cava"
+    big_output_directory = "50_2025-07-17 copy"
 
     # Automatically detect subfolders containing individual case results
     folder_list = create_list(directory=big_output_directory)

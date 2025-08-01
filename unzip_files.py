@@ -1,5 +1,6 @@
 import zipfile 
 import os 
+from tqdm import tqdm
 
  
 def unzip(zip_directory, output_directory, delete_zip=False):
@@ -24,7 +25,7 @@ def unzip(zip_directory, output_directory, delete_zip=False):
     zip_files = [f for f in os.listdir(zip_directory) if f.endswith(".zip")] 
     print(zip_files) 
 
-    for i, zip_file in enumerate(zip_files):
+    for i, zip_file in tqdm(enumerate(zip_files)):
         print(i, zip_file)
         try: 
             zip_file = os.path.join(zip_directory, zip_file) 
@@ -44,10 +45,10 @@ if __name__ == "__main__":
     # output_directory = r"D:\MaryliseLarouche\CQ500\150_CQ" 
 
     # zip_directory = "150_CQ"
-    # output_directory = "de_150_CQ"
+    # output_directory = "dec_150_CQ"
 
-    # # Note : zip_directory and output_directory can be identical or different
-    unzip(zip_directory = "dezip_test", output_directory = "fait_dezip_test", delete_zip=False)
+    # Note : zip_directory and output_directory can be identical or different
+    unzip(zip_directory = "zip_dir", output_directory = "unzip_dir", delete_zip=False)
             
 
 

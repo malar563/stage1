@@ -1,12 +1,14 @@
 import os
 import time
+from tqdm import tqdm
+
 from class_segmentation import Segmentation
 from class_identification import Identification
 
 
 def run_everything(dicoms_list, big_output_directory="processed_files", register_with_MRI=True, register_with_CT=False, read_transforms=False, delete_useless_files=False, verbose=True):
 
-    for i, dicom in enumerate(dicoms_list):
+    for i, dicom in tqdm(enumerate(dicoms_list)):
         try:
             start = time.time()
 
@@ -185,29 +187,6 @@ if __name__ == "__main__":
     from automatically_get_folders import create_list
     # dicoms_list = create_list(directory="50_CQ")
     # print(dicoms_list, len(dicoms_list))
-
-
-    # dicoms_list = [r"50_CQ\CQ500CT0 CQ500CT0\Unknown Study\CT PLAIN THIN", r"50_CQ\CQ500CT2 CQ500CT2\Unknown Study\CT 0.625mm", r"50_CQ\CQ500CT3 CQ500CT3\Unknown Study\CT PLAIN THIN",
-    #                r"50_CQ\CQ500CT4 CQ500CT4\Unknown Study\CT 0.625mm", r"50_CQ\CQ500CT6 CQ500CT6\Unknown Study\CT Thin Details", r"50_CQ\CQ500CT10 CQ500CT10\Unknown Study\CT PLAIN THIN",
-    #                 r"50_CQ\CQ500CT17 CQ500CT17\Unknown Study\CT 0.625mm", r"50_CQ\CQ500CT18 CQ500CT18\Unknown Study\CT 0.625mm", r"50_CQ\CQ500CT22 CQ500CT22\Unknown Study\CT PLAIN THIN",
-    #                 r"50_CQ\CQ500CT26 CQ500CT26\Unknown Study\CT C THIN", r"50_CQ\CQ500CT32 CQ500CT32\Unknown Study\CT 0.625mm", r"50_CQ\CQ500CT40 CQ500CT40\Unknown Study\CT 0.625mm",
-    #                 r"50_CQ\CQ500CT48 CQ500CT48\Unknown Study\CT PLAIN THIN", r"50_CQ\CQ500CT50 CQ500CT50\Unknown Study\CT 0.625mm"]
-
-
-    # dicoms_list = ["150_CQ/CQ500CT55 CQ500CT55/Unknown Study/CT 5mm", "150_CQ/CQ500CT57 CQ500CT57/Unknown Study/CT 0.625mm",
-    #                "150_CQ/CQ500CT60 CQ500CT60/Unknown Study/CT 0.625mm", "150_CQ/CQ500CT66 CQ500CT66/Unknown Study/CT PLAIN THIN",
-    #                "150_CQ/CQ500CT67 CQ500CT67/Unknown Study/CT PLAIN THIN", "150_CQ/CQ500CT73 CQ500CT73/Unknown Study/CT PLAIN THIN",
-    #                "150_CQ/CQ500CT78 CQ500CT78/Unknown Study/CT PLAIN THIN", "150_CQ/CQ500CT80 CQ500CT80/Unknown Study/CT 0.625mm",
-    #                "150_CQ/CQ500CT84 CQ500CT84/Unknown Study/CT PLAIN THIN", "150_CQ/CQ500CT85 CQ500CT85/Unknown Study/CT PLAIN THIN",
-    #                "150_CQ/CQ500CT90 CQ500CT90/Unknown Study/CT 0.625mm", "150_CQ/CQ500CT92 CQ500CT92/Unknown Study/CT PLAIN THIN",
-    #                "150_CQ/CQ500CT101 CQ500CT101/Unknown Study/CT PLAIN THIN", "150_CQ/CQ500CT102 CQ500CT102/Unknown Study/CT PLAIN THIN",
-    #                "150_CQ/CQ500CT104 CQ500CT104/Unknown Study/CT PLAIN THIN", "150_CQ/CQ500CT108 CQ500CT108/Unknown Study/CT 0.625mm",
-    #                "150_CQ/CQ500CT109 CQ500CT109/Unknown Study/CT 0.625mm", "150_CQ/CQ500CT111 CQ500CT111/Unknown Study/CT PLAIN THIN",
-    #                "150_CQ/CQ500CT113 CQ500CT113/Unknown Study/CT PLAIN THIN", "150_CQ/CQ500CT121 CQ500CT121/Unknown Study/CT PLAIN THIN",
-    #                "150_CQ/CQ500CT126 CQ500CT126/Unknown Study/CT PLAIN THIN", "150_CQ/CQ500CT130 CQ500CT130/Unknown Study/CT PLAIN THIN",
-    #                "150_CQ/CQ500CT135 CQ500CT135/Unknown Study/CT PLAIN THIN", "150_CQ/CQ500CT140 CQ500CT140/Unknown Study/CT PLAIN THIN",
-    #                "150_CQ/CQ500CT149 CQ500CT149/Unknown Study/CT 0.625mm"]
-    
 
     dicoms_list = ["250_CQ/CQ500CT0 CQ500CT0/Unknown Study/CT PLAIN THIN", "250_CQ/CQ500CT2 CQ500CT2/Unknown Study/CT 0.625mm", "250_CQ/CQ500CT3 CQ500CT3/Unknown Study/CT PLAIN THIN",
                    "250_CQ/CQ500CT4 CQ500CT4/Unknown Study/CT 0.625mm", "250_CQ/CQ500CT6 CQ500CT6/Unknown Study/CT Thin Details", "250_CQ/CQ500CT10 CQ500CT10/Unknown Study/CT PLAIN THIN",

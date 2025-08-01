@@ -1,4 +1,3 @@
-import dicom2nifti
 import nibabel as nib
 import os
 from totalsegmentator.python_api import totalsegmentator

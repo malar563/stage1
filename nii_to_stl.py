@@ -3,6 +3,7 @@ import nibabel as nib
 import numpy as np
 from skimage import measure
 from stl import mesh
+from tqdm import tqdm
 
 from class_identification import Identification
 from automatically_get_folders import create_list
@@ -61,7 +62,7 @@ def save_to_stl(big_output_directory, file_number, show_mask_to_convert=False):
 # --------------------------------------------------------------------------
 if __name__ == "__main__":
     # Path where patient folders are located
-    big_output_directory = "cava"
+    big_output_directory = "parent_folder"
 
     # Show original and thresholded masks during processing
     show_mask_to_convert = False
@@ -77,16 +78,12 @@ if __name__ == "__main__":
 # ------------------------- END OF USER SECTION ----------------------------
 # --------------------------------------------------------------------------
 
-
-    # if run_single_file and run_all_folders:
-    #     raise ValueError("Choose only one mode: single file OR all folders. Set one of them to False.")
-
     if run_single_file:
         save_to_stl(big_output_directory, single_file_number, show_mask_to_convert)
 
     elif run_all_folders:
         folders_list = create_list(big_output_directory)
         print(f"Found {len(folders_list)} folders.")
-        for folder in folders_list:
+        for folder in tqdm(folders_list):
             file_number = os.path.basename(folder)
             save_to_stl(big_output_directory, file_number, show_mask_to_convert)
