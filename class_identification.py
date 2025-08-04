@@ -8,7 +8,7 @@ import pandas as pd
 
 class Identification:
 
-    def __init__(self, big_output_directory="processed_files", file_number=0, fixed_img_path='icbm_avg_152_t1_tal_lin.nii', register_with_CT_not_normalized = False):
+    def __init__(self, big_output_directory="processed_files", file_number=0, fixed_img_path='icbm_avg_152_t1_tal_lin.nii', register_with_CT_not_normalized = False, show_normalized_pts=False):
         """
         Initialize the Identification class for image alignment and landmark localization.
 
@@ -92,18 +92,20 @@ class Identification:
         self.fixed_img = ants.image_read(fixed_img_path, reorient=self.orient_for_registration) # Reference image for registration
 
         # Landmark coordinates determined visually in the normalized space (mri)
-        self.lpa_vox_normal_space = np.array([24, 112, 8])
+        self.lpa_vox_normal_space = np.array([24, 112, 8]) # z, x, y
         self.rpa_vox_normal_space = np.array([24, 112, 172]) # 173
         self.nas_vox_normal_space = np.array([28, 4, 90])
         # self.lpa_vox_normal_space = np.array([25, 107, 6]) # (initial avec 173 : 25-07-2025)  et 30-07-2025
         # self.rpa_vox_normal_space = np.array([25, 107, 174]) # 173
         # self.nas_vox_normal_space = np.array([28, 4, 90])
-        # self.show_3D_array(self.fixed_img.numpy(), axis=2, pts=[((self.nas_vox_normal_space[1],self.nas_vox_normal_space[0]), self.nas_vox_normal_space[2], "green"),
-        #                                                             ((self.lpa_vox_normal_space[1],self.lpa_vox_normal_space[0]), self.lpa_vox_normal_space[2], "blue"),
-        #                                                             ((self.rpa_vox_normal_space[1],self.rpa_vox_normal_space[0]), self.rpa_vox_normal_space[2], "red")])
-        # self.show_3D_array(self.fixed_img.numpy(), axis=1, pts=[((self.nas_vox_normal_space[2],self.nas_vox_normal_space[0]), self.nas_vox_normal_space[1], "green"),
-        #                                                             ((self.lpa_vox_normal_space[2],self.lpa_vox_normal_space[0]), self.lpa_vox_normal_space[1], "blue"),
-        #                                                             ((self.rpa_vox_normal_space[2],self.rpa_vox_normal_space[0]), self.rpa_vox_normal_space[1], "red")])
+        if not register_with_CT_not_normalized:
+            if show_normalized_pts:
+                self.show_3D_array(self.fixed_img.numpy(), axis=2, pts=[((self.nas_vox_normal_space[1],self.nas_vox_normal_space[0]), self.nas_vox_normal_space[2], "green"),
+                                                                            ((self.lpa_vox_normal_space[1],self.lpa_vox_normal_space[0]), self.lpa_vox_normal_space[2], "blue"),
+                                                                            ((self.rpa_vox_normal_space[1],self.rpa_vox_normal_space[0]), self.rpa_vox_normal_space[2], "red")])
+                self.show_3D_array(self.fixed_img.numpy(), axis=1, pts=[((self.nas_vox_normal_space[2],self.nas_vox_normal_space[0]), self.nas_vox_normal_space[1], "green"),
+                                                                            ((self.lpa_vox_normal_space[2],self.lpa_vox_normal_space[0]), self.lpa_vox_normal_space[1], "blue"),
+                                                                            ((self.rpa_vox_normal_space[2],self.rpa_vox_normal_space[0]), self.rpa_vox_normal_space[1], "red")])
         self.fwd_name = "mri_fwd"+self.file_number
         self.inv_name = "mri_inv"+self.file_number
         
@@ -112,15 +114,16 @@ class Identification:
         # from cropped_6_cow_angio__06__hv36__3
         if self.register_with_CT_not_normalized:
             # self.show_3D_array(self.moving_img.numpy(), axis=2)
-            self.nas_vox_normal_space = np.array([101, 50, 238])
-            self.lpa_vox_normal_space = np.array([57, 236, 83]) 
-            self.rpa_vox_normal_space = np.array([69, 236, 403])
-            # self.show_3D_array(self.fixed_img.numpy(), axis=2, pts=[((self.nas_vox_normal_space[1],self.nas_vox_normal_space[0]), self.nas_vox_normal_space[2], "green"),
-            #                                                         ((self.lpa_vox_normal_space[1],self.lpa_vox_normal_space[0]), self.lpa_vox_normal_space[2], "blue"),
-            #                                                         ((self.rpa_vox_normal_space[1],self.rpa_vox_normal_space[0]), self.rpa_vox_normal_space[2], "red")])
-            # self.show_3D_array(self.fixed_img.numpy(), axis=1, pts=[((self.nas_vox_normal_space[2],self.nas_vox_normal_space[0]), self.nas_vox_normal_space[1], "green"),
-            #                                                         ((self.lpa_vox_normal_space[2],self.lpa_vox_normal_space[0]), self.lpa_vox_normal_space[1], "blue"),
-            #                                                         ((self.rpa_vox_normal_space[2],self.rpa_vox_normal_space[0]), self.rpa_vox_normal_space[1], "red")])
+            self.nas_vox_normal_space = np.array([101, 50, 238]) # z, x, y
+            self.lpa_vox_normal_space = np.array([57, 236, 83]) # z, x, y
+            self.rpa_vox_normal_space = np.array([69, 236, 403]) # z, x, y
+            if show_normalized_pts:
+                self.show_3D_array(self.fixed_img.numpy(), axis=2, pts=[((self.nas_vox_normal_space[1],self.nas_vox_normal_space[0]), self.nas_vox_normal_space[2], "green"),
+                                                                        ((self.lpa_vox_normal_space[1],self.lpa_vox_normal_space[0]), self.lpa_vox_normal_space[2], "blue"),
+                                                                        ((self.rpa_vox_normal_space[1],self.rpa_vox_normal_space[0]), self.rpa_vox_normal_space[2], "red")])
+                self.show_3D_array(self.fixed_img.numpy(), axis=1, pts=[((self.nas_vox_normal_space[2],self.nas_vox_normal_space[0]), self.nas_vox_normal_space[1], "green"),
+                                                                        ((self.lpa_vox_normal_space[2],self.lpa_vox_normal_space[0]), self.lpa_vox_normal_space[1], "blue"),
+                                                                        ((self.rpa_vox_normal_space[2],self.rpa_vox_normal_space[0]), self.rpa_vox_normal_space[1], "red")])
             self.fwd_name = "ct_fwd"+self.file_number
             self.inv_name = "ct_inv"+self.file_number
 
@@ -701,19 +704,17 @@ class Identification:
                          os.path.join(self.nifti_output_directory, self.fwd_name+".nii.gz"),
                          os.path.join(self.nifti_output_directory, self.inv_name+".mat"),
                          os.path.join(self.nifti_output_directory, self.inv_name+".nii.gz"),
-                         os.path.join(self.nifti_output_directory, "totalsegmentator"+self.file_number+".nii.gz")
-                        # ,os.path.join(self.nifti_output_directory, "head"+self.file_number+".nii.gz")
-                        ] 
-                        # head is NOT included in the files to delete because without it, it is not be possible to create an instance of the class Identification
-                        # For example, view_results.py won't work.
+                         os.path.join(self.nifti_output_directory, "totalsegmentator"+self.file_number+".nii.gz")] 
         
         # Finds if a cropped file exists, and delete the original one in that case
         nii_files = [f for f in os.listdir(self.nifti_output_directory) if f.endswith(".nii") or f.endswith(".nii.gz")]
         cropped_files = [f for f in nii_files if f.startswith("cropped_")]
         if len(cropped_files)>=1:
-            excluded_prefixes = ("cropped_", "ct_fwd", "mri_fwd", "ct_inv", "mri_inv", "mask", "mca_territory", "totalsegmentator") 
-            non_cropped = [f for f in nii_files if not f.startswith(excluded_prefixes)][0]
-            useless_files.append(os.path.join(self.nifti_output_directory,non_cropped))
+            excluded_prefixes = ("cropped_", "ct_fwd", "mri_fwd", "ct_inv", "mri_inv", "mask", "mca_territory", "totalsegmentator", "head") 
+            non_cropped = [f for f in nii_files if not f.startswith(excluded_prefixes)]
+            if non_cropped:
+                non_cropped = non_cropped[0]
+                useless_files.append(os.path.join(self.nifti_output_directory,non_cropped))
         
         for file_path in useless_files:
             if os.path.exists(file_path):
