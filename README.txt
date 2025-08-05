@@ -1,5 +1,5 @@
 
-1. Clone your repository
+1. Clone your repository with VSCode or the following command :
 git clone  https://github.com/malar563/stage1.git
 
 In a terminal
@@ -14,6 +14,7 @@ python -m venv venv
 source venv/bin/activate
 # On Windows:
 venv\Scripts\activate
+# You should now see (venv) that indicates you are in your virtual environment
 
 # 5. Install dependencies
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
