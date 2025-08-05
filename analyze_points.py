@@ -5,7 +5,7 @@ from collections import defaultdict
 import matplotlib.pyplot as plt
 import json
 
-from automatically_get_dicom_folders import create_list
+from automatically_get_folders import create_list
 
 # ----------------------------------------------------------------------------
 

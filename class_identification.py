@@ -10,15 +10,17 @@ class Identification:
 
     def __init__(self, big_output_directory="processed_files", file_number=0, fixed_img_path='icbm_avg_152_t1_tal_lin.nii', register_with_CT_not_normalized = False, show_normalized_pts=False):
         """
-        Initialize the Identification class for image alignment and landmark localization.
+        Initialize the Identification class for landmark localization and image registration.
 
-        Loads moving (patient) and fixed (atlas) images, prepares file paths, loads head/mask data, 
-        and precomputes resolution and flipped/transposed arrays for visualization or processing.
+        This constructor sets up the registration environment by loading the fixed (atlas) and 
+        moving (patient) images, initializing landmark coordinates, and reorienting the input 
+        volumes for consistent processing. It also handles CT or MRI workflows depending on the 
+        input flags.
 
         Parameters
         ----------
-        big_output_directory : str
-            Directory where processed folders and files are stored.
+        big_output_directory : str, optional
+            Root directory containing subfolders for each scan (default is "processed_files").
 
         file_number : int
             Identifier used to locate the directory and specific NIfTI and mask files.
@@ -26,37 +28,59 @@ class Identification:
         fixed_img_path : str
             Path to the fixed (atlas) image used for registration.
 
+        register_with_CT_not_normalized : bool, optional
+            If True, use CT (non-normalized) coordinates instead of MRI. Adjusts landmarks and file names accordingly.
+
+        show_normalized_pts : bool, optional
+            If True, display the predefined landmark positions over the fixed image for visual verification.
+
         Attributes
         ----------
-        moving_img : ants.ANTsImage
-            Reoriented patient image to be registered.
+        big_output_directory : str
+            Base directory containing all output folders.
 
-        fixed_img : ants.ANTsImage
-            Reoriented atlas image used as reference.
+        file_number : str
+            The folder name corresponding to the selected scan (casted from int).
+
+        nifti_output_directory : str
+            Full path to the subfolder containing the scan’s NIfTI files.
 
         moving_img_path : str
-            Path to the original moving (patient) image file.
+            Full path to the input (moving) image (head NIfTI file).
+
+        fixed_img_path : str
+            Full path to the reference (atlas) image.
+
+        moving_img : ants.ANTsImage
+            Reoriented moving image for registration.
+
+        fixed_img : ants.ANTsImage
+            Reoriented fixed (reference) image.
 
         initial_moving_img_orientation : str
-            Orientation code (e.g., "RPI", "IAL") of the original mask before reorientation.
+            Orientation string of the input image before reorientation.
 
         orient_for_registration : str
-            Orientation ("IAL") chosen as standard for registration and visualization.
+            Target orientation for registration ("IAL", fixed for consistency across scans).
 
-        lpa_vox_normal_space, rpa_vox_normal_space, nas_vox_normal_space : np.ndarray
-            Landmark coordinates in voxel space, manually identified in the normalized (atlas) image.
+        nas_vox_normal_space, lpa_vox_normal_space, rpa_vox_normal_space : np.ndarray
+            Hardcoded voxel coordinates of the anatomical landmarks in the normalized space.
 
         head : np.ndarray
-            Binary head mask array in (Z, X, Y) order, reoriented for display and registration.
+            Binary mask volume representing the head, reoriented to (Z, X, Y) convention.
 
         filled_head : np.ndarray
-            Same as `head`, explicitly named to indicate post-reorientation binary filling.
+            Copy of `head`, possibly post-processed (e.g., filled slices).
 
-        moving_img_dimension : tuple of int
-            Original image dimensions from the loaded mask (before reorientation).
+        moving_img_dimension : tuple
+            Original dimensions of the loaded head mask volume.
+
+        fwd_name, inv_name : str
+            Names used for saving forward and inverse transformation fields, depending on CT/MRI.
 
         filled_y_slices : list
-            Used to help identify LPA and RPA positions based on filled slices.
+            Placeholder for storing filled slice indices (deprecated or not actively used).
+
 
         Future attributes
         -----------------
@@ -68,10 +92,8 @@ class Identification:
         Notes
         -----
         IMPORTANT :
-            - In this class, when displaying an array, note that the index order is 
-              (Z, X, Y) and NOT (Y, X, Z) as it was in the Segmentation class.
-              It is to ensure consistency of the orientation (for both fixed and moving image)
-              and a better display.
+            - For array manipulation and display purposes, in this class, when displaying an array, 
+              note that the index order is (Z, X, Y) and NOT (Y, X, Z) as it was in the Segmentation class.
             - If you need to reorient an object :
                 -> For a mask, use ants.reorient_image2(image, orientation) or reorient_to_original_masks
                 -> For a point, use a affine matrix as found in the reorient_to_original_masks function
@@ -93,11 +115,8 @@ class Identification:
 
         # Landmark coordinates determined visually in the normalized space (mri)
         self.lpa_vox_normal_space = np.array([24, 112, 8]) # z, x, y
-        self.rpa_vox_normal_space = np.array([24, 112, 172]) # 173
-        self.nas_vox_normal_space = np.array([28, 4, 90])
-        # self.lpa_vox_normal_space = np.array([25, 107, 6]) # (initial avec 173 : 25-07-2025)  et 30-07-2025
-        # self.rpa_vox_normal_space = np.array([25, 107, 174]) # 173
-        # self.nas_vox_normal_space = np.array([28, 4, 90])
+        self.rpa_vox_normal_space = np.array([24, 112, 172]) # z, x, y
+        self.nas_vox_normal_space = np.array([28, 4, 90]) # z, x, y
         if not register_with_CT_not_normalized:
             if show_normalized_pts:
                 self.show_3D_array(self.fixed_img.numpy(), axis=2, pts=[((self.nas_vox_normal_space[1],self.nas_vox_normal_space[0]), self.nas_vox_normal_space[2], "green"),
@@ -109,28 +128,28 @@ class Identification:
         self.fwd_name = "mri_fwd"+self.file_number
         self.inv_name = "mri_inv"+self.file_number
         
-        
         # ------------------------ USER -----------------------------
+        # Change the points of the CT here
         # from cropped_6_cow_angio__06__hv36__3
         if self.register_with_CT_not_normalized:
             # self.show_3D_array(self.moving_img.numpy(), axis=2)
             self.nas_vox_normal_space = np.array([101, 50, 238]) # z, x, y
             self.lpa_vox_normal_space = np.array([57, 236, 83]) # z, x, y
             self.rpa_vox_normal_space = np.array([69, 236, 403]) # z, x, y
+        # -----------------------------------------------------------    
             if show_normalized_pts:
                 self.show_3D_array(self.fixed_img.numpy(), axis=2, pts=[((self.nas_vox_normal_space[1],self.nas_vox_normal_space[0]), self.nas_vox_normal_space[2], "green"),
                                                                         ((self.lpa_vox_normal_space[1],self.lpa_vox_normal_space[0]), self.lpa_vox_normal_space[2], "blue"),
                                                                         ((self.rpa_vox_normal_space[1],self.rpa_vox_normal_space[0]), self.rpa_vox_normal_space[2], "red")])
                 self.show_3D_array(self.fixed_img.numpy(), axis=1, pts=[((self.nas_vox_normal_space[2],self.nas_vox_normal_space[0]), self.nas_vox_normal_space[1], "green"),
                                                                         ((self.lpa_vox_normal_space[2],self.lpa_vox_normal_space[0]), self.lpa_vox_normal_space[1], "blue"),
-                                                                        ((self.rpa_vox_normal_space[2],self.rpa_vox_normal_space[0]), self.rpa_vox_normal_space[1], "red")])
+                                                                        ((self.rpa_vox_normal_space[2],self.rpa_vox_normal_space[0]), self.rpa_vox_normal_space[1], "red")])  
             self.fwd_name = "ct_fwd"+self.file_number
             self.inv_name = "ct_inv"+self.file_number
 
-        self.filled_y_slices = [] # Used to determine positions (lpa and rpa)
+        self.filled_y_slices = [] # Not used anymore : useful to know which y slices can be binary filled
         mask_img = nib.load(os.path.join(self.nifti_output_directory, "mask"+self.file_number+".nii.gz"))
         self.moving_img_dimension = mask_img.shape
-        # self.mask_dimension = self.mask_dimension[2], self.mask_dimension[1], self.mask_dimension[0]
         self.head = mask_img.get_fdata() 
         # IMPORTANT : from now on, it is [z,x,y] and not [y,x,z] as it was in the Segmentation class
         self.filled_head = self.reorient_to_original_masks(object_to_reorient=np.where(self.head>=1, 1, 0), 
@@ -141,7 +160,7 @@ class Identification:
    
     def show_3D_array(self, arr, axis=0, pts=None):
         """
-         Display a 3D array slice-by-slice using a matplotlib slider.
+        Display a 3D image or volume one slice at a time using a slider.
 
         Parameters
         ----------
@@ -159,8 +178,7 @@ class Identification:
 
         Notes
         -----
-        - The array is visualized using `imshow`, with slices taken along the specified axis.
-        - Points are only shown on the slice corresponding to their `slice_idx`.
+        - Points only appear on their corresponding slice.
         - Points are displayed as circles with customizable color.
         - Axes are displayed in (row, column) order, with `origin="lower"` for intuitive orientation.
         """
@@ -241,21 +259,21 @@ class Identification:
         Returns
         -------
         object_reoriented : same type as input
-            - If a 3D array is passed, returns the reoriented volume.
-            - If a point is passed, returns the mapped coordinates in the new orientation.
+            - If input is a 3D array, returns the reoriented volume.
+            - If input is a 3D point, returns the coordinates in the new orientation.
+            - If input is invalid, returns None.
 
         Side Effects
         ------------
         self.switch_lpa_rpa : bool
-            Set to True if reorientation involves a Left-Right flip. Useful for landmark relabeling.
+            Set to True if reorientation involves a Left-Right flip. Used for landmark relabeling.
 
         Notes
         -----
         - Orientation codes use anatomical directions:
             'R' = Right, 'L' = Left, 'A' = Anterior, 'P' = Posterior, 'I' = Inferior, 'S' = Superior.
-        - A flip is applied if a direction in the `initial_orient` needs to be reversed to match `final_orient`.
-        - Axes are reordered if orientation letters are on different axes.
-        - Assumes `self.moving_img_dimension` and `self.initial_moving_img_orientation` are defined.
+        - A flip is applied if a direction in the `initial_orient` needs to be reversed to match `final_orient` (e.g., 'S'->'I').
+        - Axes are reordered (transposed) if orientation letters are on different axes.
         """
         # Initialization
         initial_orient = list(initial_orient)
@@ -317,15 +335,18 @@ class Identification:
         """
         Perform non-linear registration (SyN) between the moving (patient) and fixed (atlas) images.
 
-        Uses ANTsPy to compute affine and deformable transformations. Saves the transformation 
-        files (forward and inverse) in the output directory, and stores them as class attributes 
-        for later use (e.g., point or image transformation).
+        Uses ANTsPy to compute affine and deformable transformations (SyN ; Symmetric Normalization). 
+        Saves the transformation files (forward and inverse) in the output directory, and stores them 
+        as class attributes for later use (e.g., point or image transformation).
 
         Parameters
         ----------
-        show : bool, optional
-            If True, displays the moving image, fixed image, and the results of the registration 
-            (warped moving and fixed outputs) using the show_3D_array method.
+        show : bool, optional (default=False)
+            If True, displays 3D views of:
+            - The original moving image
+            - The original fixed image
+            - The warped moving image (after registration)
+            - The warped fixed image
 
         Sets
         ----
@@ -397,11 +418,12 @@ class Identification:
 
     def find_registered_lpa_rpa_nasion(self):
         """
-        Compute the patient-space coordinates of anatomical landmarks (LPA, RPA, nasion)
-        by applying forward transformations to standard-space (MNI) coordinates.
+        Compute patient-space coordinates of anatomical landmarks (LPA, RPA, Nasion)
+        by transforming normalized-space voxel indices using ANTs forward transforms.
 
-        Uses the fixed image (atlas) and moving image (patient) to convert known MNI voxel
-        positions to patient voxel space through deformation and affine transforms.
+        The method uses known voxel positions in the atlas (normalized space), converts them to
+        physical coordinates, applies the forward deformation and affine transforms, and 
+        maps the resulting physical points back to voxel indices in the patient image.
 
         Sets
         -------
@@ -414,10 +436,9 @@ class Identification:
 
         Notes
         -----
-        - Uses `ants.transform_index_to_physical_point()` to get physical coordinates in the atlas.
-        - Applies both deformation and affine forward transforms in sequence.
-        - Converts transformed physical points back to voxel indices using the patient image.
-        - Coordinates are rounded to integer values (z, x, y) to get the position in the array.
+        - Applies `fwd_df_transform` followed by `fwd_a_transform` to reach patient space.
+        - Final physical points are mapped to voxel space using the patient image.
+        - Coordinates are rounded to integer values (z, x, y) to get the position in the array.   
         """
         # LPA : automatically identify on patient
         lpa_pt_normal_space = ants.transform_index_to_physical_point(self.fixed_img, self.lpa_vox_normal_space)
@@ -444,57 +465,67 @@ class Identification:
         # print('registered nasion', self.registered_nasion) # (z,x,y)
 
 
-    def fill_cavities(self):
+    def _fill_cavities(self):
         """
-        Fill internal cavities in the binary head mask across all anatomical planes.
+        Fill internal cavities in the binary head mask along all three anatomical planes.
 
-        This method processes the mask slice-by-slice along the three orthogonal axes
-        (x-y, x-z, y-z) to fill holes within the `self.filled_head` volume.
+        This method applies 2D hole-filling (using `scipy.ndimage.binary_fill_holes`) 
+        to each slice of the `self.filled_head` mask independently along the axial (xy), 
+        coronal (yz), and sagittal (xz) planes.
 
         Updates
         -------
         self.filled_head : np.ndarray
-            Modified binary head mask with filled cavities.
+            Binary head mask after cavity filling.
         self.filled_y_slices : list[int]
-            Indices of y-slices where cavities were filled in the x-z plane.
+            Indices of sagittal slices (xz-plane) where cavity filling occurred.
+
+        Note
+        ----
+        - Will be called by the function find_nasion
         """        
         from scipy.ndimage import binary_fill_holes
 
         for i in range(0, len(self.filled_head[1,1,:])):
-            # Fill holes in the x-z and y-z plane 
+            # Fill holes in the x-z plane
             original = self.filled_head[:,:,i]
             filled = binary_fill_holes(self.filled_head[:,:,i])
             if not np.array_equal(original,filled): # Check if the slice has been filled
                 self.filled_y_slices.append(i)
             self.filled_head[:,:,i] = filled
         for i in range(0, len(self.filled_head[1,:,1])):
+            # Fill holes in the y-z plane 
             self.filled_head[:,i,:] = binary_fill_holes(self.filled_head[:,i,:]) 
-        # print(self.filled_y_slices)
         for i in range(0, len(self.filled_head[:,1,1])):
             # Fill holes in the x-y plane
             self.filled_head[i,:,:] = binary_fill_holes(self.filled_head[i,:,:])
     
 
-    def find_nasion(self, window=10):
+    def find_nasion(self, window=15):
         """
-        Refine the position of the nasion using local anatomical data in the filled head mask.
+        Refine the position of the nasion using local density analysis on the binary head mask.
 
-        This function takes an initial estimation of the nasion (from registration) and looks
-        within a cubic region of interest (ROI) centered on this point. It analyzes the 
-        density of the binary mask across the x-axis to find a more anatomically accurate location.
+        Starting from the registered (approximate) nasion location, this method examines a local 
+        3D region (Region of Interest) - the patient's face - in the filled head mask to find a more anatomically accurate 
+        voxel by analyzing binary mask density along the x-axis.
 
-        Argument
+        Parameters
         ----------
         window : int, optional
-            Half-width of the cubic ROI (region of interest) centered on the initial nasion estimate
-            (default is 20).
+            Half-width of the cubic region of interest (ROI) centered around the initial nasion 
+            estimate. The full ROI has shape (2*window, 2*window, 2*window). Default is 15.
 
         Sets
-        -------
+        ----
         self.nasion : tuple[int, int, int]
-            Refined voxel coordinates of the nasion (z, x, y).
+            Refined voxel coordinates of the nasion in (z, x, y) format.
+
+        Notes
+        -----
+        - Internally calls `fill_cavities()` to ensure the binary mask is representative of the person's face before analysis.
+        - Optimizes the location of the nasion by maximizing the density along the y-axis and minimizing it along the z-axis.
         """
-        self.fill_cavities()
+        self._fill_cavities()
 
         reg_nas_z, reg_nas_x, reg_nas_y = self.registered_nasion
         
@@ -514,6 +545,9 @@ class Identification:
         ROI_nas = self.filled_head[z_start:z_end, x_start:x_end, y_start:y_end]
         # Sum up one values of the binary mask on the x axis (3D array -> 2D array)
         counts_x = np.sum(ROI_nas, axis = 1) # axis=2 sums in y, axis=0 sums in z
+        # To see the person's face, uncomment this:
+        # plt.imshow(counts_x, origin="lower")
+        # plt.show()
 
         # Index of the maximal values for rows and minimal values for columns
         max_index_row = (np.argmin(counts_x, axis=0))
@@ -530,7 +564,6 @@ class Identification:
 
         nasion_y_final = int(np.mean(nasion_row)) + (reg_nas_y - window)
         nasion_z_final = int(np.mean(nasion_column)) + (reg_nas_z - window)
-        # nasion_x_final = ((2*window) - counts_x[int(np.mean(nasion_row)),int(np.mean(nasion_column))]) + (reg_nas_x - window)
 
         if np.any(nasion_row == 0) or np.any(nasion_row == (window*2) - 1):
             nasion_y_final = reg_nas_y
@@ -543,31 +576,37 @@ class Identification:
 
     def check_nasion(self):
         """
-        Visually validate the refined nasion position against the initially registered one.
+        Used to visually validate the refined nasion position against the initially registered one.
 
         This function plots axial, coronal, and sagittal views of the head mask, overlaying
         both the refined nasion (in red) and the registered nasion (in blue) to assess the
         accuracy of the correction.
         """
-        # # x-axis goes through the nasion
-        # # Axial view : fixed z-value
+        # x-axis goes through the nasion
+        # Axial view : fixed z-value
         plt.imshow(self.head[self.nasion[0],:,:], origin="lower")
         plt.scatter([self.nasion[2]], [self.nasion[1]], c="r")
         plt.scatter([self.registered_nasion[2]], [self.registered_nasion[1]], c="b")
         plt.show()
-        # # Coronal view : fixed x-value
+        # Coronal view : fixed x-value
         plt.imshow(self.head[:,self.nasion[1],:], origin="lower")
         plt.scatter([self.nasion[2]], [self.nasion[0]], c="r")
         plt.scatter([self.registered_nasion[2]], [self.registered_nasion[0]], c="b")
         plt.show()
-        # # Sagittal view : fixed y-value
+        # Sagittal view : fixed y-value
         plt.imshow(self.head[:,:,self.nasion[2]], origin="lower")
         plt.scatter([self.nasion[1]], [self.nasion[0]], c="r")
         plt.scatter([self.registered_nasion[1]], [self.registered_nasion[0]], c="b")
         plt.show()
  
 
-    def find_depth_rpa(self):
+    def _find_depth_rpa(self):
+        """
+        Find the surface (y value) of the binary volume at a fixed x,z location
+
+        Returns:
+            int: y-index corresponding to the surface of the head at the RPA x,z location.
+        """
         nonzero = np.nonzero(self.filled_head[self.registered_rpa[0],self.registered_rpa[1],:])[0]
         if self.registered_rpa[2] in nonzero:   
             index_rpa_y = np.where(nonzero == self.registered_rpa[2])[0][0]
@@ -581,7 +620,13 @@ class Identification:
         
 
 
-    def find_depth_lpa(self):
+    def _find_depth_lpa(self):
+        """
+        Find the surface (y value) of the binary volume at a fixed x,z location
+
+        Returns:
+            int: y-index corresponding to the surface of the head at the RPA x,z location.
+        """
         nonzero = np.nonzero(self.filled_head[self.registered_lpa[0],self.registered_lpa[1],:])[0]
         if self.registered_lpa[2] in nonzero:  
             index_lpa_y = np.where(nonzero == self.registered_lpa[2])[0][0]
@@ -595,22 +640,33 @@ class Identification:
         
     
     def improve_lpa_rpa(self):
-        self.lpa = self.registered_lpa[0], self.registered_lpa[1], self.find_depth_lpa()
-        self.rpa = self.registered_rpa[0], self.registered_rpa[1], self.find_depth_rpa()
+        """
+        Adjust the LPA and RPA y value to align them with the head surface.
+
+        Note
+        ----
+        - Calls _find_depth_rpa and _find_depth_lpa 
+        """
+        self.lpa = self.registered_lpa[0], self.registered_lpa[1], self._find_depth_lpa()
+        self.rpa = self.registered_rpa[0], self.registered_rpa[1], self._find_depth_rpa()
 
 
     def save_pts_to_csv(self):
         """
-        Save anatomical point coordinates (Nasion, LPA, RPA) in voxel space to a text file.
+        Save MRI or CT anatomical landmarks (Nasion, LPA, RPA) in voxel space to a CSV file.
 
-        File Created
-        ------------
-        - points{self.file_number}.txt : Text file containing nasion, LPA, and RPA coordinates.
+        This function updates the points CSV file (`points{file_number}.csv`) by inserting
+        refined and registered coordinates for both MRI and CT, depending on registration type.
 
         Notes
         -----
-        - The file is written with voxel coordinates reordered as (X, Y, Z) for readability.
-        - If the file already exists, it is overwritten.
+        - The coordinates are reordered as (X, Y, Z) for readability and compatibility.
+        - Automatically switches LPA and RPA values if required.
+        - Overwrites the target CSV file with updated contents.
+        - Preserves existing data before and after the landmarks section.
+        - Reorients coordinates from registration space back to the original orientation 
+          (orientation of the mask just after the segmentation process).
+
         """
         csv_path = os.path.join(self.nifti_output_directory, f"points{self.file_number}.csv")
 
@@ -681,23 +737,20 @@ class Identification:
 
     def delete_useless_files(self):
         """
-        Deletes intermediate NIfTI files from the output directory.
+        Remove unnecessary NIfTI files from the output directory to save space.
 
-        Specifically, removes:
-        - The original uncropped NIfTI file (if a cropped version is used)
-        - The `totalsegmentator` output file
-        - The full-head image used for registration
-        - The forward and inverse transform files
+        Files deleted:
+        - Forward and inverse transform files (MAT and NIfTI)
+        - The output of TotalSegmentator
+        - The original (uncropped) CT scan if a cropped version exists
 
-        This helps reduce disk usage and declutter the output folder after segmentation
-        and registration steps are completed.
+        This helps clean up the folder after segmentation and registration steps.
 
         Notes
         -----
-        - If a file does not exist, a message is printed instead of raising an error.
-        - Safe to call even if some files are missing.
-        IMPORTANT :
-            Must be used AFTER the registration is done
+        - Files that don’t exist will simply be skipped with a message.
+        - It’s safe to run even if some files are already missing.
+        - IMPORTANT: Call this only after registration is complete.
         """
         # Listing NIfTI files in the folder
         useless_files = [os.path.join(self.nifti_output_directory, self.fwd_name+".mat"),
@@ -739,9 +792,18 @@ class Identification:
             Default is "mni_vascular_territories.nii.gz".
 
         Sets
-        ----
+        -----
         self.arteries : ants.ANTsImage
-            Binary mask of segmented MCA arteries in patient space.
+            Binary mask of segmented arteries within the MCA territory in patient space.
+
+        Output
+        ------
+        - A NIfTI file named "mca_territory{self.file_number}.nii.gz" is saved to the output directory.
+
+        Notes
+        -----
+        - This function only runs if MRI normalization is used (`register_with_CT_not_normalized` is False).
+        - Includes visualization steps for intermediate masks and projections (you will need to uncomment it).
         """
         if not self.register_with_CT_not_normalized:
             # Keeping the MCA territories
@@ -756,25 +818,25 @@ class Identification:
             # Getting the arteries mask
             self.arteries = ants.image_read(os.path.join(self.nifti_output_directory, "mask"+self.file_number+".nii.gz"), reorient="IAL")
             arteries_only = np.where(self.arteries.numpy()==2,1,0)
-            # arteries_only = self.arteries.numpy() # Pour mieux voir, mais ne sera pas dans la version finale
             self.arteries = self.arteries.new_image_like(arteries_only)
-            self.show_3D_array(self.arteries.numpy())
+            # self.show_3D_array(self.arteries.numpy())
 
             # Bringing the arteries mask in the normalized space 
             registered_arteries = ants.apply_transforms(fixed=resampled_mca_territories, moving=self.arteries, transformlist=[os.path.join(self.nifti_output_directory, "inv"+self.file_number+".mat"), os.path.join(self.nifti_output_directory, "inv"+self.file_number+".nii.gz")])
-            self.show_3D_array(registered_arteries.numpy())
+            # self.show_3D_array(registered_arteries.numpy())
+
             # Keeping the arteries of the mask included in the MC territories
             normalized_mca_arteries = registered_arteries.numpy()*resampled_mca_territories.numpy()
-            self.show_3D_array(normalized_mca_arteries)
+            # self.show_3D_array(normalized_mca_arteries)
 
             # Bringing the MCA arteries back to the patient's space
             normalized_mca_arteries = registered_arteries.new_image_like(normalized_mca_arteries)
             patient_mca_arteries = ants.apply_transforms(fixed=self.arteries, moving=normalized_mca_arteries, transformlist=[os.path.join(self.nifti_output_directory, "fwd"+self.file_number+".mat"), os.path.join(self.nifti_output_directory, "fwd"+self.file_number+".nii.gz")])
             
-            self.show_3D_array(patient_mca_arteries.numpy())
+            # self.show_3D_array(patient_mca_arteries.numpy())
             counts_z = np.sum(patient_mca_arteries.numpy(), axis = 0) # axis=2 sums in y, axis=0 sums in z
-            plt.imshow(counts_z, origin="lower")
-            plt.show()
+            # plt.imshow(counts_z, origin="lower")
+            # plt.show()
 
             # Nifti file with the MCA territories
             head_img =  nib.load(os.path.join(self.nifti_output_directory, "head"+self.file_number+".nii.gz"))
