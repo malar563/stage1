@@ -727,7 +727,7 @@ class Identification:
                 new_rpa = data[2:4,1:].copy()
                 data[4:6,1:] = new_rpa
                 data[2:4,1:] = new_lpa
-
+        print(data)
         data = data.tolist()
         df_to_keep += data
         df_to_keep += df_end
@@ -758,16 +758,21 @@ class Identification:
                          os.path.join(self.nifti_output_directory, self.inv_name+".mat"),
                          os.path.join(self.nifti_output_directory, self.inv_name+".nii.gz"),
                          os.path.join(self.nifti_output_directory, "totalsegmentator"+self.file_number+".nii.gz")] 
-        
+        # Finds the .json file from DICOM to NIfTI conversion
+        json_file = [f for f in os.listdir(self.nifti_output_directory) if f.endswith(".json")]
+        if json_file:
+            useless_files.append(os.path.join(self.nifti_output_directory, json_file[0]))
         # Finds if a cropped file exists, and delete the original one in that case
         nii_files = [f for f in os.listdir(self.nifti_output_directory) if f.endswith(".nii") or f.endswith(".nii.gz")]
         cropped_files = [f for f in nii_files if f.startswith("cropped_")]
         if len(cropped_files)>=1:
             excluded_prefixes = ("cropped_", "ct_fwd", "mri_fwd", "ct_inv", "mri_inv", "mask", "mca_territory", "totalsegmentator", "head") 
             non_cropped = [f for f in nii_files if not f.startswith(excluded_prefixes)]
+            print(non_cropped)
             if non_cropped:
-                non_cropped = non_cropped[0]
-                useless_files.append(os.path.join(self.nifti_output_directory,non_cropped))
+                for useless_file in non_cropped:
+                    useless_files.append(os.path.join(self.nifti_output_directory,useless_file))
+        print(useless_files)
         
         for file_path in useless_files:
             if os.path.exists(file_path):
@@ -805,6 +810,7 @@ class Identification:
         - This function only runs if MRI normalization is used (`register_with_CT_not_normalized` is False).
         - Includes visualization steps for intermediate masks and projections (you will need to uncomment it).
         """
+        
         if not self.register_with_CT_not_normalized:
             # Keeping the MCA territories
             arterial_territories = ants.image_read(arterial_territories_path, reorient='IAL')
@@ -814,24 +820,24 @@ class Identification:
             # Resample to target image (the atlas is supposed to be in the same space than the normalized MRI)
             mri = ants.image_read(self.fixed_img_path, reorient='IAL')
             resampled_mca_territories = ants.resample_image_to_target(mca_territories, mri, verbose=True)
-
+            
             # Getting the arteries mask
             self.arteries = ants.image_read(os.path.join(self.nifti_output_directory, "mask"+self.file_number+".nii.gz"), reorient="IAL")
             arteries_only = np.where(self.arteries.numpy()==2,1,0)
             self.arteries = self.arteries.new_image_like(arteries_only)
             # self.show_3D_array(self.arteries.numpy())
-
+            
             # Bringing the arteries mask in the normalized space 
-            registered_arteries = ants.apply_transforms(fixed=resampled_mca_territories, moving=self.arteries, transformlist=[os.path.join(self.nifti_output_directory, "inv"+self.file_number+".mat"), os.path.join(self.nifti_output_directory, "inv"+self.file_number+".nii.gz")])
+            registered_arteries = ants.apply_transforms(fixed=resampled_mca_territories, moving=self.arteries, transformlist=[os.path.join(self.nifti_output_directory, self.inv_name+".mat"), os.path.join(self.nifti_output_directory, self.inv_name+".nii.gz")])
             # self.show_3D_array(registered_arteries.numpy())
-
+            
             # Keeping the arteries of the mask included in the MC territories
             normalized_mca_arteries = registered_arteries.numpy()*resampled_mca_territories.numpy()
             # self.show_3D_array(normalized_mca_arteries)
 
             # Bringing the MCA arteries back to the patient's space
             normalized_mca_arteries = registered_arteries.new_image_like(normalized_mca_arteries)
-            patient_mca_arteries = ants.apply_transforms(fixed=self.arteries, moving=normalized_mca_arteries, transformlist=[os.path.join(self.nifti_output_directory, "fwd"+self.file_number+".mat"), os.path.join(self.nifti_output_directory, "fwd"+self.file_number+".nii.gz")])
+            patient_mca_arteries = ants.apply_transforms(fixed=self.arteries, moving=normalized_mca_arteries, transformlist=[os.path.join(self.nifti_output_directory, self.fwd_name+".mat"), os.path.join(self.nifti_output_directory, self.fwd_name+".nii.gz")])
             
             # self.show_3D_array(patient_mca_arteries.numpy())
             counts_z = np.sum(patient_mca_arteries.numpy(), axis = 0) # axis=2 sums in y, axis=0 sums in z

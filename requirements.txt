@@ -1,0 +1,10 @@
+ants==0.0.7
+matplotlib==3.10.5
+nibabel==5.3.2
+numpy==2.3.2
+pandas==2.3.1
+scipy==1.16.1
+skimage==0.0
+torch==2.7.1+cu118
+TotalSegmentator==2.10.0
+tqdm==4.67.1

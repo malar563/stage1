@@ -98,8 +98,8 @@ class Segmentation:
         
 
         # Check whether the specified path exists or not
-        exist = os.path.exists(self.nifti_output_directory)
-        if not exist:
+        isexist = os.path.exists(self.nifti_output_directory)
+        if not isexist:
             # If no file is found, generating one from the specified DICOM folder
             print("No NIfTI file found. Processing the specified DICOM folder...")
             self.dcm_to_nii(crop=crop)
@@ -111,8 +111,8 @@ class Segmentation:
             if cropped_files:
                 # If "cropped_" file is found
                 self.nii_path = os.path.join(self.nifti_output_directory, cropped_files[0])
-                self.not_cropped_nii_path = os.path.join(self.nifti_output_directory, cropped_files[0].removeprefix("cropped_"))
                 print("NIfTI file found. No DICOM processing will be done.")
+                self.not_cropped_nii_path = os.path.join(self.nifti_output_directory, cropped_files[0].removeprefix("cropped_"))
             else:
                 # Trying to find a non-cropped file
                 excluded_prefixes = ("cropped_", "fwd", "inv", "mask", "mca_territory", "totalsegmentator") 
@@ -124,7 +124,6 @@ class Segmentation:
                     # If no file is found, generating one from the specified DICOM folder
                     print("No NIfTI file found. Processing the specified DICOM folder...")
                     self.dcm_to_nii()
-
         self.img = nib.load(self.nii_path)
         self.array = self.img.get_fdata()
         self.resolution = self.img.header["pixdim"][1:4]
@@ -163,17 +162,15 @@ class Segmentation:
                 ["Dimensions not cropped", "-", "-", "-"],
                 ["Resolution (mm)", self.resolution[1], self.resolution[0], self.resolution[2]],
                 ["Length (mm)", self.dimension[1]*self.resolution[1], self.dimension[0]*self.resolution[0], self.dimension[2]*self.resolution[2]]]
-        if hasattr(self, 'not_cropped_nii_path'): # check  if the variable exists
-            not_cropped_img = nib.load(self.not_cropped_nii_path)
-            data[2][1], data[2][2], data[2][3] = not_cropped_img.shape 
-
-        if os.path.exists(csv_path):
-            df_existing = pd.read_csv(csv_path)
-            df_existing.values[:5,:4] = np.array(data)
-            df_existing.to_csv(csv_path, index=False)
-        else:
-            df = pd.DataFrame(data)
-            df.to_csv(csv_path, index=False)             
+        print(self.not_cropped_nii_path)
+        if hasattr(self, 'not_cropped_nii_path'): # check if the variable exists
+            try:
+                not_cropped_img = nib.load(self.not_cropped_nii_path)
+                data[2][1], data[2][2], data[2][3] = not_cropped_img.shape
+            except:
+                pass
+        df = pd.DataFrame(data)
+        df.to_csv(csv_path, index=False)             
 
 
     def dcm_to_nii(self, crop=True, size_head=250):
