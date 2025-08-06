@@ -243,7 +243,8 @@ def run_everything(dicoms_list, big_output_directory="processed_files", register
 # ---------- USER SECTION: Only modify parameters below this line ----------
 if __name__ == "__main__":
 
-    # dicoms_list = create_list(directory="50_CQ")
+    dicoms_directory = "50_CQ" # Put your DICOM folder
+    # dicoms_list = create_list(directory=dicoms_directory)
     # print(dicoms_list, len(dicoms_list))
 
     dicoms_list = ["250_CQ/CQ500CT0 CQ500CT0/Unknown Study/CT PLAIN THIN", "250_CQ/CQ500CT2 CQ500CT2/Unknown Study/CT 0.625mm", "250_CQ/CQ500CT3 CQ500CT3/Unknown Study/CT PLAIN THIN",
@@ -276,4 +277,4 @@ if __name__ == "__main__":
                    "250_CQ/CQ500CT243 CQ500CT243/Unknown Study/CT PLAIN THIN", "250_CQ/CQ500CT249 CQ500CT249/Unknown Study/CT 0.625mm",
                    "250_CQ/CQ500CT250 CQ500CT250/Unknown Study/CT PLAIN THIN"]
 
-    run_everything(dicoms_list=dicoms_list, big_output_directory="50_2025-07-17 - Copie", register_with_MRI=False, register_with_CT=True, read_transforms=True, delete_useless_files=True, verbose=True)
+    run_everything(dicoms_list=dicoms_list, big_output_directory="processed_files", register_with_MRI=True, register_with_CT=True, read_transforms=False, delete_useless_files=False, verbose=True)
