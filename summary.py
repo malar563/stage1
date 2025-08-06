@@ -138,10 +138,12 @@ def create_summary(csv_paths, output_dir):
     return np.array(list_segm_processing_time), np.array(list_ct_processing_time), np.array(list_mri_processing_time)
     
 
-# ---------- USER SECTION: Only modify parameters below this line ----------
 if __name__ == "__main__":
+    # ---------- USER SECTION: Only modify parameters below this line ----------
     # Path of the processing directory (to change)
     directory = "250_2025-07-31" 
+    # --------------------------------------------------------------------------
+
     # Create a folder list to get points{...}.csv
     csv_paths = create_list(directory=directory)
     csv_paths.sort(key=lambda x: int(x.split('\\')[-1]))

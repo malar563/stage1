@@ -44,11 +44,11 @@ if __name__ == "__main__":
     # zip_directory = r"D:\MaryliseLarouche\CQ500\150_CQ"
     # output_directory = r"D:\MaryliseLarouche\CQ500\150_CQ" 
 
-    # zip_directory = "150_CQ"
-    # output_directory = "dec_150_CQ"
+    zip_directory = "zip_dir"
+    output_directory = "unzip_dir"
 
     # Note : zip_directory and output_directory can be identical or different
-    unzip(zip_directory = "zip_dir", output_directory = "unzip_dir", delete_zip=False)
+    unzip(zip_directory = zip_directory, output_directory = output_directory, delete_zip=False)
             
 
 

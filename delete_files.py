@@ -54,13 +54,12 @@ def delete(folder_list, big_output_directory="processed_files",
             print("Folder not deleted :", folder, f" ({e})")
 
 
-# --------------------------------------------------------------------------
-# ----------------------------- USER SECTION -------------------------------
-# --------------------------------------------------------------------------
-
 if __name__ == "__main__":
+    
+    # ----------------------------- USER SECTION -------------------------------
     # Set the path to the folder that contains all processed subfolders
     big_output_directory = "50_2025-07-17 copy"
+    # --------------------------------------------------------------------------
 
     # Automatically detect subfolders containing individual case results
     folder_list = create_list(directory=big_output_directory)
