@@ -31,12 +31,12 @@ def load_landmarks_from_csv(csv_path):
     
 # Choose working folder and file number
 big_output_directory = "250_2025-07-31" # Folder with NIfTI and CSV files
-file_number = 3 # Number of the case to visualize
+file_number = 0 # Number of the case to visualize
 
-# Show landmarks in normal CT space (to be transformed in patient space)
-show_normalized_pts = True
-show_CT_normalized_space = False
-path_CT_not_normalized = 'head1.nii.gz'
+# Show landmarks in normal space (to be transformed in patient space)
+show_normalized_pts = True # Landmarks in MRI space
+show_CT_normalized_space = False # Landmarks in CT space
+path_CT_not_normalized = 'head1.nii.gz'# Path to the CT used as normal space
 
 show_landmarks = True # To see the landmarks
 # Choose which landmarks to display (can be CT or MRI, reg or imp)

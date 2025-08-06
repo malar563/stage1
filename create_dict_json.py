@@ -65,3 +65,34 @@ dict_scans = {
 
 with open("250_CQ.json", "w") as json_file:
     json.dump(dict_scans, json_file, indent=4) # indent for readability
+
+
+dicoms_list = ["250_CQ/CQ500CT0 CQ500CT0/Unknown Study/CT PLAIN THIN", "250_CQ/CQ500CT2 CQ500CT2/Unknown Study/CT 0.625mm", "250_CQ/CQ500CT3 CQ500CT3/Unknown Study/CT PLAIN THIN",
+                   "250_CQ/CQ500CT4 CQ500CT4/Unknown Study/CT 0.625mm", "250_CQ/CQ500CT6 CQ500CT6/Unknown Study/CT Thin Details", "250_CQ/CQ500CT10 CQ500CT10/Unknown Study/CT PLAIN THIN",
+                    "250_CQ/CQ500CT17 CQ500CT17/Unknown Study/CT 0.625mm", "250_CQ/CQ500CT18 CQ500CT18/Unknown Study/CT 0.625mm", "250_CQ/CQ500CT22 CQ500CT22/Unknown Study/CT PLAIN THIN",
+                    "250_CQ/CQ500CT26 CQ500CT26/Unknown Study/CT PLAIN THIN", "250_CQ/CQ500CT40 CQ500CT40/Unknown Study/CT 0.625mm",
+                    "250_CQ/CQ500CT50 CQ500CT50/Unknown Study/CT 0.625mm",
+                    "250_CQ/CQ500CT55 CQ500CT55/Unknown Study/CT 0.625mm",
+                   "250_CQ/CQ500CT60 CQ500CT60/Unknown Study/CT 0.625mm-2", "250_CQ/CQ500CT66 CQ500CT66/Unknown Study/CT PLAIN THIN",
+                   "250_CQ/CQ500CT67 CQ500CT67/Unknown Study/CT PLAIN THIN",
+                   "250_CQ/CQ500CT78 CQ500CT78/Unknown Study/CT PLAIN THIN",
+                   "250_CQ/CQ500CT84 CQ500CT84/Unknown Study/CT PLAIN THIN", "250_CQ/CQ500CT85 CQ500CT85/Unknown Study/CT PLAIN THIN",
+                   "250_CQ/CQ500CT92 CQ500CT92/Unknown Study/CT PLAIN THIN",
+                   "250_CQ/CQ500CT102 CQ500CT102/Unknown Study/CT PLAIN THIN",
+                   "250_CQ/CQ500CT108 CQ500CT108/Unknown Study/CT 0.625mm",
+                   "250_CQ/CQ500CT109 CQ500CT109/Unknown Study/CT 0.625mm", "250_CQ/CQ500CT111 CQ500CT111/Unknown Study/CT PLAIN THIN",
+                   "250_CQ/CQ500CT113 CQ500CT113/Unknown Study/CT PLAIN THIN", "250_CQ/CQ500CT121 CQ500CT121/Unknown Study/CT PLAIN THIN",
+                   "250_CQ/CQ500CT126 CQ500CT126/Unknown Study/CT PLAIN THIN", "250_CQ/CQ500CT130 CQ500CT130/Unknown Study/CT PLAIN THIN",
+                   "250_CQ/CQ500CT135 CQ500CT135/Unknown Study/CT PLAIN THIN", "250_CQ/CQ500CT140 CQ500CT140/Unknown Study/CT PLAIN THIN",
+                   "250_CQ/CQ500CT149 CQ500CT149/Unknown Study/CT 0.625mm-3",
+                   "250_CQ/CQ500CT152 CQ500CT152/Unknown Study/CT PLAIN THIN", "250_CQ/CQ500CT154 CQ500CT154/Unknown Study/CT PLAIN THIN",
+                   "250_CQ/CQ500CT162 CQ500CT162/Unknown Study/CT PLAIN THIN-2", "250_CQ/CQ500CT166 CQ500CT166/Unknown Study/CT 0.625mm-2",
+                   "250_CQ/CQ500CT167 CQ500CT167/Unknown Study/CT 0.625mm", "250_CQ/CQ500CT179 CQ500CT179/Unknown Study/CT PLAIN THIN",
+                   "250_CQ/CQ500CT183 CQ500CT183/Unknown Study/CT PLAIN THIN", "250_CQ/CQ500CT188 CQ500CT188/Unknown Study/CT 0.625mm-3",
+                   "250_CQ/CQ500CT193 CQ500CT193/Unknown Study/CT 0.625mm", "250_CQ/CQ500CT196 CQ500CT196/Unknown Study/CT 0.625mm",
+                   "250_CQ/CQ500CT204 CQ500CT204/Unknown Study/CT PLAIN THIN", "250_CQ/CQ500CT216 CQ500CT216/Unknown Study/CT 0.625mm",
+                   "250_CQ/CQ500CT219 CQ500CT219/Unknown Study/CT 0.625mm", "250_CQ/CQ500CT220 CQ500CT220/Unknown Study/CT PLAIN THIN",
+                   "250_CQ/CQ500CT221 CQ500CT221/Unknown Study/CT PLAIN THIN", "250_CQ/CQ500CT233 CQ500CT233/Unknown Study/CT PLAIN THIN",
+                   "250_CQ/CQ500CT237 CQ500CT237/Unknown Study/CT PLAIN THIN", "250_CQ/CQ500CT241 CQ500CT241/Unknown Study/CT PLAIN THIN-2",
+                   "250_CQ/CQ500CT243 CQ500CT243/Unknown Study/CT PLAIN THIN", "250_CQ/CQ500CT249 CQ500CT249/Unknown Study/CT 0.625mm",
+                   "250_CQ/CQ500CT250 CQ500CT250/Unknown Study/CT PLAIN THIN"]
