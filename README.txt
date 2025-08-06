@@ -4,7 +4,7 @@ git clone  https://github.com/malar563/stage1.git
 
 In a terminal
 2. Go into the project folder
-cd yourproject
+cd path\to\your\project
 
 3. Create a virtual environment
 python -m venv venv
