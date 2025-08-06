@@ -727,7 +727,6 @@ class Identification:
                 new_rpa = data[2:4,1:].copy()
                 data[4:6,1:] = new_rpa
                 data[2:4,1:] = new_lpa
-        print(data)
         data = data.tolist()
         df_to_keep += data
         df_to_keep += df_end
