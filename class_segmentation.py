@@ -216,9 +216,9 @@ class Segmentation:
         # Create the output_directory file
         os.makedirs(self.nifti_output_directory, exist_ok=True)
 
-        # # Convert DICOM to NIfTI
+        # Convert DICOM to NIfTI
         command = [
-            "python",
+            ".venv\Scripts\python",
             "-m", "dcm2niix",
             "-z", "y",
             "-f", "%p_%s",
