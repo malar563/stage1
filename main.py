@@ -163,7 +163,7 @@ def run_everything(dicoms_list, big_output_directory="processed_files", register
             # Registration with a CT scan not normalized
 
             if register_with_CT:
-                id_ct = Identification(big_output_directory=big_output_directory, file_number=i, fixed_img_path="head1.nii.gz", register_with_CT_not_normalized=True) # To change the CT normalized space, change fixed_img_path here 
+                id_ct = Identification(big_output_directory=big_output_directory, file_number=i, fixed_img_path="ct_ref.nii.gz", register_with_CT_not_normalized=True) # To change the CT normalized space, change fixed_img_path here 
 
                 if not read_transforms:
                     id_ct.register(show=False)

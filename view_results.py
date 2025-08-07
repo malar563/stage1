@@ -36,7 +36,7 @@ file_number = 0 # Number of the case to visualize
 # Show landmarks in normal space (to be transformed in patient space)
 show_normalized_pts = True # Landmarks in MRI space
 show_CT_normalized_space = False # Landmarks in CT space
-path_CT_not_normalized = 'head1.nii.gz'# Path to the CT used as normal space
+path_CT_not_normalized = 'ct_ref.nii.gz'# Path to the CT used as normal space
 
 show_landmarks = True # To see the landmarks
 # Choose which landmarks to display (can be CT or MRI, reg or imp)
