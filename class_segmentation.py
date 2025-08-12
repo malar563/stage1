@@ -218,7 +218,7 @@ class Segmentation:
 
         # Convert DICOM to NIfTI
         command = [
-            ".venv\Scripts\python",
+            "python",#.venv\Scripts\
             "-m", "dcm2niix",
             "-z", "y",
             "-f", "%p_%s",

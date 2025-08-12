@@ -273,6 +273,6 @@ if __name__ == "__main__":
         Whether or not you want to see updates of the process"""
 
 
-    run_everything(dicoms_list=dicoms_list, big_output_directory="processed_files", register_with_MRI=True, register_with_CT=True, read_transforms=False, delete_useless_files=False, verbose=True)
+    run_everything(dicoms_list=dicoms_list, big_output_directory="cava", register_with_MRI=True, register_with_CT=False, read_transforms=True, delete_useless_files=False, verbose=True)
 
     

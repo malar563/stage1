@@ -16,9 +16,13 @@ def load_landmarks_from_csv(csv_path):
     imp_nas_MRI, imp_lpa_MRI, imp_rpa_MRI = array_MRI[0], array_MRI[2], array_MRI[4]
     
     # Get CT landmarks
-    array_CT = df.iloc[12:18, 1:].values.astype(float)
-    reg_nas_CT, reg_lpa_CT, reg_rpa_CT = array_CT[1], array_CT[3], array_CT[5]
-    imp_nas_CT, imp_lpa_CT, imp_rpa_CT = array_CT[0], array_CT[2], array_CT[4]
+    try:
+        array_CT = df.iloc[12:18, 1:].values.astype(float)
+        reg_nas_CT, reg_lpa_CT, reg_rpa_CT = array_CT[1], array_CT[3], array_CT[5]
+        imp_nas_CT, imp_lpa_CT, imp_rpa_CT = array_CT[0], array_CT[2], array_CT[4]
+    except:
+        reg_nas_CT, reg_lpa_CT, reg_rpa_CT = None, None, None
+        imp_nas_CT, imp_lpa_CT, imp_rpa_CT = None, None, None
 
     return {"MRI": {"reg": [reg_nas_MRI, reg_lpa_MRI, reg_rpa_MRI],
                     "imp": [imp_nas_MRI, imp_lpa_MRI, imp_rpa_MRI]},
@@ -30,11 +34,11 @@ def load_landmarks_from_csv(csv_path):
 # ------------------ USER SETTINGS ------------------ #
     
 # Choose working folder and file number
-big_output_directory = "250_2025-07-31" # Folder with NIfTI and CSV files
+big_output_directory = "cava" # Folder with NIfTI and CSV files
 file_number = 0 # Number of the case to visualize
 
 # Show landmarks in normal space (to be transformed in patient space)
-show_normalized_pts = True # Landmarks in MRI space
+show_normalized_pts = False # Landmarks in MRI space
 show_CT_normalized_space = False # Landmarks in CT space
 path_CT_not_normalized = 'ct_ref.nii.gz'# Path to the CT used as normal space
 
