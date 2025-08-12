@@ -9,6 +9,25 @@ import pandas as pd
 from class_identification import Identification
 from automatically_get_folders import create_list
 
+def compute_angle(u, v, norm_u, norm_v):
+    """
+    Compute the angle in degrees between two vectors given their norms.
+
+    Parameters
+    ----------
+    u, v : array-like
+        Input vectors.
+    norm_u, norm_v : float
+        Precomputed norms (magnitudes) of vectors u and v.
+
+    Returns
+    -------
+    float
+        Angle between u and v in degrees.
+    """
+    angle = np.arccos((np.dot(u,v)/(norm_u*norm_v)))
+    return angle*180/np.pi
+
 
 def find_origin(csv_path, pts_list=[]):
     df = pd.read_csv(csv_path, sep=",", header=None)
@@ -24,26 +43,20 @@ def find_origin(csv_path, pts_list=[]):
     imp_nas_MRI, imp_lpa_MRI, imp_rpa_MRI = array_MRI[0], array_MRI[2], array_MRI[4]
 
     # https://stackoverflow.com/questions/64330618/finding-the-projection-of-a-point-onto-a-line
-    nas, lpa, rpa = reg_nas_MRI, reg_lpa_MRI, reg_rpa_MRI
-    print(nas, lpa, rpa)
-    print('dim', dim)
+    nas, lpa, rpa = imp_nas_MRI, reg_lpa_MRI, reg_rpa_MRI
     # Array has been transposed (y,x,z) -> (x,y,z)
     # y-axis was naturally switched by this
     # x-axis stayed the same
     lpa = np.array([lpa[0], dim[1]-lpa[1]-1, lpa[2]])
     rpa = np.array([rpa[0], dim[1]-rpa[1]-1, rpa[2]])
     nas = np.array([nas[0], dim[1]-nas[1]-1, nas[2]])
-    print(nas, lpa, rpa)
 
     rpa_lpa = lpa - rpa
-    print(rpa_lpa)
     rpa_nas = nas - rpa
     rpa_mid = rpa_lpa * (np.dot(rpa_lpa, rpa_nas)) / (np.dot(rpa_lpa, rpa_lpa))
     origin = rpa + rpa_mid
 
-    print("mid",origin)
     mid_nas = nas - origin
-    print(mid_nas)
 
     x_axis = mid_nas/np.linalg.norm(mid_nas)
     y_axis = rpa_lpa/np.linalg.norm(rpa_lpa)
@@ -51,6 +64,14 @@ def find_origin(csv_path, pts_list=[]):
     print(z_axis)
     z_axis = z_axis/np.linalg.norm(z_axis)
     print("axis", x_axis, y_axis, z_axis)
+
+    # Zeroing out the rotation axis to get the rotation angle around each axis
+    x = x_axis[0], 0, x_axis[2]
+    y = y_axis[0], y_axis[1], 0
+    z = 0, z_axis[1], z_axis[2]
+    print("rotation y:", compute_angle(x, [1, 0, 0], np.linalg.norm(x),1))
+    print('rotation z :', compute_angle(y, [0, 1, 0], np.linalg.norm(y),1))
+    print("rotation x :", compute_angle(z, [0, 0, 1], np.linalg.norm(z),1))
 
     M_init_coord = np.array([[1, 0, 0],
                              [0, 1, 0],
@@ -61,13 +82,18 @@ def find_origin(csv_path, pts_list=[]):
                             z_axis])
     
 
-    # METHOD 1
-    # hermitian_transpose = M_init_coord.conj().T
-    hermitian_transpose = M_init_coord.T
-    M_rotation = hermitian_transpose @ M_new_coord
+    # METHOD 2
+    # Create a rotation object that aligns the initial coordinate system to the final coordinate system
+    from scipy.spatial.transform import Rotation as R
+    rotation = R.align_vectors(M_init_coord, M_new_coord)[0]
+
+    # Extract the rotation matrix
+    M_rotation = rotation.as_matrix()
+
+    print("Rotation Matrix:")
     R = M_rotation
-    print(M_rotation)
     print("Determinant:", np.linalg.det(R))
+    print(M_rotation)
 
     from numpy import rad2deg, arcsin, sqrt, arctan2
     theta_x = arctan2(R[2, 1], R[2, 2])  # rotation around X
@@ -78,69 +104,6 @@ def find_origin(csv_path, pts_list=[]):
     theta_y_deg = rad2deg(theta_y)
     theta_z_deg = rad2deg(theta_z)
     print(theta_x_deg, theta_y_deg, theta_z_deg)
-
-
-    # METHOD 2
-    # # Create a rotation object that aligns the initial coordinate system to the final coordinate system
-    # from scipy.spatial.transform import Rotation as R
-    # rotation = R.align_vectors(M_init_coord, M_new_coord)[0]
-
-    # # Extract the rotation matrix
-    # M_rotation = rotation.as_matrix()
-
-    # print("Rotation Matrix:")
-    # R = M_rotation
-    # print("Determinant:", np.linalg.det(R))
-    # print(M_rotation)
-
-    # from numpy import rad2deg, arcsin, sqrt, arctan2
-    # theta_x = arctan2(R[2, 1], R[2, 2])  # rotation around X
-    # theta_y = -arcsin(R[2, 0])  # rotation around Y
-    # theta_z = arctan2(R[1, 0], R[0, 0])  # rotation around Z
-
-    # theta_x_deg = rad2deg(theta_x)
-    # theta_y_deg = rad2deg(theta_y)
-    # theta_z_deg = rad2deg(theta_z)
-    # print(theta_x_deg, theta_y_deg, theta_z_deg)
-
-
-    # METHOD 3
-    # Rx = np.array([[1, 0, 0],
-    #                [0, np.cos(theta_x), -np.sin(theta_x)],
-    #                [0, np.sin(theta_x), np.cos(theta_x)]])
-    # Ry = np.array([[np.cos(theta_y), 0, np.sin(theta_y)],
-    #                [0, 1, 0],
-    #                [-np.sin(theta_y), 0, np.cos(theta_y)]])
-    # Rz = np.array([[np.cos(theta_z), -np.sin(theta_z), 0],
-    #                [np.sin(theta_z), np.cos(theta_z), 0],
-    #                [0, 0, 1]])
-    # M_rotation = Rx @ (Ry @ Rz)
-    # print(M_rotation)
-
-
-
-    # angle = np.arccos((np.dot(init_ax,z_axis)/(np.linalg.norm(z_axis)*np.linalg.norm(init_ax))))
-    # angle *= 180/np.pi
-
-    # new_z = np.array([mid_nas[0], mid_nas[1], 0])
-    # z = np.array([1, 0, 0])
-    # theta_z = compute_angle(new_z, z, np.linalg.norm(new_z), np.linalg.norm(z))
-    # print("thetaz", theta_z)
-
-    # new_y = np.array([mid_nas[0], 0,  mid_nas[2]])
-    # y = np.array([1, 0, 0])
-    # theta_y = compute_angle(new_y, y, np.linalg.norm(new_y), np.linalg.norm(y))
-    # print("thetay", theta_y)
-
-    # new_x = np.array([0, mid_nas[1], mid_nas[2]])
-    # x = np.array([0, 0, 1])
-    # theta_x = compute_angle(new_x, x, np.linalg.norm(new_x), np.linalg.norm(x))
-    # print("thetax", theta_x)
-
-    # M_rotation = np.array([[np.cos(theta_y), 0, np.sin(theta_y)],
-    #                       [0, 1, 0],
-    #                       [-1*np.sin(theta_y), 0, np.cos(theta_y)]])
-
 
 
     # https://math.stackexchange.com/questions/180418/calculate-rotation-matrix-to-align-vector-a-to-vector-b-in-3d
@@ -185,7 +148,7 @@ def find_origin(csv_path, pts_list=[]):
     #     vertices.append((M_rotation @ pt))
 
   
-    return -1*origin*res, -1*np.array([theta_x, theta_y, theta_z])#np.array(vertices)
+    return -1*origin*res, -1*np.array([theta_x, theta_y, theta_z]), M_rotation#np.array(vertices)
     
 
 # find_origin("cava/0/points0.csv")
@@ -228,7 +191,7 @@ def save_to_stl(big_output_directory, file_number, show_mask_to_convert=False):
     # Generate surface mesh using marching cubes
     vertices, faces, normals, values = measure.marching_cubes(img_thresholded, level=0.5)
     
-    origin, angles = find_origin("cava/0/points0.csv", vertices) # iciciicicicicici
+    origin, angles, M_rotation = find_origin(f"cava/{file_number}/points{file_number}.csv", vertices) # iciciicicicicici
     print(origin, angles)
     vertices = (vertices*spacing)
     
@@ -245,14 +208,12 @@ def save_to_stl(big_output_directory, file_number, show_mask_to_convert=False):
     stl_path = os.path.join(id.nifti_output_directory, f"mesh_skull{file_number}.stl")
     print(origin, angles)
     skull_mesh.translate(origin)
-    skull_mesh.rotate(axis=np.array([0, 1, 0]), theta=angles[1])
 
-    # If you also want to rotate about X and Z:
+    skull_mesh.rotate(axis=np.array([0, 1, 0]), theta=angles[1])
     skull_mesh.rotate(axis=np.array([1, 0, 0]), theta=angles[0])
     skull_mesh.rotate(axis=np.array([0, 0, 1]), theta=angles[2])
-    # skull_mesh.rotate(axis=np.array([0,1,2]), theta=angles[0])
-    # skull_mesh.rotate(axis=1, theta=angles[1])
-    # skull_mesh.rotate(axis=2, theta=angles[2])
+    # skull_mesh.rotate_using_matrix(M_rotation.T)
+    #
     skull_mesh.save(stl_path)
     print(f"Saved STL to: {stl_path}")
 
