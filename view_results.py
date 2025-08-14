@@ -45,13 +45,13 @@ path_CT_not_normalized = 'ct_ref.nii.gz'# Path to the CT used as normal space
 show_landmarks = True # To see the landmarks
 # Choose which landmarks to display (can be CT or MRI, reg or imp)
 reg_with = "MRI" # "CT" or "MRI"
-landmarks_type = "reg" # "reg" or "imp"
+landmarks_type = "imp" # "reg" or "imp"
 
-show_file = False # To see a specific file
+show_file = True # To see a specific file
 # Choose which NIfTI image and axis to display (comment/uncomment/change here)
-nifti_img_name = "mask" + str(file_number) # e.g., "mask", "totalsegmentator", "mca_territory", "head"
-# nifti_img_name = "6_cow_angio__06__hv36__3"
-axis = 2 # 0:y-axis, 1:x-axis, 2:z-axis
+# nifti_img_name = "mask" + str(file_number) # e.g., "mask", "totalsegmentator", "mca_territory", "head"
+nifti_img_name = "301_carotid_angio_0625mm"#"6_cow_angio__06__hv36__3"
+axis = 0 # 0:y-axis, 1:x-axis, 2:z-axis
 
 # ---------------- END OF USER SETTINGS ---------------- #
 if __name__ == "__main__":

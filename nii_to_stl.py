@@ -6,6 +6,30 @@ from stl import mesh
 from tqdm import tqdm
 import pandas as pd
 
+
+
+def rotation_matrix_x(alpha):
+    return np.array([
+        [1, 0, 0],
+        [0, np.cos(alpha), -np.sin(alpha)],
+        [0, np.sin(alpha), np.cos(alpha)]
+    ])
+
+def rotation_matrix_y(beta):
+    return np.array([
+        [np.cos(beta), 0, np.sin(beta)],
+        [0, 1, 0],
+        [-np.sin(beta), 0, np.cos(beta)]
+    ])
+
+def rotation_matrix_z(gamma):
+    return np.array([
+        [np.cos(gamma), -np.sin(gamma), 0],
+        [np.sin(gamma), np.cos(gamma), 0],
+        [0, 0, 1]
+    ])
+
+
 from class_identification import Identification
 from automatically_get_folders import create_list
 
@@ -47,11 +71,12 @@ def find_origin(csv_path, pts_list=[]):
     # Array has been transposed (y,x,z) -> (x,y,z)
     # y-axis was naturally switched by this
     # x-axis stayed the same
-    lpa = np.array([lpa[0], dim[1]-lpa[1]-1, lpa[2]])
-    rpa = np.array([rpa[0], dim[1]-rpa[1]-1, rpa[2]])
-    nas = np.array([nas[0], dim[1]-nas[1]-1, nas[2]])
+    # lpa = np.array([lpa[0], dim[1]-lpa[1]-1, lpa[2]])
+    # rpa = np.array([rpa[0], dim[1]-rpa[1]-1, rpa[2]])
+    # nas = np.array([nas[0], dim[1]-nas[1]-1, nas[2]])
 
     rpa_lpa = lpa - rpa
+
     rpa_nas = nas - rpa
     rpa_mid = rpa_lpa * (np.dot(rpa_lpa, rpa_nas)) / (np.dot(rpa_lpa, rpa_lpa))
     origin = rpa + rpa_mid
@@ -59,7 +84,7 @@ def find_origin(csv_path, pts_list=[]):
     mid_nas = nas - origin
 
     x_axis = mid_nas/np.linalg.norm(mid_nas)
-    y_axis = rpa_lpa/np.linalg.norm(rpa_lpa)
+    y_axis = -1*rpa_lpa/np.linalg.norm(rpa_lpa) # Rotation of 90 degrees later
     z_axis = np.cross(x_axis, y_axis)
     print(z_axis)
     z_axis = z_axis/np.linalg.norm(z_axis)
@@ -69,9 +94,12 @@ def find_origin(csv_path, pts_list=[]):
     x = x_axis[0], 0, x_axis[2]
     y = y_axis[0], y_axis[1], 0
     z = 0, z_axis[1], z_axis[2]
+    print("rotation x :", compute_angle(z, [0, 0, 1], np.linalg.norm(z),1))
     print("rotation y:", compute_angle(x, [1, 0, 0], np.linalg.norm(x),1))
     print('rotation z :', compute_angle(y, [0, 1, 0], np.linalg.norm(y),1))
-    print("rotation x :", compute_angle(z, [0, 0, 1], np.linalg.norm(z),1))
+
+    print("normaplati", np.linalg.norm(x))
+    
 
     M_init_coord = np.array([[1, 0, 0],
                              [0, 1, 0],
@@ -106,49 +134,10 @@ def find_origin(csv_path, pts_list=[]):
     print(theta_x_deg, theta_y_deg, theta_z_deg)
 
 
-    # https://math.stackexchange.com/questions/180418/calculate-rotation-matrix-to-align-vector-a-to-vector-b-in-3d
-    init_ax = np.array([1, 0, 0])
-    v = np.cross(x_axis/np.linalg.norm(x_axis), init_ax)
-    sin_v = np.linalg.norm(v)
-    cos_v = np.dot(init_ax, x_axis)
-    
-    M_V_cross = np.array([[0, -1*v[2], v[1]],
-                          [v[2], 0, -1*v[0]],
-                          [-1*v[1], v[0], 0]])
-
-    # M_rotation = np.eye(3) + M_V_cross + ((1-cos_v)/(sin_v**2))*(M_V_cross@M_V_cross)
-#----------------------------------------------------------------
-    # M_V_cross = np.array([[0, -1*v[2], v[1], 0],
-    #                       [v[2], 0, -1*v[0], 0],
-    #                       [-1*v[1], v[0], 0, 0],
-    #                       [0, 0, 0, 1]])
-
-    # M_rotation = np.eye(4) + M_V_cross + (1/(1+cos_v))*(M_V_cross@M_V_cross)
-    # M_rotation[-1,-1] = 1
-
-    M_translation = np.array([[1, 0, 0, -1*origin[0]],
-                              [0, 1, 0, -1*origin[1]],
-                              [0, 0, 1, -1*origin[2]],
-                              [0, 0, 0, 1]])
-    M_transpose = np.array([[0, 1, 0, 0],
-                            [1, 0, 0, 0],
-                            [0, 0, 1, 0],
-                            [0, 0, 0, 1]])
-    # M_tot = M_rotation @ M_translation
-    # print(M_rotation, M_translation)
-    # print(M_tot)
-
     pts_list = pts_list - origin
 
-    # vertices = []
-
-    # for pt in pts_list:
-    #     # vertices.append(np.ndarray.round((M_rotation @ pt), decimals=1))
-    #     # vertices.append((pt@M_rotation ))
-    #     vertices.append((M_rotation @ pt))
-
   
-    return -1*origin*res, -1*np.array([theta_x, theta_y, theta_z]), M_rotation#np.array(vertices)
+    return -1*origin*res, -1*np.array([theta_x, theta_y, theta_z]), M_rotation #np.array(vertices)
     
 
 # find_origin("cava/0/points0.csv")
@@ -179,7 +168,10 @@ def save_to_stl(big_output_directory, file_number, show_mask_to_convert=False):
     img = nib.load(mask_path)
     img_array = img.get_fdata()
     # img_array = np.flip(np.transpose(img_array, (1,0,2)), 1)
-    img_array = np.transpose(img_array, (1,0,2))
+    # img_array = np.transpose(img_array, (1,0,2))
+    # img_array = np.rot90(img_array, k=1, axes=(0,1))
+    # img_array = np.flip(img_array, 0)
+    # img_array = np.flip(img_array, 1)
     img_thresholded = np.where(img_array >= 3, 1, 0)
     spacing = img.header["pixdim"][1:4]
 
@@ -192,7 +184,7 @@ def save_to_stl(big_output_directory, file_number, show_mask_to_convert=False):
     vertices, faces, normals, values = measure.marching_cubes(img_thresholded, level=0.5)
     
     origin, angles, M_rotation = find_origin(f"cava/{file_number}/points{file_number}.csv", vertices) # iciciicicicicici
-    print(origin, angles)
+    # print(origin, angles)
     vertices = (vertices*spacing)
     
 
@@ -206,13 +198,20 @@ def save_to_stl(big_output_directory, file_number, show_mask_to_convert=False):
 
     skull_mesh = mesh.Mesh(data)
     stl_path = os.path.join(id.nifti_output_directory, f"mesh_skull{file_number}.stl")
-    print(origin, angles)
+    # print(origin, angles)
+    origin = np.array([origin[1], origin[0], origin[2]])
     skull_mesh.translate(origin)
 
-    skull_mesh.rotate(axis=np.array([0, 1, 0]), theta=angles[1])
-    skull_mesh.rotate(axis=np.array([1, 0, 0]), theta=angles[0])
-    skull_mesh.rotate(axis=np.array([0, 0, 1]), theta=angles[2])
-    # skull_mesh.rotate_using_matrix(M_rotation.T)
+
+    # skull_mesh.rotate(axis=np.array([0, 1, 0]), theta=angles[0])
+    # skull_mesh.rotate(axis=np.array([0, 0, 1]), theta=angles[2])
+    # skull_mesh.rotate(axis=np.array([0, 1, 0]), theta=angles[1])
+    # skull_mesh.rotate(axis=np.array([1, 0, 0]), theta=angles[0])
+    # skull_mesh.rotate(axis=np.array([0, 0, 1]), theta=angles[2])
+    skull_mesh.rotate(axis=np.array([0, 0, 1]), theta=np.pi/2)
+    skull_mesh.rotate_using_matrix(M_rotation.T)
+    # skull_mesh.rotate(axis=np.array([0, 1, 0]), theta=angles[1])
+    # skull_mesh.rotate(axis=np.array([0, 0, 1]), theta=np.pi/2)
     #
     skull_mesh.save(stl_path)
     print(f"Saved STL to: {stl_path}")
@@ -230,7 +229,7 @@ if __name__ == "__main__":
 
     # ----------- OPTION 1: Process a single patient ---------------
     run_single_file = True # Set to True to process ONE file
-    single_file_number = 0 # Patient file number to process
+    single_file_number = 1 # Patient file number to process
 
     # ----------- OPTION 2: Process all patients ---------------
     run_all_folders = False # Set to True to process ALL folders in the big_output_directory
