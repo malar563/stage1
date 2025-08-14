@@ -11,10 +11,9 @@ from automatically_get_folders import create_list
 from view_results import load_landmarks_from_csv
 
 
-# Assuming '250_CQ.json' is the JSON file containing the reference points
+# Assuming '250_CQ.json' is the JSON file containing the reference landmarks
 with open('250_CQ.json', 'r') as file:
     dict_scans = json.load(file)
-
 
 # -----------------------------------------------------------------------
 # -----------------------------------------------------------------------

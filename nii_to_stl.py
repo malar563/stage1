@@ -6,32 +6,9 @@ from stl import mesh
 from tqdm import tqdm
 import pandas as pd
 
-
-
-def rotation_matrix_x(alpha):
-    return np.array([
-        [1, 0, 0],
-        [0, np.cos(alpha), -np.sin(alpha)],
-        [0, np.sin(alpha), np.cos(alpha)]
-    ])
-
-def rotation_matrix_y(beta):
-    return np.array([
-        [np.cos(beta), 0, np.sin(beta)],
-        [0, 1, 0],
-        [-np.sin(beta), 0, np.cos(beta)]
-    ])
-
-def rotation_matrix_z(gamma):
-    return np.array([
-        [np.cos(gamma), -np.sin(gamma), 0],
-        [np.sin(gamma), np.cos(gamma), 0],
-        [0, 0, 1]
-    ])
-
-
 from class_identification import Identification
 from automatically_get_folders import create_list
+
 
 def compute_angle(u, v, norm_u, norm_v):
     """
@@ -90,6 +67,10 @@ def find_origin(csv_path, pts_list=[]):
     z_axis = z_axis/np.linalg.norm(z_axis)
     print("axis", x_axis, y_axis, z_axis)
 
+    theta = compute_angle(x_axis, [1, 0, 0], np.linalg.norm(x_axis),1)
+    v_theta = x_axis - np.array([1,0,0])
+    print("NOUVEAU", theta, v_theta)
+
     # Zeroing out the rotation axis to get the rotation angle around each axis
     x = x_axis[0], 0, x_axis[2]
     y = y_axis[0], y_axis[1], 0
@@ -112,20 +93,7 @@ def find_origin(csv_path, pts_list=[]):
                             y_axis,
                             z_axis])
     
-    from scipy.spatial.transform import Rotation
-
-    R = rotation_matrix_z(gamma) @ rotation_matrix_y(beta) @ rotation_matrix_x(alpha)
-
-
-    # Crée une rotation avec axes fixes (extrinsic rotations)
-    rot = Rotation.from_euler('XYZ', [alpha, beta, gamma], degrees=True)
-
-    # Applique la rotation
-    points_rotated = rot.apply(pts_list)
-        
-
-
-
+    
     # METHOD 2
     # Create a rotation object that aligns the initial coordinate system to the final coordinate system
     from scipy.spatial.transform import Rotation
@@ -149,11 +117,11 @@ def find_origin(csv_path, pts_list=[]):
     theta_z_deg = rad2deg(theta_z)
     print(theta_x_deg, theta_y_deg, theta_z_deg)
 
-
+    v_theta = -1*np.array([theta_x, theta_y, theta_z])
     pts_list = pts_list - origin
 
   
-    return -1*origin*res, -1*np.array([theta_x, theta_y, theta_z]), M_rotation, points_rotated
+    return -1*origin*res, -1*np.array([theta_x, theta_y, theta_z]), M_rotation, theta, v_theta
     
 
 # find_origin("cava/0/points0.csv")
@@ -199,7 +167,7 @@ def save_to_stl(big_output_directory, file_number, show_mask_to_convert=False):
     # Generate surface mesh using marching cubes
     vertices, faces, normals, values = measure.marching_cubes(img_thresholded, level=0.5)
     
-    origin, angles, M_rotation, vertices = find_origin(f"cava/{file_number}/points{file_number}.csv", vertices) # iciciicicicicici
+    origin, angles, M_rotation, theta, v_theta = find_origin(f"cava/{file_number}/points{file_number}.csv", vertices) # iciciicicicicici
     # print(origin, angles)
     vertices = (vertices*spacing)
     
@@ -225,11 +193,16 @@ def save_to_stl(big_output_directory, file_number, show_mask_to_convert=False):
     # skull_mesh.rotate(axis=np.array([1, 0, 0]), theta=angles[0])
     # skull_mesh.rotate(axis=np.array([0, 0, 1]), theta=angles[2])
     skull_mesh.rotate(axis=np.array([0, 0, 1]), theta=np.pi/2)
-    skull_mesh.rotate_using_matrix(M_rotation.T)
-    
+    # skull_mesh.rotate_using_matrix(M_rotation.T)
+    # skull_mesh.rotate(axis=np.array([0.1, 1, 10]), theta=angles[1])
+    skull_mesh.rotate(axis=v_theta, theta=np.deg2rad(theta))
+    # skull_mesh.rotate(axis=[-0.6844,-20.633,-6.6277], theta=np.deg2rad(21.68))
+    # skull_mesh.rotate(axis=np.array([1, 0, 0]), theta=angles[0])
+    # skull_mesh.rotate(axis=np.array([0, 0, 1]), theta=angles[2])
     
     # skull_mesh.rotate(axis=np.array([0, 1, 0]), theta=angles[1])
     # skull_mesh.rotate(axis=np.array([0, 0, 1]), theta=np.pi/2)
+    print(skull_mesh.vectors)#, skull_mesh.vectors.v0, skull_mesh.vectors.v1, skull_mesh.vectors.v2
     #
     skull_mesh.save(stl_path)
     print(f"Saved STL to: {stl_path}")
@@ -247,7 +220,7 @@ if __name__ == "__main__":
 
     # ----------- OPTION 1: Process a single patient ---------------
     run_single_file = True # Set to True to process ONE file
-    single_file_number = 0 # Patient file number to process
+    single_file_number = 1 # Patient file number to process
 
     # ----------- OPTION 2: Process all patients ---------------
     run_all_folders = False # Set to True to process ALL folders in the big_output_directory
