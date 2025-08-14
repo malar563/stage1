@@ -92,6 +92,17 @@ def find_origin(csv_path, pts_list=[]):
     M_new_coord = np.array([x_axis,
                             y_axis,
                             z_axis])
+    R = M_init_coord.T @ M_new_coord
+    from numpy import rad2deg, arcsin, sqrt, arctan2
+    theta_x = arctan2(R[2, 1], R[2, 2])  # rotation around X
+    theta_y = -arcsin(R[2, 0])  # rotation around Y
+    theta_z = arctan2(R[1, 0], R[0, 0])  # rotation around Z
+
+    theta_x_deg = rad2deg(theta_x)
+    theta_y_deg = rad2deg(theta_y)
+    theta_z_deg = rad2deg(theta_z)
+    print("Method 1:", theta_x_deg, theta_y_deg, theta_z_deg)
+
     
     
     # METHOD 2
@@ -115,13 +126,13 @@ def find_origin(csv_path, pts_list=[]):
     theta_x_deg = rad2deg(theta_x)
     theta_y_deg = rad2deg(theta_y)
     theta_z_deg = rad2deg(theta_z)
-    print(theta_x_deg, theta_y_deg, theta_z_deg)
+    print("Method 2:", theta_x_deg, theta_y_deg, theta_z_deg)
 
     v_theta = -1*np.array([theta_x, theta_y, theta_z])
     pts_list = pts_list - origin
 
   
-    return -1*origin*res, -1*np.array([theta_x, theta_y, theta_z]), M_rotation, theta, v_theta
+    return -1*origin*res, np.array([theta_x, -theta_y, theta_z]), M_rotation, theta, v_theta
     
 
 # find_origin("cava/0/points0.csv")
@@ -167,7 +178,7 @@ def save_to_stl(big_output_directory, file_number, show_mask_to_convert=False):
     # Generate surface mesh using marching cubes
     vertices, faces, normals, values = measure.marching_cubes(img_thresholded, level=0.5)
     
-    origin, angles, M_rotation, theta, v_theta = find_origin(f"cava/{file_number}/points{file_number}.csv", vertices) # iciciicicicicici
+    origin, angles, M_rotation, theta, v_theta = find_origin(f"{big_output_directory}/{file_number}/points{file_number}.csv", vertices) # iciciicicicicici
     # print(origin, angles)
     vertices = (vertices*spacing)
     
@@ -186,23 +197,24 @@ def save_to_stl(big_output_directory, file_number, show_mask_to_convert=False):
     origin = np.array([origin[1], origin[0], origin[2]])
     skull_mesh.translate(origin)
 
-
+    skull_mesh.rotate(axis=np.array([0, 0, 1]), theta=np.pi/2)
     # skull_mesh.rotate(axis=np.array([0, 1, 0]), theta=angles[0])
     # skull_mesh.rotate(axis=np.array([0, 0, 1]), theta=angles[2])
-    # skull_mesh.rotate(axis=np.array([0, 1, 0]), theta=angles[1])
+    skull_mesh.rotate(axis=np.array([0, 1, 0]), theta=angles[1])
+
+    skull_mesh.rotate(axis=np.array([0, 0, 1]), theta=angles[2])
     # skull_mesh.rotate(axis=np.array([1, 0, 0]), theta=angles[0])
-    # skull_mesh.rotate(axis=np.array([0, 0, 1]), theta=angles[2])
-    skull_mesh.rotate(axis=np.array([0, 0, 1]), theta=np.pi/2)
+    
     # skull_mesh.rotate_using_matrix(M_rotation.T)
     # skull_mesh.rotate(axis=np.array([0.1, 1, 10]), theta=angles[1])
-    skull_mesh.rotate(axis=v_theta, theta=np.deg2rad(theta))
+    # skull_mesh.rotate(axis=v_theta, theta=np.deg2rad(theta))
     # skull_mesh.rotate(axis=[-0.6844,-20.633,-6.6277], theta=np.deg2rad(21.68))
     # skull_mesh.rotate(axis=np.array([1, 0, 0]), theta=angles[0])
     # skull_mesh.rotate(axis=np.array([0, 0, 1]), theta=angles[2])
     
     # skull_mesh.rotate(axis=np.array([0, 1, 0]), theta=angles[1])
     # skull_mesh.rotate(axis=np.array([0, 0, 1]), theta=np.pi/2)
-    print(skull_mesh.vectors)#, skull_mesh.vectors.v0, skull_mesh.vectors.v1, skull_mesh.vectors.v2
+    # print(skull_mesh.vectors)#, skull_mesh.vectors.v0, skull_mesh.vectors.v1, skull_mesh.vectors.v2
     #
     skull_mesh.save(stl_path)
     print(f"Saved STL to: {stl_path}")

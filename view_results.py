@@ -34,7 +34,7 @@ def load_landmarks_from_csv(csv_path):
 # ------------------ USER SETTINGS ------------------ #
     
 # Choose working folder and file number
-big_output_directory = "cava" # Folder with NIfTI and CSV files
+big_output_directory = "nifti" # Folder with NIfTI and CSV files
 file_number = 0 # Number of the case to visualize
 
 # Show landmarks in normal space (to be transformed in patient space)
@@ -49,8 +49,8 @@ landmarks_type = "imp" # "reg" or "imp"
 
 show_file = True # To see a specific file
 # Choose which NIfTI image and axis to display (comment/uncomment/change here)
-nifti_img_name = "mask" + str(file_number) # e.g., "mask", "totalsegmentator", "mca_territory", "head"
-nifti_img_name = "301_carotid_angio_0625mm" # "6_cow_angio__06__hv36__3"
+# nifti_img_name = "mask" + str(file_number) + ".nii.gz" # e.g., "mask", "totalsegmentator", "mca_territory", "head"
+nifti_img_name = "icbm_avg_152_t1_tal_lin_headmask.nii" # "6_cow_angio__06__hv36__3"
 axis = 0 # 0:y-axis, 1:x-axis, 2:z-axis
 
 # ---------------- END OF USER SETTINGS ---------------- #
@@ -78,7 +78,7 @@ if __name__ == "__main__":
 
     if show_file:
         # Show a specific file
-        img = nib.load(os.path.join(id.nifti_output_directory, nifti_img_name+".nii.gz"))
+        img = nib.load(os.path.join(id.nifti_output_directory, nifti_img_name))
         img = img.get_fdata()
         id.show_3D_array(img, axis=axis)
 
