@@ -94,6 +94,9 @@ def find_origin(csv_path, pts_list=[]):
     x = x_axis[0], 0, x_axis[2]
     y = y_axis[0], y_axis[1], 0
     z = 0, z_axis[1], z_axis[2]
+    alpha = compute_angle(z, [0, 0, 1], np.linalg.norm(z),1)
+    beta = compute_angle(x, [1, 0, 0], np.linalg.norm(x),1) 
+    gamma = compute_angle(y, [0, 1, 0], np.linalg.norm(y),1)
     print("rotation x :", compute_angle(z, [0, 0, 1], np.linalg.norm(z),1))
     print("rotation y:", compute_angle(x, [1, 0, 0], np.linalg.norm(x),1))
     print('rotation z :', compute_angle(y, [0, 1, 0], np.linalg.norm(y),1))
@@ -109,11 +112,24 @@ def find_origin(csv_path, pts_list=[]):
                             y_axis,
                             z_axis])
     
+    from scipy.spatial.transform import Rotation
+
+    R = rotation_matrix_z(gamma) @ rotation_matrix_y(beta) @ rotation_matrix_x(alpha)
+
+
+    # Crée une rotation avec axes fixes (extrinsic rotations)
+    rot = Rotation.from_euler('XYZ', [alpha, beta, gamma], degrees=True)
+
+    # Applique la rotation
+    points_rotated = rot.apply(pts_list)
+        
+
+
 
     # METHOD 2
     # Create a rotation object that aligns the initial coordinate system to the final coordinate system
-    from scipy.spatial.transform import Rotation as R
-    rotation = R.align_vectors(M_init_coord, M_new_coord)[0]
+    from scipy.spatial.transform import Rotation
+    rotation = Rotation.align_vectors(M_init_coord, M_new_coord)[0]
 
     # Extract the rotation matrix
     M_rotation = rotation.as_matrix()
@@ -137,7 +153,7 @@ def find_origin(csv_path, pts_list=[]):
     pts_list = pts_list - origin
 
   
-    return -1*origin*res, -1*np.array([theta_x, theta_y, theta_z]), M_rotation #np.array(vertices)
+    return -1*origin*res, -1*np.array([theta_x, theta_y, theta_z]), M_rotation, points_rotated
     
 
 # find_origin("cava/0/points0.csv")
@@ -183,7 +199,7 @@ def save_to_stl(big_output_directory, file_number, show_mask_to_convert=False):
     # Generate surface mesh using marching cubes
     vertices, faces, normals, values = measure.marching_cubes(img_thresholded, level=0.5)
     
-    origin, angles, M_rotation = find_origin(f"cava/{file_number}/points{file_number}.csv", vertices) # iciciicicicicici
+    origin, angles, M_rotation, vertices = find_origin(f"cava/{file_number}/points{file_number}.csv", vertices) # iciciicicicicici
     # print(origin, angles)
     vertices = (vertices*spacing)
     
@@ -210,6 +226,8 @@ def save_to_stl(big_output_directory, file_number, show_mask_to_convert=False):
     # skull_mesh.rotate(axis=np.array([0, 0, 1]), theta=angles[2])
     skull_mesh.rotate(axis=np.array([0, 0, 1]), theta=np.pi/2)
     skull_mesh.rotate_using_matrix(M_rotation.T)
+    
+    
     # skull_mesh.rotate(axis=np.array([0, 1, 0]), theta=angles[1])
     # skull_mesh.rotate(axis=np.array([0, 0, 1]), theta=np.pi/2)
     #
@@ -229,7 +247,7 @@ if __name__ == "__main__":
 
     # ----------- OPTION 1: Process a single patient ---------------
     run_single_file = True # Set to True to process ONE file
-    single_file_number = 1 # Patient file number to process
+    single_file_number = 0 # Patient file number to process
 
     # ----------- OPTION 2: Process all patients ---------------
     run_all_folders = False # Set to True to process ALL folders in the big_output_directory
