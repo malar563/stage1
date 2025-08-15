@@ -11,6 +11,7 @@ def load_landmarks_from_csv(csv_path):
     
     # Get MRI landmarks
     scan_name = df.iloc[1,0]
+    res = df.iloc[4, 1:].values.astype(float)
     array_MRI = df.iloc[6:12, 1:].values.astype(float)
     reg_nas_MRI, reg_lpa_MRI, reg_rpa_MRI = array_MRI[1], array_MRI[3], array_MRI[5]
     imp_nas_MRI, imp_lpa_MRI, imp_rpa_MRI = array_MRI[0], array_MRI[2], array_MRI[4]
@@ -28,7 +29,8 @@ def load_landmarks_from_csv(csv_path):
                     "imp": [imp_nas_MRI, imp_lpa_MRI, imp_rpa_MRI]},
             "CT": {"reg":  [reg_nas_CT,  reg_lpa_CT,  reg_rpa_CT],
                    "imp":  [imp_nas_CT,  imp_lpa_CT,  imp_rpa_CT]},
-            "scan name":scan_name}
+            "scan name":scan_name,
+            "res":res}
 
 
 # ------------------ USER SETTINGS ------------------ #

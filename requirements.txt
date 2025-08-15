@@ -3,6 +3,7 @@ dcm2niix==1.0.20250506
 matplotlib==3.10.3
 nibabel==5.3.2
 numpy==1.26.4
+numpy-stl==3.2.0
 pandas==2.3.0
 scipy==1.15.3
 scikit-image==0.25.2
