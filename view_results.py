@@ -34,8 +34,8 @@ def load_landmarks_from_csv(csv_path):
 # ------------------ USER SETTINGS ------------------ #
     
 # Choose working folder and file number
-big_output_directory = "nifti" # Folder with NIfTI and CSV files
-file_number = 0 # Number of the case to visualize
+big_output_directory = "cava" # Folder with NIfTI and CSV files
+file_number = 1 # Number of the case to visualize
 
 # Show landmarks in normal space (to be transformed in patient space)
 show_normalized_pts = False # Landmarks in MRI space
@@ -47,7 +47,7 @@ show_landmarks = True # To see the landmarks
 reg_with = "MRI" # "CT" or "MRI"
 landmarks_type = "imp" # "reg" or "imp"
 
-show_file = True # To see a specific file
+show_file = False # To see a specific file
 # Choose which NIfTI image and axis to display (comment/uncomment/change here)
 # nifti_img_name = "mask" + str(file_number) + ".nii.gz" # e.g., "mask", "totalsegmentator", "mca_territory", "head"
 nifti_img_name = "icbm_avg_152_t1_tal_lin_headmask.nii" # "6_cow_angio__06__hv36__3"

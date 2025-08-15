@@ -128,11 +128,30 @@ def find_origin(csv_path, pts_list=[]):
     theta_z_deg = rad2deg(theta_z)
     print("Method 2:", theta_x_deg, theta_y_deg, theta_z_deg)
 
+    Ry = np.array([[np.cos(-theta_y), 0, np.sin(-theta_y)],
+                   [0, 1, 0],
+                   [-np.sin(-theta_y), 0, np.cos(-theta_y)]])
+
+
+    Rz = np.array([[np.cos(theta_z), -np.sin(theta_z), 0],
+                   [np.sin(theta_z), np.cos(theta_z), 0],
+                   [0, 0, 1]])
+    print("ÇACOMMENCEE")
+    print(y_axis)
+    axis_ry = Ry @ y_axis
+    print(axis_ry)
+    axis_ryrz = Rz @ axis_ry
+    print(axis_ryrz)
+    ax0 = Rz @ np.array([0,1,0])
+    print(ax0)
+    new_theta_x = compute_angle(ax0, axis_ryrz, np.linalg.norm(ax0), np.linalg.norm(axis_ryrz))
+    print(new_theta_x)
+
     v_theta = -1*np.array([theta_x, theta_y, theta_z])
     pts_list = pts_list - origin
 
   
-    return -1*origin*res, np.array([theta_x, -theta_y, theta_z]), M_rotation, theta, v_theta
+    return -1*origin*res, np.array([np.deg2rad(new_theta_x), -theta_y, theta_z]), M_rotation, theta, v_theta
     
 
 # find_origin("cava/0/points0.csv")
@@ -167,7 +186,7 @@ def save_to_stl(big_output_directory, file_number, show_mask_to_convert=False):
     # img_array = np.rot90(img_array, k=1, axes=(0,1))
     # img_array = np.flip(img_array, 0)
     # img_array = np.flip(img_array, 1)
-    img_thresholded = np.where(img_array >= 3, 1, 0)
+    img_thresholded = np.where(img_array >= 1, 1, 0)
     spacing = img.header["pixdim"][1:4]
 
     if show_mask_to_convert:
@@ -203,7 +222,7 @@ def save_to_stl(big_output_directory, file_number, show_mask_to_convert=False):
     skull_mesh.rotate(axis=np.array([0, 1, 0]), theta=angles[1])
 
     skull_mesh.rotate(axis=np.array([0, 0, 1]), theta=angles[2])
-    # skull_mesh.rotate(axis=np.array([1, 0, 0]), theta=angles[0])
+    skull_mesh.rotate(axis=np.array([1, 0, 0]), theta=angles[0])
     
     # skull_mesh.rotate_using_matrix(M_rotation.T)
     # skull_mesh.rotate(axis=np.array([0.1, 1, 10]), theta=angles[1])
@@ -232,7 +251,7 @@ if __name__ == "__main__":
 
     # ----------- OPTION 1: Process a single patient ---------------
     run_single_file = True # Set to True to process ONE file
-    single_file_number = 1 # Patient file number to process
+    single_file_number = 0 # Patient file number to process
 
     # ----------- OPTION 2: Process all patients ---------------
     run_all_folders = False # Set to True to process ALL folders in the big_output_directory
