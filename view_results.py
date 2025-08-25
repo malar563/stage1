@@ -37,23 +37,23 @@ def load_landmarks_from_csv(csv_path):
     
 # Choose working folder and file number
 big_output_directory = "cava" # Folder with NIfTI and CSV files
-file_number = 1 # Number of the case to visualize
+file_number = 0 # Number of the case to visualize
 
 # Show landmarks in normal space (to be transformed in patient space)
 show_normalized_pts = False # Landmarks in MRI space
 show_CT_normalized_space = False # Landmarks in CT space
 path_CT_not_normalized = 'ct_ref.nii.gz'# Path to the CT used as normal space
 
-show_landmarks = True # To see the landmarks
+show_landmarks = False # To see the landmarks
 # Choose which landmarks to display (can be CT or MRI, reg or imp)
 reg_with = "MRI" # "CT" or "MRI"
 landmarks_type = "imp" # "reg" or "imp"
 
-show_file = False # To see a specific file
+show_file = True # To see a specific file
 # Choose which NIfTI image and axis to display (comment/uncomment/change here)
-# nifti_img_name = "mask" + str(file_number) + ".nii.gz" # e.g., "mask", "totalsegmentator", "mca_territory", "head"
-nifti_img_name = "icbm_avg_152_t1_tal_lin_headmask.nii" # "6_cow_angio__06__hv36__3"
-axis = 0 # 0:y-axis, 1:x-axis, 2:z-axis
+nifti_img_name = "head" + str(file_number) + ".nii.gz" # e.g., "mask", "totalsegmentator", "mca_territory", "head"
+# nifti_img_name = "cropped_301_carotid_angio_0625mm.nii.gz" #"icbm_avg_152_t1_tal_lin_headmask.nii" # "6_cow_angio__06__hv36__3"
+axis = 2 # 0:y-axis, 1:x-axis, 2:z-axis
 
 # ---------------- END OF USER SETTINGS ---------------- #
 if __name__ == "__main__":

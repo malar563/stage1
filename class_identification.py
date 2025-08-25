@@ -185,6 +185,7 @@ class Identification:
         from matplotlib.widgets import Slider
         import numpy as np
         import matplotlib.pyplot as plt
+        import matplotlib
 
         fig, ax = plt.subplots()
         plt.subplots_adjust(bottom=0.25)
@@ -192,11 +193,20 @@ class Identification:
         index = arr.shape[axis] // 2
 
         if axis == 0:
-            img = ax.imshow(arr[index, :, :], cmap="gray", origin="lower")
+            data = arr[index, :, :]
         elif axis == 1:
-            img = ax.imshow(arr[:, index, :], cmap="gray", origin="lower")
+            data = arr[:, index, :]
         else:
-            img = ax.imshow(arr[:, :, index], cmap="gray", origin="lower")
+            data = arr[:, :, index]
+
+        img = ax.imshow(data, cmap="gray", origin="lower")
+
+        # cbar = fig.colorbar(img, ax=ax)
+        # # Determine integer tick locations
+        # min_val = int(np.min(data))
+        # max_val = int(np.max(data))
+        # integer_ticks = np.arange(min_val, max_val + 1) # All integers in the range
+        # cbar.set_ticks(integer_ticks) # Set the ticks of the colorbar
 
         # Initialize scatter plot (empty)
         point_plot = ax.scatter([], [], c=[], marker='o', s=80, edgecolors='none')
