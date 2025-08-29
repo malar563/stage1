@@ -11,9 +11,10 @@ from automatically_get_folders import create_list
 from view_results import load_landmarks_from_csv
 
 
-# Assuming '250_CQ.json' is the JSON file containing the reference landmarks
+# Assuming '250_CQ.json' is the JSON file containing the reference points
 with open('250_CQ.json', 'r') as file:
     dict_scans = json.load(file)
+
 
 # -----------------------------------------------------------------------
 # -----------------------------------------------------------------------
@@ -74,17 +75,18 @@ def analyze_errors_scans(csv_dirs, remove_dim = False, too_far=10):
                     components = compute_components(dict_landmarks["RPA"], pt1, res, None)
                     if remove_dim:
                         distance = compute_distance(pt1, dict_landmarks["RPA"], res, "y")
-                        components = compute_components(dict_landmarks["LPA"], pt1, res, "y")
+                        components = compute_components(dict_landmarks["RPA"], pt1, res, "y")
                 if distance is None:
                     continue
                 dict_err_distance.setdefault(name_pt, []).append(distance)
                 dict_err_components.setdefault(name_pt, []).append(components)
                 if distance > too_far:
-                    dict_too_far[label]= (i, distance)
+                    dict_too_far[label+"// line"+str(i)]= (distance)
     return dict_err_distance, dict_err_components, dict_too_far
 
 
-def show_boxplots(dict_errors):
+def show_boxplots(dict_errors_tangent, dict_errors_tot):
+# def show_boxplots(dict_errors):
     """
     Plot boxplots of landmark errors for Nasion, LPA, and RPA.
 
@@ -100,24 +102,27 @@ def show_boxplots(dict_errors):
     - For each landmark, compares MRI vs CT and improved vs registered versions.
     - Prints median error for MRI and CT before showing the boxplot.
     """
-    nas = [dict_errors['MRI Nasion improved (voxel)'], dict_errors['MRI Nasion registered (voxel)'],
-           dict_errors['CT Nasion improved (voxel)'], dict_errors['CT Nasion registered (voxel)']]
-    lpa = [dict_errors['MRI LPA improved (voxel)'], dict_errors['MRI LPA registered (voxel)'],
-           dict_errors['CT LPA improved (voxel)'], dict_errors['CT LPA registered (voxel)']]    
-    rpa = [dict_errors['MRI RPA improved (voxel)'], dict_errors['MRI RPA registered (voxel)'],
-           dict_errors['CT RPA improved (voxel)'], dict_errors['CT RPA registered (voxel)']]
+    nas = [dict_errors_tot['MRI Nasion improved (voxel)'], dict_errors_tot['CT Nasion improved (voxel)'],
+           dict_errors_tangent['MRI Nasion improved (voxel)'], dict_errors_tangent['CT Nasion improved (voxel)'],]
+    lpa = [dict_errors_tot['MRI LPA registered (voxel)'], dict_errors_tot['CT LPA registered (voxel)'],
+           dict_errors_tangent['MRI LPA registered (voxel)'], dict_errors_tangent['CT LPA registered (voxel)']]    
+    rpa = [dict_errors_tot['MRI RPA registered (voxel)'], dict_errors_tot['CT RPA registered (voxel)'],
+           dict_errors_tangent['MRI RPA registered (voxel)'], dict_errors_tangent['CT RPA registered (voxel)']]
 
     landmarks = {"Nasion":nas, "LPA":lpa, "RPA":rpa}
-    labels = ["MRI improved", "MRI registered", "CT improved", "CT registered"]
-    colors = ["lightcoral", "indianred", "lightsteelblue", "cornflowerblue"]
+    labels = ["totale IRM", "totale CT", "tangente IRM", "tangente CT"]
+    colors = ["lightcoral", "lightsteelblue", "indianred", "cornflowerblue"]
     medianprops = dict(color='gold')
 
     for pt_name in landmarks:
-        print("Median MRI", np.median(landmarks[pt_name][0]))
-        print("Median CT", np.median(landmarks[pt_name][2]))
+        print(pt_name)
+        print("Median MRI total", np.median(landmarks[pt_name][0]))
+        print("Median CT total", np.median(landmarks[pt_name][1]))
+        print("Median MRI tangent", np.median(landmarks[pt_name][2]))
+        print("Median CT tangent", np.median(landmarks[pt_name][3]))
 
         fig, ax = plt.subplots()
-        ax.set_ylabel('Distance (mm)')
+        ax.set_ylabel('Erreur (mm)')
         ax.set_xlabel(pt_name)
         bplot = ax.boxplot(landmarks[pt_name],
                         patch_artist=True,  # fill with color
@@ -127,6 +132,34 @@ def show_boxplots(dict_errors):
         # fill with colors
         for patch, color in zip(bplot['boxes'], colors):
             patch.set_facecolor(color)
+    
+    # nas = [dict_errors['MRI Nasion improved (voxel)'], dict_errors['MRI Nasion registered (voxel)'],
+    #        dict_errors['CT Nasion improved (voxel)'], dict_errors['CT Nasion registered (voxel)']]
+    # lpa = [dict_errors['MRI LPA improved (voxel)'], dict_errors['MRI LPA registered (voxel)'],
+    #        dict_errors['CT LPA improved (voxel)'], dict_errors['CT LPA registered (voxel)']]    
+    # rpa = [dict_errors['MRI RPA improved (voxel)'], dict_errors['MRI RPA registered (voxel)'],
+    #        dict_errors['CT RPA improved (voxel)'], dict_errors['CT RPA registered (voxel)']]
+
+    # landmarks = {"Nasion":nas, "LPA":lpa, "RPA":rpa}
+    # labels = ["MRI improved", "MRI registered", "CT improved", "CT registered"]
+    # colors = ["lightcoral", "indianred", "lightsteelblue", "cornflowerblue"]
+    # medianprops = dict(color='gold')
+
+    # for pt_name in landmarks:
+    #     print("Median MRI", np.median(landmarks[pt_name][0]))
+    #     print("Median CT", np.median(landmarks[pt_name][2]))
+
+    #     fig, ax = plt.subplots()
+    #     ax.set_ylabel('Distance (mm)')
+    #     ax.set_xlabel(pt_name)
+    #     bplot = ax.boxplot(landmarks[pt_name],
+    #                     patch_artist=True,  # fill with color
+    #                     tick_labels=labels,  # will be used to label x-ticks
+    #                     notch=False,
+    #                     medianprops=medianprops)
+    #     # fill with colors
+    #     for patch, color in zip(bplot['boxes'], colors):
+    #         patch.set_facecolor(color)
 
         plt.show()
 
@@ -273,13 +306,13 @@ if __name__ == "__main__":
     too_far = 10
 
     # For the vector function
-    see_error_vectors = True
+    see_error_vectors = False
     # Choose which landmarks to display (can be CT or MRI, reg or imp)
     reg_with = "MRI" # "CT" or "MRI"
     landmarks_type = "reg" # "reg" or "imp"
 
     # For the gaussian error distribution 
-    see_error_distribution = True
+    see_error_distribution = False
 
     # For the boxplots
     see_boxplots = True
@@ -292,12 +325,17 @@ if __name__ == "__main__":
     csv_dirs = create_list(directory=big_output_directory)
     csv_dirs.sort(key=lambda x: int(x.split('\\')[-1]))
 
+    dict_err_distance_tot, dict_err_components_tot, dict_too_far_tot = analyze_errors_scans(csv_dirs=csv_dirs, remove_dim=False, too_far=too_far)
     dict_err_distance, dict_err_components, dict_too_far = analyze_errors_scans(csv_dirs=csv_dirs, remove_dim=True, too_far=too_far)
-    print("Scans considered as too far", dict_too_far)
+    print(f"{len(dict_too_far)} scans points considered as too far:", dict_too_far_tot)
+    for t in dict_too_far: # tangent error
+        print(t, ":", dict_too_far[t])
 
     if see_error_distribution:
         show_error_distribution(dict_err_components)
 
     if see_boxplots:
-        show_boxplots(dict_errors=dict_err_distance)
+        show_boxplots(dict_errors_tangent=dict_err_distance, dict_errors_tot=dict_err_distance_tot)
+
+
 

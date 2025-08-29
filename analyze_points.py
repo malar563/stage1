@@ -9,7 +9,7 @@ from automatically_get_folders import create_list
 
 # ----------------------------------------------------------------------------
 
-def compute_distance(pt1, pt2, res, remove_dim=None):
+def compute_distance(_pt1, _pt2, res, remove_dim=None):
     """
     Compute the Euclidean distance between two 3D points, optionally ignoring one axis.
 
@@ -27,6 +27,9 @@ def compute_distance(pt1, pt2, res, remove_dim=None):
     float or None
         Scaled distance between the two points, or None if inputs are invalid or `remove_dim` is unrecognized.
     """
+    from copy import deepcopy
+    pt1 = deepcopy(_pt1)
+    pt2 = deepcopy(_pt2)
     if len(pt1) > 0 and len(pt2) > 0:
         if remove_dim == "x":
             pt1[0], pt2[0] = 0, 0
@@ -38,12 +41,12 @@ def compute_distance(pt1, pt2, res, remove_dim=None):
             return None
         distance = np.sqrt(((res[0]*(pt1[0]-pt2[0]))**2 + 
                             (res[1]*(pt1[1]-pt2[1]))**2 + 
-                            (res[2]*(pt1[1]-pt2[1]))**2))
+                            (res[2]*(pt1[2]-pt2[2]))**2))
         return distance
     return None
 
 
-def compute_components(pt1, pt2, res, remove_dim=None):
+def compute_components(_pt1, _pt2, res, remove_dim=None):
     """
     Compute the per-axis scaled difference vector between two 3D points, optionally zeroing one axis.
 
@@ -63,6 +66,9 @@ def compute_components(pt1, pt2, res, remove_dim=None):
         Scaled component-wise differences (pt2 - pt1) * res, or None if inputs are invalid or
         `remove_dim` is unrecognized.
     """
+    from copy import deepcopy
+    pt1 = deepcopy(_pt1)
+    pt2 = deepcopy(_pt2)
     if len(pt1) > 0 and len(pt2) > 0:
         if remove_dim == "x":
             pt1[0], pt2[0] = 0, 0

@@ -51,9 +51,9 @@ landmarks_type = "imp" # "reg" or "imp"
 
 show_file = True # To see a specific file
 # Choose which NIfTI image and axis to display (comment/uncomment/change here)
-nifti_img_name = "head" + str(file_number) + ".nii.gz" # e.g., "mask", "totalsegmentator", "mca_territory", "head"
+nifti_img_name = "mask" + str(file_number) + ".nii.gz" # e.g., "mask", "totalsegmentator", "mca_territory", "head"
 # nifti_img_name = "cropped_301_carotid_angio_0625mm.nii.gz" #"icbm_avg_152_t1_tal_lin_headmask.nii" # "6_cow_angio__06__hv36__3"
-axis = 2 # 0:y-axis, 1:x-axis, 2:z-axis
+axis = 0 # 0:y-axis, 1:x-axis, 2:z-axis
 
 # ---------------- END OF USER SETTINGS ---------------- #
 if __name__ == "__main__":

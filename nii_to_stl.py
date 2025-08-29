@@ -218,11 +218,11 @@ if __name__ == "__main__":
     show_mask_to_convert = False
 
     # ----------- OPTION 1: Process a single patient ---------------
-    run_single_file = False # Set to True to process ONE file
-    single_file_number = 0 # Patient file number to process
+    run_single_file = True # Set to True to process ONE file
+    single_file_number = 1 # Patient file number to process
 
     # ----------- OPTION 2: Process all patients ---------------
-    run_all_folders = True # Set to True to process ALL folders in the big_output_directory
+    run_all_folders = False # Set to True to process ALL folders in the big_output_directory
 
 # --------------------------------------------------------------------------
 # ------------------------- END OF USER SECTION ----------------------------
